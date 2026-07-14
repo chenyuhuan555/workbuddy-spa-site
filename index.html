@@ -4102,7 +4102,7 @@
         <div class="relative ml-auto">
           <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="color:#fff!important">＋ 新建</button>
           <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
-            <button @click="selectWorkbenchNav('companies')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建公司</button>
+            <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建公司</button>
             <button @click="selectWorkbenchNav('companies')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建岗位</button>
             <button @click="uploadCandidateStandalone" class="w-full text-left px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">上传候选人简历</button>
             <button @click="selectWorkbenchNav('candidates')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建候选人</button>
@@ -4303,7 +4303,14 @@
         </div>
 
         <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">公司看板</h1><p class="text-sm text-slate-500 mt-1">以客户为中心查看岗位需求、候选人推进和业务风险。</p></div></div>
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><div><h1 class="text-2xl font-bold">公司看板</h1><p class="text-sm text-slate-500 mt-1">以客户为中心查看岗位需求、候选人推进和业务风险。</p></div><button v-if="canWrite" @click="openCompanyCreate" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800">＋ 新建公司</button></div>
+          <form v-if="companyCreate.open && canWrite" @submit.prevent="createWorkbenchCompany" class="bg-white border border-emerald-200 rounded-xl p-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <input v-model="companyCreate.name" required autofocus placeholder="公司名称 *" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
+            <input v-model="companyCreate.industry" placeholder="行业" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
+            <input v-model="companyCreate.city" placeholder="所在城市" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
+            <input v-model="companyCreate.owner" placeholder="负责人" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
+            <div class="flex gap-2"><select v-model="companyCreate.status" class="min-w-0 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="potential">潜在客户</option><option value="active">合作中</option><option value="paused">暂停合作</option></select><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">创建</button><button type="button" @click="companyCreate.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div>
+          </form>
           <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap gap-2">
             <input v-model="companyFilter.query" type="search" placeholder="搜索公司、行业或负责人" class="min-w-56 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
             <select v-model="companyFilter.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部状态</option><option value="active">合作中</option><option value="potential">潜在客户</option><option value="paused">暂停合作</option></select>
@@ -10896,6 +10903,7 @@ const vueAppConfig = {
     const workbenchRoute = reactive({ type: 'list', id: '', parentId: '', tab: 'overview' });
     const globalCreateMenu = ref(false);
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
+    const companyCreate = reactive({ open: false, name: '', industry: '', city: '', owner: '', status: 'potential' });
     const candidateFilters = reactive({ query: '', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
     const applicationViewMode = ref('table');
@@ -11389,6 +11397,30 @@ const vueAppConfig = {
       Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
       globalCreateMenu.value = false;
       if (key === 'settings') loadMembers();
+    }
+    function openCompanyCreate() {
+      if (!canWrite) return;
+      workbenchNav.value = 'companies';
+      Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
+      Object.assign(companyCreate, { open: true, name: '', industry: '', city: '', owner: '', status: 'potential' });
+      globalCreateMenu.value = false;
+    }
+    async function createWorkbenchCompany() {
+      const name = companyCreate.name.trim();
+      if (!name) { showToast('请填写公司名称', 'error'); return; }
+      const company = WorkbenchV2.createCompany({
+        name,
+        industry: companyCreate.industry.trim(),
+        city: companyCreate.city.trim(),
+        owner: companyCreate.owner.trim(),
+        status: companyCreate.status,
+      });
+      workbenchV2.companies.push(company);
+      const saved = await saveWorkbenchV2();
+      if (cloudReady) schedulePush();
+      companyCreate.open = false;
+      openCompanyDetail(company.id);
+      showToast(saved ? '公司已创建' : '公司已暂存到浏览器');
     }
     function openCompanyDetail(id) {
       workbenchNav.value = 'companies';
@@ -22399,14 +22431,14 @@ ${clipped}`
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers,
       memberManagement, loadMembers, createMember, setMemberStatus, resetMemberPassword,
-      companyFilter, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
+      companyFilter, companyCreate, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
       candidateFilters, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
       filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
-      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyDetail, openPositionDetail,
+      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyDetail, openPositionDetail,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, createApplicationsFromUpload,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
