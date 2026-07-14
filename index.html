@@ -4332,7 +4332,8 @@
 
         <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'company' && selectedCompany" class="max-w-7xl mx-auto space-y-4">
           <button @click="backToWorkbenchList" class="text-sm text-slate-500 hover:text-emerald-700">← 返回公司列表</button>
-          <div class="bg-white border border-slate-200 rounded-xl p-5"><div class="flex flex-col lg:flex-row gap-4 lg:items-start"><div class="w-12 h-12 rounded-lg bg-emerald-900 text-white flex items-center justify-center text-xl font-bold">{{ selectedCompany.name?.slice(0,1) }}</div><div class="flex-1"><h1 class="text-2xl font-bold">{{ selectedCompany.name }}</h1><p class="text-sm text-slate-500 mt-1">{{ selectedCompany.industry || '行业待补充' }} · {{ selectedCompany.city || '地区待补充' }} · 负责人 {{ selectedCompany.owner || '未分配' }}</p></div><button class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold">新建岗位</button></div>
+          <div class="bg-white border border-slate-200 rounded-xl p-5"><div class="flex flex-col lg:flex-row gap-4 lg:items-start"><div class="w-12 h-12 rounded-lg bg-emerald-900 text-white flex items-center justify-center text-xl font-bold">{{ selectedCompany.name?.slice(0,1) }}</div><div class="flex-1"><h1 class="text-2xl font-bold">{{ selectedCompany.name }}</h1><p class="text-sm text-slate-500 mt-1">{{ selectedCompany.industry || '行业待补充' }} · {{ selectedCompany.city || '地区待补充' }} · 负责人 {{ selectedCompany.owner || '未分配' }}</p></div><button v-if="canWrite" @click="openCompanyPositionCreate" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold">新建岗位</button></div>
+            <form v-if="companyPositionCreate.open && canWrite" @submit.prevent="createCompanyPosition" class="mt-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3 border-t border-slate-100 pt-4"><input v-model="companyPositionCreate.title" required autofocus placeholder="岗位名称 *" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><input v-model="companyPositionCreate.city" placeholder="工作城市" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><input v-model="companyPositionCreate.salary" placeholder="薪资范围" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><input v-model="companyPositionCreate.owner" placeholder="负责人" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><div class="flex gap-2"><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">创建岗位</button><button type="button" @click="companyPositionCreate.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div></form>
             <nav aria-label="公司详情页签" class="wb-v2-company-tabs text-sm">
               <template v-for="(tab, index) in [{ id: 'overview', label: '公司概览' }, { id: 'ai', label: 'AI分析' }, { id: 'positions', label: '岗位' }, { id: 'applications', label: '候选人推进' }, { id: 'activity', label: '动态与备注' }]" :key="tab.id">
                 <button type="button" :data-company-tab-icon="tab.id" @click="workbenchRoute.tab = tab.id" :class="['wb-v2-company-tab whitespace-nowrap', { 'wb-v2-company-tab-active': workbenchRoute.tab === tab.id }]">
@@ -4769,24 +4770,22 @@
                   </div>
 
                   <div v-if="activeAiToolboxTool?.key === 'pdf-boss-electronic-resume'" class="mb-4 space-y-3">
-                    <div class="rounded-xl border-2 border-dashed border-slate-200 bg-white/70 p-4">
-                      <input ref="aiToolboxPdfInput" type="file" accept=".pdf,application/pdf" class="hidden" @change="onAiToolboxPdfFileChange">
+                    <div @dragover.prevent="onAiToolboxSourceDragOver" @dragleave.prevent="onAiToolboxSourceDragLeave" @drop.prevent="onAiToolboxSourceDrop" :class="['rounded-xl border-2 border-dashed bg-white/70 p-4 transition', aiToolboxDropActive ? 'border-teal-500 bg-teal-50/70' : 'border-slate-200']">
+                      <input ref="aiToolboxPdfInput" type="file" accept=".pdf,application/pdf,.png,image/png" class="hidden" @change="onAiToolboxPdfFileChange">
                       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="min-w-0">
-                          <p class="text-sm font-bold text-slate-700">上传猎聘 PDF / 截图 PDF</p>
-                          <p class="text-xs text-slate-500 mt-1">先提取 PDF 文字；文字太少时自动转图片 OCR。</p>
+                          <p class="text-sm font-bold text-slate-700">拖拽或上传 PDF 简历 / BOSS 二维码 PNG</p>
+                          <p class="text-xs text-slate-500 mt-1">PDF 自动提取文字；PNG 自动识别二维码并提供 BOSS 链接。</p>
                           <p v-if="aiToolbox.fileName" class="text-xs text-emerald-600 mt-1 truncate">已选择：{{ aiToolbox.fileName }}</p>
                         </div>
                         <button @click="triggerAiToolboxPdfInput" type="button"
                           :class="`px-4 py-2 rounded-lg bg-${aiToolboxTabColor}-600 hover:bg-${aiToolboxTabColor}-700 text-white text-sm font-bold transition`">
-                          选择 PDF
+                          选择文件
                         </button>
                       </div>
                       <p v-if="aiToolbox.sourceStatus" class="text-xs text-slate-500 mt-3">{{ aiToolbox.sourceStatus }}</p>
                     </div>
-                    <div class="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                      BOSS 二维码请先打开链接并复制完整简历文本，再粘贴到下方输入框。
-                    </div>
+                    <div v-if="aiToolbox.qrUrl" class="rounded-xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-xs text-cyan-700">已识别 BOSS 二维码：<a :href="aiToolbox.qrUrl" target="_blank" rel="noopener" class="font-semibold underline">打开 BOSS</a>，复制完整简历文本后粘贴到下方。</div>
                   </div>
 
                   <label class="block text-xs font-semibold text-slate-600 mb-1">{{ activeAiToolboxTool?.key === 'pdf-boss-electronic-resume' ? 'BOSS / 猎聘粘贴文本' : '补充输入' }}</label>
@@ -6819,24 +6818,22 @@
               </div>
 
               <div v-if="activeAiToolboxTool?.key === 'pdf-boss-electronic-resume'" class="mb-4 space-y-3">
-                <div class="rounded-xl border-2 border-dashed border-slate-200 bg-white/70 p-4">
-                  <input ref="aiToolboxPdfInput" type="file" accept=".pdf,application/pdf" class="hidden" @change="onAiToolboxPdfFileChange">
+                <div @dragover.prevent="onAiToolboxSourceDragOver" @dragleave.prevent="onAiToolboxSourceDragLeave" @drop.prevent="onAiToolboxSourceDrop" :class="['rounded-xl border-2 border-dashed bg-white/70 p-4 transition', aiToolboxDropActive ? 'border-teal-500 bg-teal-50/70' : 'border-slate-200']">
+                  <input ref="aiToolboxPdfInput" type="file" accept=".pdf,application/pdf,.png,image/png" class="hidden" @change="onAiToolboxPdfFileChange">
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="min-w-0">
-                      <p class="text-sm font-bold text-slate-700">上传猎聘 PDF / 截图 PDF</p>
-                      <p class="text-xs text-slate-500 mt-1">先提取 PDF 文字；文字太少时自动转图片 OCR。</p>
+                      <p class="text-sm font-bold text-slate-700">拖拽或上传 PDF 简历 / BOSS 二维码 PNG</p>
+                      <p class="text-xs text-slate-500 mt-1">PDF 自动提取文字；PNG 自动识别二维码并提供 BOSS 链接。</p>
                       <p v-if="aiToolbox.fileName" class="text-xs text-emerald-600 mt-1 truncate">已选择：{{ aiToolbox.fileName }}</p>
                     </div>
                     <button @click="triggerAiToolboxPdfInput" type="button"
                       :class="`px-4 py-2 rounded-lg bg-${aiToolboxTabColor}-600 hover:bg-${aiToolboxTabColor}-700 text-white text-sm font-bold transition`">
-                      选择 PDF
+                      选择文件
                     </button>
                   </div>
                   <p v-if="aiToolbox.sourceStatus" class="text-xs text-slate-500 mt-3">{{ aiToolbox.sourceStatus }}</p>
                 </div>
-                <div class="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  BOSS 二维码请先打开链接并复制完整简历文本，再粘贴到下方输入框。
-                </div>
+                <div v-if="aiToolbox.qrUrl" class="rounded-xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-xs text-cyan-700">已识别 BOSS 二维码：<a :href="aiToolbox.qrUrl" target="_blank" rel="noopener" class="font-semibold underline">打开 BOSS</a>，复制完整简历文本后粘贴到下方。</div>
               </div>
 
               <label class="block text-xs font-semibold text-slate-600 mb-1">{{ activeAiToolboxTool?.key === 'pdf-boss-electronic-resume' ? 'BOSS / 猎聘粘贴文本' : '补充输入' }}</label>
@@ -10904,6 +10901,7 @@ const vueAppConfig = {
     const globalCreateMenu = ref(false);
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
     const companyCreate = reactive({ open: false, name: '', industry: '', city: '', owner: '', status: 'potential' });
+    const companyPositionCreate = reactive({ open: false, title: '', city: '', salary: '', owner: '' });
     const candidateFilters = reactive({ query: '', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
     const applicationViewMode = ref('table');
@@ -11421,6 +11419,28 @@ const vueAppConfig = {
       companyCreate.open = false;
       openCompanyDetail(company.id);
       showToast(saved ? '公司已创建' : '公司已暂存到浏览器');
+    }
+    function openCompanyPositionCreate() {
+      if (!canWrite || !selectedCompany.value) return;
+      Object.assign(companyPositionCreate, { open: true, title: '', city: '', salary: '', owner: selectedCompany.value.owner || '' });
+    }
+    async function createCompanyPosition() {
+      if (!selectedCompany.value) return;
+      const title = companyPositionCreate.title.trim();
+      if (!title) { showToast('请填写岗位名称', 'error'); return; }
+      const position = WorkbenchV2.createPosition({
+        companyId: selectedCompany.value.id,
+        title,
+        city: companyPositionCreate.city.trim(),
+        salary: companyPositionCreate.salary.trim(),
+        owner: companyPositionCreate.owner.trim(),
+      });
+      workbenchV2.positions.push(position);
+      const saved = await saveWorkbenchV2();
+      if (cloudReady) schedulePush();
+      companyPositionCreate.open = false;
+      openPositionDetail(position.id);
+      showToast(saved ? '岗位已创建' : '岗位已暂存到浏览器');
     }
     function openCompanyDetail(id) {
       workbenchNav.value = 'companies';
@@ -12676,6 +12696,7 @@ ${ocrText}`
       fileName: '',
       fileText: '',
       sourceStatus: '',
+      qrUrl: '',
     });
 
     // ======== 保存到 AI 分析 ========
@@ -12811,6 +12832,7 @@ ${ocrText}`
     }
 
     const aiToolboxPdfInput = ref(null);
+    const aiToolboxDropActive = ref(false);
 
     const aiToolboxTabColor = computed(() => {
       const map = { sourcing: 'blue', screening: 'rose', communication: 'emerald', delivery: 'amber', converter: 'teal' };
@@ -17632,6 +17654,13 @@ ${ocrText}`
       aiToolboxPdfInput.value?.click();
     }
 
+    function onAiToolboxSourceDragOver() { aiToolboxDropActive.value = true; }
+    function onAiToolboxSourceDragLeave() { aiToolboxDropActive.value = false; }
+    async function onAiToolboxSourceDrop(event) {
+      aiToolboxDropActive.value = false;
+      await handleAiToolboxSourceFile(event?.dataTransfer?.files?.[0]);
+    }
+
     function readLocalFileAsDataUrl(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -17644,9 +17673,15 @@ ${ocrText}`
     async function onAiToolboxPdfFileChange(event) {
       const file = event?.target?.files?.[0];
       if (event?.target) event.target.value = '';
+      await handleAiToolboxSourceFile(file);
+    }
+
+    async function handleAiToolboxSourceFile(file) {
       if (!file) return;
-      if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
-        aiToolbox.error = 'PDF 解析失败：请选择 PDF 文件';
+      const isPdfFile = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+      const isPngFile = /\.png$/i.test(file.name) || file.type === 'image/png';
+      if (!isPdfFile && !isPngFile) {
+        aiToolbox.error = '请选择 PDF 简历或 PNG 二维码截图';
         aiToolbox.sourceStatus = '';
         showToast(aiToolbox.error, 'error');
         return;
@@ -17655,9 +17690,19 @@ ${ocrText}`
       aiToolbox.output = '';
       aiToolbox.fileName = file.name;
       aiToolbox.fileText = '';
-      aiToolbox.sourceStatus = '正在读取 PDF 页面...';
+      aiToolbox.qrUrl = '';
       try {
         const data = await readLocalFileAsDataUrl(file);
+        if (isPngFile) {
+          aiToolbox.sourceStatus = '正在识别二维码...';
+          const qrUrl = await detectQrUrlFromImageData(data);
+          if (!qrUrl) throw new Error('未识别到二维码，请上传清晰的 PNG 截图');
+          aiToolbox.qrUrl = qrUrl;
+          aiToolbox.sourceStatus = '已识别 BOSS 二维码，点击下方链接打开 BOSS。';
+          showToast('已识别 BOSS 二维码');
+          return;
+        }
+        aiToolbox.sourceStatus = '正在读取 PDF 页面...';
         const raw = await extractPdfTextFromResume({
           id: 'ai-toolbox-pdf-' + Date.now(),
           name: file.name,
@@ -22431,14 +22476,14 @@ ${clipped}`
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers,
       memberManagement, loadMembers, createMember, setMemberStatus, resetMemberPassword,
-      companyFilter, companyCreate, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
+      companyFilter, companyCreate, companyPositionCreate, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
       candidateFilters, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
       filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
-      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyDetail, openPositionDetail,
+      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, createApplicationsFromUpload,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
@@ -22575,10 +22620,10 @@ ${clipped}`
       getAiNewsTypeLabel, getAiNewsTypeClass,
       // 猎头 AI 工具箱
       aiToolboxTabs, aiToolboxTools, aiToolbox, aiToolboxTabColor,
-      aiToolboxPdfInput,
+      aiToolboxPdfInput, aiToolboxDropActive,
       activeAiToolboxTools, activeAiToolboxTool, aiToolboxPositionOptions, aiToolboxSelectedPlacement, aiToolboxResumeOptions,
       selectAiToolboxTab, selectAiToolboxTool, runAiToolboxTool,
-      triggerAiToolboxPdfInput, onAiToolboxPdfFileChange,
+      triggerAiToolboxPdfInput, onAiToolboxPdfFileChange, onAiToolboxSourceDragOver, onAiToolboxSourceDragLeave, onAiToolboxSourceDrop,
       copyAiToolboxResult, recordAiToolboxResultToAdvisor, downloadAiToolboxElectronicResume,
       // 保存到 AI 分析
       aiAnalysisSave, aiAnalysisSaveTargetOptions,
