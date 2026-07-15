@@ -4438,6 +4438,7 @@
             </nav>
           </div>
           <div v-if="workbenchRoute.tab === 'overview' && canWrite" class="flex justify-end"><button @click="openPositionDescriptionEdit" class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold">编辑岗位职责与要求</button></div>
+          <div v-if="workbenchRoute.tab === 'candidates' && canWrite" class="flex justify-end"><button @click="uploadCandidateForSelectedPosition" class="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold">上传候选人简历</button></div>
           <form v-if="workbenchRoute.tab === 'overview' && positionDescriptionEdit.open && canWrite" @submit.prevent="savePositionDescription" class="bg-white border border-emerald-200 rounded-xl p-4"><textarea v-model="positionDescriptionEdit.value" rows="12" placeholder="填写岗位职责、任职要求、优先条件等" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm leading-relaxed"></textarea><div class="mt-2 flex gap-2"><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">保存</button><button type="button" @click="positionDescriptionEdit.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div></form>
           <div class="bg-white border border-slate-200 rounded-xl p-5"><template v-if="workbenchRoute.tab === 'overview'"><h2 class="font-bold">岗位职责与要求</h2><p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">{{ selectedPosition.description || '岗位信息待补充。' }}</p></template><template v-else-if="workbenchRoute.tab === 'candidates'"><h2 class="font-bold">岗位候选人</h2><p class="text-sm text-slate-500 mt-2">当前共 {{ filteredPositionApplications.length }} 条推进记录。</p><button v-for="application in filteredPositionApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 w-full border border-slate-200 rounded-lg p-4 text-left hover:bg-emerald-50/40 flex items-center justify-between"><span><b>{{ workbenchV2.candidates.find(item => item.id === application.candidateId)?.name || '候选人已删除' }}</b><small class="block text-slate-400 mt-1">{{ candidatePipelineLabel(application.stage) }} · 匹配度 {{ application.matchScore ?? '未评分' }}</small></span><span class="text-sm text-emerald-700">查看详情 →</span></button><p v-if="!filteredPositionApplications.length" class="text-sm text-slate-400 text-center py-8">该岗位暂无候选人推进记录。</p></template><template v-else-if="workbenchRoute.tab === 'recommend'"><h2 class="font-bold">人才推荐</h2><div v-for="match in positionCandidateMatches" :key="match.candidateId" class="mt-3 border border-slate-200 rounded-lg p-4 flex gap-4 items-center"><div class="flex-1"><button @click="openCandidateDetail(match.candidateId)" class="font-bold hover:text-emerald-700">{{ workbenchV2.candidates.find(item => item.id === match.candidateId)?.name }}</button><p class="text-xs text-slate-500 mt-1">{{ match.reason }}</p></div><strong class="text-emerald-700">{{ match.score }}</strong><button @click="createApplicationFromMatch(match.candidateId, selectedPosition.id, match)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold">加入岗位</button></div><p v-if="!positionCandidateMatches.length" class="text-sm text-slate-400 text-center py-8">候选人库暂无可推荐人才。</p></template><template v-else><h2 class="font-bold">岗位 AI 分析</h2><p class="text-sm text-slate-500 mt-2">由 AI 工具箱生成并保存的岗位层面分析（JD拆解、招聘难度、筛选标准、周报、复盘等）。</p><div v-if="selectedPositionAiNotes.length" class="mt-4 space-y-3"><div v-for="note in [...selectedPositionAiNotes].reverse()" :key="note.id" class="border border-slate-200 rounded-lg p-4 hover:border-indigo-200 transition"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-sm font-bold text-slate-800">{{ note.title }}</p><p class="text-xs text-slate-400 mt-1">{{ (note.createdAt || '').slice(0,16).replace('T',' ') }}<span v-if="note.toolTitle"> · {{ note.toolTitle }}</span></p></div><button @click="deleteAiNote('position', selectedPosition.id, note.id)" class="text-xs text-red-500 hover:text-red-700 flex-shrink-0 font-semibold">删除</button></div><div class="mt-3 text-sm text-slate-700 advisor-markdown ai-toolbox-output leading-relaxed" v-html="renderAiToolboxMarkdown(note.content)"></div></div></div><div v-else class="text-center py-10"><p class="text-sm text-slate-400">暂无已保存的 AI 分析。</p><p class="text-xs text-slate-400 mt-1">在「猎头 AI 工具箱」生成结果后，点击「保存到AI分析」即可回看。</p></div></template></div>
         </div>
@@ -10926,6 +10927,7 @@ const vueAppConfig = {
       duplicates: [],
       createdId: '',
       selectedPositionIds: [],
+      autoPositionId: '',
       extracting: false,
       form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '' },
     });
@@ -10943,7 +10945,7 @@ const vueAppConfig = {
         if (companyFilter.status !== 'all' && company.status !== companyFilter.status) return false;
         if (companyFilter.owner !== 'all' && company.owner !== companyFilter.owner) return false;
         return !query || [company.name, company.industry, company.city, company.owner].some(value => String(value || '').toLowerCase().includes(query));
-      });
+      }).sort((a, b) => (Date.parse(b.updatedAt || b.createdAt || '') || 0) - (Date.parse(a.updatedAt || a.createdAt || '') || 0));
     });
     const filteredWorkbenchCandidates = computed(() => WorkbenchV2.filterCandidates(workbenchV2.candidates, candidateFilters));
     const selectedCandidateApplications = computed(() => workbenchV2.applications.filter(item => item.candidateId === selectedCandidate.value?.id));
@@ -11504,10 +11506,16 @@ const vueAppConfig = {
     }
     function uploadCandidateStandalone() {
       Object.assign(candidateUpload, {
-        open: true, step: 'form', loading: false, error: '', duplicates: [], createdId: '', selectedPositionIds: [],
+        open: true, step: 'form', loading: false, error: '', duplicates: [], createdId: '', selectedPositionIds: [], autoPositionId: '',
         form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '' },
       });
       globalCreateMenu.value = false;
+    }
+    function uploadCandidateForSelectedPosition() {
+      if (!canWrite || !selectedPosition.value) return;
+      uploadCandidateStandalone();
+      candidateUpload.autoPositionId = selectedPosition.value.id;
+      candidateUpload.form.owner = selectedPosition.value.owner || '';
     }
     async function onStandaloneResumeFile(event) {
       const file = event.target.files?.[0];
@@ -11804,9 +11812,19 @@ const vueAppConfig = {
         resumeVersions: form.fileName || form.rawText ? [{ id: `resume_${Date.now().toString(36)}`, fileName: form.fileName, rawText: form.rawText, fileData: form.fileData, uploadedAt: new Date().toISOString() }] : [],
       });
       workbenchV2.candidates.push(candidate);
+      let linkedToPosition = false;
+      if (candidateUpload.autoPositionId) {
+        try {
+          WorkbenchV2.createApplication(workbenchV2, { candidateId: candidate.id, positionId: candidateUpload.autoPositionId });
+          linkedToPosition = true;
+        } catch {}
+      }
       candidateUpload.createdId = candidate.id;
       candidateUpload.step = 'complete';
-      if (await saveWorkbenchV2()) showToast('候选人已保存到人才库');
+      if (await saveWorkbenchV2()) {
+        if (cloudReady) schedulePush();
+        showToast(linkedToPosition ? '候选人已入库并加入当前岗位' : '候选人已保存到人才库');
+      }
       return candidate;
     }
     function openCandidateResumeVersion(version, candidate = selectedCandidate.value) {
@@ -22501,7 +22519,7 @@ ${clipped}`
       filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, openPositionDescriptionEdit, savePositionDescription,
-      openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, createApplicationsFromUpload,
+      openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, createApplicationsFromUpload,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       gistSettings, gistSettingsModalOpen, saveGistSettingsFromModal,
