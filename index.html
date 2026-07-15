@@ -5447,6 +5447,7 @@
                   <button type="button" @click="resetMemberPassword(member)" class="px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold">重置密码</button>
                   <button v-if="member.status === 'active'" type="button" @click="setMemberStatus(member, false)" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold">停用</button>
                   <button v-else type="button" @click="setMemberStatus(member, true)" class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">启用</button>
+                  <button v-if="member.status === 'disabled'" type="button" @click="deleteMember(member)" class="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold">删除账号</button>
                 </template>
               </div>
               <div v-if="!memberManagement.members.length && !memberManagement.loading" class="p-8 text-center text-sm text-slate-400">暂无成员</div>
@@ -11374,6 +11375,19 @@ const vueAppConfig = {
         await invokeMemberAction({ action: enabled ? 'enable' : 'disable', userId: member.id });
         await loadMembers();
         showToast(enabled ? '成员已启用' : '成员已停用', 'success');
+      } catch (error) {
+        memberManagement.error = error.message;
+        memberManagement.loading = false;
+      }
+    }
+    async function deleteMember(member) {
+      if (!confirm(`确认永久删除已停用成员“${member.display_name}”？该账号将无法恢复。`)) return;
+      memberManagement.loading = true;
+      memberManagement.error = '';
+      try {
+        await invokeMemberAction({ action: 'delete', userId: member.id });
+        await loadMembers();
+        showToast('成员账号已删除', 'success');
       } catch (error) {
         memberManagement.error = error.message;
         memberManagement.loading = false;
@@ -22510,7 +22524,7 @@ ${clipped}`
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers,
-      memberManagement, loadMembers, createMember, setMemberStatus, resetMemberPassword,
+      memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
       candidateFilters, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
