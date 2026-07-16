@@ -4423,7 +4423,23 @@
 
         <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'position' && selectedPosition" class="max-w-7xl mx-auto space-y-4">
           <button @click="backToWorkbenchList" class="text-sm text-slate-500 hover:text-emerald-700">← 返回公司岗位</button>
-          <div class="bg-white border border-slate-200 rounded-xl p-5"><p class="text-xs text-emerald-700 font-semibold">{{ workbenchV2.companies.find(item => item.id === selectedPosition.companyId)?.name }}</p><h1 class="text-2xl font-bold mt-1">{{ selectedPosition.title }}</h1><p class="text-sm text-slate-500 mt-2">{{ selectedPosition.city || '地点待补充' }} · {{ selectedPosition.salary || '薪资待补充' }} · 负责人 {{ selectedPosition.owner || '未分配' }}</p>
+          <div class="bg-white border border-slate-200 rounded-xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-xs text-emerald-700 font-semibold">{{ workbenchV2.companies.find(item => item.id === selectedPosition.companyId)?.name }}</p>
+                <h1 class="text-2xl font-bold mt-1">{{ selectedPosition.title }}</h1>
+                <p class="text-sm text-slate-500 mt-2">{{ selectedPosition.city || '地点待补充' }} · {{ selectedPosition.salary || '薪资待补充' }} · 负责人 {{ selectedPosition.owner || '未分配' }}</p>
+              </div>
+              <div v-if="canWrite" class="flex flex-wrap items-center gap-2">
+                <span :class="selectedPosition.status === 'closed' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'" class="px-2.5 py-1 rounded-full text-xs font-semibold">
+                  {{ selectedPosition.status === 'closed' ? '已关闭' : '开放中' }}
+                </span>
+                <button type="button" @click="toggleWorkbenchPositionStatus" class="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold hover:bg-slate-50">
+                  {{ selectedPosition.status === 'closed' ? '重新开放' : '关闭岗位' }}
+                </button>
+                <button type="button" @click="requestWorkbenchPositionDelete" class="px-3 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50">删除岗位</button>
+              </div>
+            </div>
             <nav aria-label="岗位详情页签" class="wb-v2-position-tabs text-sm">
               <template v-for="(tab, index) in [{ id: 'overview', label: '岗位信息' }, { id: 'candidates', label: '岗位候选人' }, { id: 'recommend', label: '人才推荐' }, { id: 'ai', label: '岗位AI分析' }]" :key="tab.id">
                 <button type="button" :data-position-tab-icon="tab.id" @click="workbenchRoute.tab = tab.id" :class="['wb-v2-position-tab whitespace-nowrap', { 'wb-v2-position-tab-active': workbenchRoute.tab === tab.id }]">
@@ -11470,6 +11486,41 @@ const vueAppConfig = {
       workbenchNav.value = 'companies';
       Object.assign(workbenchRoute, { type: 'position', id, parentId: position?.companyId || '', tab: 'overview' });
       if (workbenchMode.value === 'v2') aiToolbox.posId = id;
+    }
+    async function persistWorkbenchPosition(message) {
+      const saved = await saveWorkbenchV2();
+      if (cloudReady) schedulePush();
+      showToast(saved ? message : `${message}，已暂存到浏览器`);
+    }
+    async function toggleWorkbenchPositionStatus() {
+      if (!canWrite || !selectedPosition.value) return;
+      const nextStatus = selectedPosition.value.status === 'closed' ? 'open' : 'closed';
+      WorkbenchV2.setPositionStatus(workbenchV2, selectedPosition.value.id, nextStatus);
+      await persistWorkbenchPosition(nextStatus === 'closed' ? '岗位已关闭' : '岗位已重新开放');
+    }
+    async function requestWorkbenchPositionDelete() {
+      if (!canWrite || !selectedPosition.value) return;
+      const position = selectedPosition.value;
+      const applicationCount = positionApplications.value.length;
+      if (applicationCount) {
+        const closeNow = position.status !== 'closed'
+          && confirm(`“${position.title}”已有 ${applicationCount} 条候选人推进记录，不能永久删除。是否关闭岗位并保留全部历史？`);
+        if (closeNow) {
+          WorkbenchV2.setPositionStatus(workbenchV2, position.id, 'closed');
+          await persistWorkbenchPosition('岗位已关闭，候选人推进历史已保留');
+        } else if (position.status === 'closed') {
+          showToast(`该岗位已有 ${applicationCount} 条候选人推进记录，不能永久删除`, 'error');
+        }
+        return;
+      }
+      if (!confirm(`确认永久删除岗位“${position.title}”？此操作无法恢复。`)) return;
+      const companyId = position.companyId;
+      WorkbenchV2.deletePosition(workbenchV2, position.id);
+      const saved = await saveWorkbenchV2();
+      if (cloudReady) schedulePush();
+      openCompanyDetail(companyId);
+      workbenchRoute.tab = 'positions';
+      showToast(saved ? '岗位已永久删除' : '岗位已删除并暂存到浏览器');
     }
     function openCandidateDetail(id) {
       workbenchNav.value = 'candidates';
@@ -22532,7 +22583,7 @@ ${clipped}`
       applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
       filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
-      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, openPositionDescriptionEdit, savePositionDescription,
+      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, createApplicationsFromUpload,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,

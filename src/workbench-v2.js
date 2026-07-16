@@ -52,6 +52,30 @@
     return stamp('pos', { companyId: '', title: '', status: 'open', owner: '' }, input);
   }
 
+  function findPosition(bundle, positionId) {
+    const position = bundle.positions.find(item => item.id === positionId);
+    if (!position) throw new Error('岗位不存在或已删除');
+    return position;
+  }
+
+  function setPositionStatus(bundle, positionId, status) {
+    if (!['open', 'closed'].includes(status)) throw new Error('岗位状态无效');
+    const position = findPosition(bundle, positionId);
+    position.status = status;
+    position.updatedAt = nowIso();
+    return position;
+  }
+
+  function deletePosition(bundle, positionId) {
+    const position = findPosition(bundle, positionId);
+    const applicationCount = bundle.applications.filter(item => item.positionId === positionId).length;
+    if (applicationCount) {
+      throw new Error(`该岗位已有 ${applicationCount} 条候选人推进记录，请关闭岗位以保留业务历史`);
+    }
+    bundle.positions.splice(bundle.positions.indexOf(position), 1);
+    return position;
+  }
+
   function createCandidate(input = {}) {
     return stamp('cand', {
       name: '',
@@ -440,6 +464,8 @@
     createEmptyBundle,
     createCompany,
     createPosition,
+    setPositionStatus,
+    deletePosition,
     createCandidate,
     createApplication,
     createTodo,
