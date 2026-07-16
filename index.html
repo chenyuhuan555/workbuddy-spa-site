@@ -5439,8 +5439,8 @@
           </div>
         </section>
         </div>
-        <section v-else-if="workbenchNav === 'settings' && canManageMembers" class="max-w-5xl mx-auto space-y-5">
-          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <section v-else-if="workbenchNav === 'settings' && canConfigureAi" class="max-w-5xl mx-auto space-y-5">
+          <div v-if="canManageMembers" data-settings-card="members" class="bg-white border border-slate-200 rounded-2xl p-6">
             <div class="flex items-start justify-between gap-4 mb-5">
               <div><p class="text-xs font-bold tracking-wider text-emerald-700">设置</p><h1 class="text-xl font-bold text-slate-900 mt-1">成员管理</h1><p class="text-sm text-slate-500 mt-1">{{ memberManagement.form.role === 'editor' ? '高级成员可编辑业务数据，但不能管理账号。' : '普通成员只能浏览数据，无法修改任何内容。' }}</p></div>
               <button type="button" @click="loadMembers" :disabled="memberManagement.loading" class="px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold disabled:opacity-50">{{ memberManagement.loading ? '刷新中…' : '刷新' }}</button>
@@ -5469,7 +5469,7 @@
               <div v-if="!memberManagement.members.length && !memberManagement.loading" class="p-8 text-center text-sm text-slate-400">暂无成员</div>
             </div>
           </div>
-          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <div data-settings-card="deepseek" class="bg-white border border-slate-200 rounded-2xl p-6">
             <div class="flex flex-col lg:flex-row lg:items-center gap-4">
               <div class="min-w-0"><p class="text-xs font-bold tracking-wider text-emerald-700">AI 配置</p><h2 class="text-lg font-bold text-slate-900 mt-1">DeepSeek API Key</h2><p class="text-sm text-slate-500 mt-1">用于人才方向识别、候选人信息补全等 AI 功能。</p></div>
               <div class="lg:ml-auto flex flex-wrap items-center gap-2">
@@ -5481,7 +5481,7 @@
               </div>
             </div>
           </div>
-          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <div v-if="canManageMembers" data-settings-card="backup" class="bg-white border border-slate-200 rounded-2xl p-6">
             <div class="flex flex-col lg:flex-row lg:items-center gap-4">
               <div class="min-w-0"><p class="text-xs font-bold tracking-wider text-emerald-700">数据安全</p><h2 class="text-lg font-bold text-slate-900 mt-1">备份与恢复</h2><p class="text-sm text-slate-500 mt-1">可从旧 file:// 页面导出完整备份 JSON，再在这里导入恢复。</p></div>
               <div class="lg:ml-auto flex flex-wrap gap-2">
@@ -10904,6 +10904,7 @@ const vueAppConfig = {
     const workbenchNav = ref('dashboard');
     const canWrite = window.WorkBuddyAccess?.canWrite === true;
     const canManageMembers = window.WorkBuddyAccess?.canManageMembers === true;
+    const canConfigureAi = window.WorkBuddyAccess?.canConfigureAi === true;
     const workbenchNavItems = [
       { key: 'dashboard', label: '工作台', icon: '台' },
       { key: 'companies', label: '公司', icon: '司' },
@@ -10912,7 +10913,7 @@ const vueAppConfig = {
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
       { key: 'knowledge', label: '知识库', icon: '知' },
       { key: 'settings', label: '设置', icon: '设' },
-    ].filter(item => canManageMembers || item.key !== 'settings');
+    ].filter(item => canConfigureAi || item.key !== 'settings');
     const memberManagement = reactive({
       members: [], loading: false, error: '',
       form: { username: '', displayName: '', role: 'member', password: '' }
@@ -11425,11 +11426,11 @@ const vueAppConfig = {
       }
     }
     function selectWorkbenchNav(key) {
-      if (key === 'settings' && !canManageMembers) return;
+      if (key === 'settings' && !canConfigureAi) return;
       workbenchNav.value = key;
       Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
       globalCreateMenu.value = false;
-      if (key === 'settings') loadMembers();
+      if (key === 'settings' && canManageMembers) loadMembers();
     }
     function openCompanyCreate() {
       if (!canWrite) return;
@@ -22574,7 +22575,7 @@ ${clipped}`
     return {
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
-      workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers,
+      workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
       candidateFilters, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, selectedCandidateApplications, selectedCandidateResumeVersions,
@@ -22809,6 +22810,7 @@ window.WorkBuddyBootApp = bootApp;
     window.WorkBuddyAccess = Object.freeze({
       profile: state.profile,
       canWrite: state.profile.role === 'admin' || state.profile.role === 'editor',
+      canConfigureAi: state.profile.role === 'admin' || state.profile.role === 'editor',
       canManageMembers: state.profile.role === 'admin'
     });
     document.getElementById('wb-account-name').textContent = state.profile.display_name || state.profile.username;
