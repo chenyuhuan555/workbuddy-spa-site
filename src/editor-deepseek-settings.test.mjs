@@ -18,3 +18,7 @@ test('administrator-only settings remain isolated', () => {
   assert.match(html, /if \(key === 'settings' && !canConfigureAi\) return/);
   assert.match(html, /if \(key === 'settings' && canManageMembers\) loadMembers\(\)/);
 });
+
+test('workbench nav rename candidates -> 人才库 is applied without breaking settings isolation', () => {
+  assert.match(html, /key:\s*'candidates'[^}]*label:\s*'人才库'/, 'workbenchNavItems should label the candidates nav as 人才库');
+});

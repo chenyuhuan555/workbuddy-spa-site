@@ -9,6 +9,7 @@
   <script src="./lib/supabase.js?v=20260713-auth2"></script>
   <script src="./src/supabase-config.js?v=20260713-auth2"></script>
   <script src="./src/auth-core.js?v=20260713-auth2"></script>
+  <script src="./src/preview-gate.js?v=20260717-previewgate1"></script>
   <script src="./src/supabase-workspace.js?v=20260713-auth2"></script>
   <script src="./src/private-todos.js?v=20260714-private1"></script>
   <script src="./src/ai.js"></script>
@@ -4092,7 +4093,7 @@
         <h2 class="text-lg font-bold text-slate-900">{{ workbenchNavItems.find(item => item.key === workbenchNav)?.label || '工作台' }}</h2>
         <div class="hidden lg:flex w-full items-center gap-2 justify-center">
           <div class="relative flex-1">
-            <input v-model="searchFilters.query" @keyup.enter="runWorkbenchGlobalSearch" type="search" aria-label="全局搜索" placeholder="搜索公司、职位、候选人…" class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-sm placeholder:text-slate-400">
+            <input v-model="searchFilters.query" @keyup.enter="runWorkbenchGlobalSearch" type="search" aria-label="全局搜索" placeholder="搜索公司、职位、人才…" class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-sm placeholder:text-slate-400">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           </div>
           <button type="button" @click="runWorkbenchGlobalSearch" aria-label="搜索工作台" title="搜索" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 inline-flex items-center justify-center transition">
@@ -4104,8 +4105,8 @@
           <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
             <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建公司</button>
             <button @click="selectWorkbenchNav('companies')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建岗位</button>
-            <button @click="uploadCandidateStandalone" class="w-full text-left px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">上传候选人简历</button>
-            <button @click="selectWorkbenchNav('candidates')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建候选人</button>
+            <button @click="uploadCandidateStandalone" class="w-full text-left px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">上传人才简历</button>
+            <button @click="selectWorkbenchNav('candidates')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建人才</button>
             <button @click="selectWorkbenchNav('applications')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建推进记录</button>
           </div>
         </div>
@@ -4145,7 +4146,7 @@
               <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
               </div>
-              <p class="text-xs text-slate-500">候选人</p>
+              <p class="text-xs text-slate-500">人才库</p>
               <p class="text-2xl font-bold text-slate-900 mt-1">{{ workbenchDashboardMetrics.candidates }}</p>
               <p :class="['text-[11px] mt-1', workbenchDashboardDeltaView.candidates.cls]">{{ workbenchDashboardDeltaView.candidates.text }}</p>
             </div>
@@ -4258,7 +4259,7 @@
                   </svg>
                   <div class="absolute inset-0 flex flex-col items-center justify-center">
                     <p class="text-2xl font-bold text-slate-900">{{ talentPoolChart.total }}</p>
-                    <p class="text-[11px] text-slate-400">总候选人</p>
+                    <p class="text-[11px] text-slate-400">总人才</p>
                   </div>
                 </div>
                 <!-- 图例 -->
@@ -4558,14 +4559,14 @@
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">候选人看板</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button @click="uploadCandidateStandalone" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">候选人总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== 'closed').map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
+          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button @click="uploadCandidateStandalone" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== 'closed').map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-5 gap-2"><input v-model="candidateFilters.query" type="search" placeholder="搜索姓名、公司或技能" class="lg:col-span-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><select v-model="candidateFilters.direction" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部人才方向</option><option v-for="direction in candidateDirections" :key="direction" :value="direction">{{ direction }}</option></select><select v-model="candidateFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select v-model="candidateFilters.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select></div>
-          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.5fr_1fr_.8fr_.7fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.5fr_1fr_.8fr_.7fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== 'closed').length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无候选人</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button @click="uploadCandidateStandalone" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== 'closed').length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button @click="uploadCandidateStandalone" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'candidate' && selectedCandidate" class="wb-v2-candidate-detail mx-auto space-y-4">
-          <button @click="backToWorkbenchList" class="wb-v2-candidate-back text-sm hover:text-emerald-700">← 返回候选人列表</button>
+          <button @click="backToWorkbenchList" class="wb-v2-candidate-back text-sm hover:text-emerald-700">← 返回人才库列表</button>
           <section class="wb-v2-candidate-hero">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
               <div class="wb-v2-candidate-identity flex-1">
@@ -5506,9 +5507,9 @@
           <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm text-slate-600">姓名 *<input v-model="candidateUpload.form.name" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">负责人<input v-model="candidateUpload.form.owner" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">手机号<input v-model="candidateUpload.form.phone" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">邮箱<input v-model="candidateUpload.form.email" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">当前公司<input v-model="candidateUpload.form.currentCompany" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">当前职位<input v-model="candidateUpload.form.currentTitle" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">城市<input v-model="candidateUpload.form.city" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label></div><p v-if="candidateUpload.extracting" class="text-xs text-emerald-600 flex items-center gap-1.5"><span class="inline-block w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>正在从简历识别公司、职位、城市…</p>
           <div><div class="flex items-center justify-between"><span class="text-sm text-slate-600">简历文本</span><button type="button" @click="autoFillCandidateInfoFromResume(candidateUpload.form)" :disabled="candidateUpload.extracting || !candidateUpload.form.rawText.trim()" class="text-xs text-emerald-700 hover:text-emerald-800 disabled:text-slate-300 font-semibold">{{ candidateUpload.extracting ? '识别中…' : '从文本提取信息' }}</button></div><textarea v-model="candidateUpload.form.rawText" rows="6" placeholder="粘贴 BOSS、猎聘或其他简历文本" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></textarea></div><p v-if="candidateUpload.error" class="text-sm text-red-600">{{ candidateUpload.error }}</p>
         </div>
-        <div v-else-if="candidateUpload.step === 'duplicate'" class="p-6"><h3 class="font-bold">发现疑似重复候选人</h3><p class="text-sm text-slate-500 mt-1">请确认是否仍然创建新候选人。</p><div v-for="match in candidateUpload.duplicates" :key="match.candidate.id" class="mt-3 border border-amber-200 bg-amber-50 rounded-lg p-4"><b>{{ match.candidate.name }}</b><p class="text-sm text-slate-600 mt-1">{{ match.candidate.currentCompany }} · {{ match.candidate.currentTitle }}</p><p class="text-xs text-amber-700 mt-2">{{ match.reasons.join('、') }}</p></div></div>
+        <div v-else-if="candidateUpload.step === 'duplicate'" class="p-6"><h3 class="font-bold">发现疑似重复人才</h3><p class="text-sm text-slate-500 mt-1">请选择处理方式（不会自动创建重复人才）。</p><div v-for="match in candidateUpload.duplicates" :key="match.candidate.id" class="mt-3 border border-amber-200 bg-amber-50 rounded-lg p-4"><b>{{ match.candidate.name }}</b><p class="text-sm text-slate-600 mt-1">{{ match.candidate.currentCompany }} · {{ match.candidate.currentTitle }}</p><p class="text-xs text-amber-700 mt-2">{{ match.reasons.join('、') }}</p></div><div class="mt-4 flex flex-wrap gap-2"><button @click="mergeCandidateToExisting" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">合并到已有人员</button><button @click="saveAsNewResumeVersion" class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold">保存为新简历版本</button><button @click="saveCandidateOnly(true)" class="px-3 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">仍然创建新人</button><button @click="candidateUpload.open = false" class="px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消入库</button></div></div>
         <div v-else class="p-8 text-center"><div class="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl">✓</div><h3 class="font-bold text-lg mt-3">候选人已入库</h3><p class="text-sm text-slate-500 mt-1">可以只保存候选人，也可以选择开放岗位创建推进。</p><div class="mt-5 max-h-44 overflow-y-auto text-left border border-slate-200 rounded-lg"><label v-for="position in workbenchV2.positions.filter(item => item.status === 'open')" :key="position.id" class="flex items-center gap-3 px-3 py-2 border-b border-slate-100 text-sm"><input v-model="candidateUpload.selectedPositionIds" type="checkbox" :value="position.id"><span>{{ workbenchV2.companies.find(item => item.id === position.companyId)?.name }} · {{ position.title }}</span></label><p v-if="!workbenchV2.positions.some(item => item.status === 'open')" class="p-4 text-center text-slate-400 text-sm">暂无开放岗位</p></div></div>
-        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2"><button @click="candidateUpload.open = false" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消</button><button v-if="candidateUpload.step === 'form'" @click="saveCandidateOnly(false)" :disabled="candidateUpload.loading" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold disabled:opacity-50">仅保存候选人</button><button v-else-if="candidateUpload.step === 'duplicate'" @click="saveCandidateOnly(true)" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">仍然创建新候选人</button><button v-else @click="createApplicationsFromUpload" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">{{ candidateUpload.selectedPositionIds.length ? '创建推进并查看' : '查看候选人' }}</button></div>
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2"><button @click="candidateUpload.open = false" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消</button><button v-if="candidateUpload.step === 'form'" @click="saveCandidateOnly(false)" :disabled="candidateUpload.loading" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold disabled:opacity-50">仅保存候选人</button><button v-else-if="candidateUpload.step === 'complete'" @click="createApplicationsFromUpload" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">{{ candidateUpload.selectedPositionIds.length ? '创建推进并查看' : '查看候选人' }}</button></div>
       </div>
     </div>
   </teleport>
@@ -8078,7 +8079,7 @@
             <button type="button" v-for="version in resumeVersionPicker.items" :key="version.id" @click="pickResumeVersion(version)" class="w-full mt-2 first:mt-0 border border-slate-200 rounded-lg p-3 text-left hover:bg-emerald-50 hover:border-emerald-300 transition flex items-center justify-between gap-3">
               <span class="min-w-0">
                 <b class="text-sm">{{ version.fileName || '文本简历' }}</b>
-                <small class="block text-slate-400 mt-1">{{ version.uploadedAt?.slice(0,10) || '日期未知' }}{{ version.rawText ? ' · 含文本' : '' }}{{ version.fileData ? ' · 含原件' : '' }}</small>
+                <small class="block text-slate-400 mt-1">{{ version.uploadedAt?.slice(0,10) || '日期未知' }}{{ version.rawText ? ' · 含文本' : '' }}{{ (version.fileId || version.fileData) ? ' · 含原件' : '' }}</small>
               </span>
               <span class="text-xs text-emerald-700 font-semibold flex-shrink-0">预览 →</span>
             </button>
@@ -10494,6 +10495,43 @@ async function cacheResumeData(resumeId, data, extraFields) {
   }
 }
 
+// 阶段 3：原始简历二进制存外部 IndexedDB，复用现有 RESUME_CACHE_STORE（'files'），
+// 不新建 store、不改 schema 版本、不把 base64 写进人才快照；快照只存 fileId/fileType/fileSize/fileHash 等元数据。
+async function saveResumeBlob(fileId, blob, meta = {}) {
+  if (!fileId || !blob) return;
+  try {
+    await withResumeCacheStore('readwrite', (store) => {
+      store.put({
+        id: fileId,
+        blob,
+        fileName: meta.fileName || '',
+        fileType: meta.fileType || '',
+        fileSize: meta.fileSize || 0,
+        fileHash: meta.fileHash || '',
+        uploadedAt: new Date().toISOString(),
+      });
+    });
+  } catch (e) {
+    console.warn('原始简历文件保存失败:', e.message);
+  }
+}
+
+async function getResumeBlob(fileId) {
+  if (!fileId) return null;
+  try {
+    return await new Promise((resolve, reject) => {
+      withResumeCacheStore('readonly', (store) => {
+        const req = store.get(fileId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error('原始文件读取失败'));
+      });
+    });
+  } catch (e) {
+    console.warn('原始简历文件读取失败:', e.message);
+    return null;
+  }
+}
+
 async function updateResumeTextCache(resumeId, textFields) {
   if (!resumeId || !textFields) return;
   try {
@@ -10908,7 +10946,7 @@ const vueAppConfig = {
     const workbenchNavItems = [
       { key: 'dashboard', label: '工作台', icon: '台' },
       { key: 'companies', label: '公司', icon: '司' },
-      { key: 'candidates', label: '候选人', icon: '人' },
+      { key: 'candidates', label: '人才库', icon: '人' },
       { key: 'applications', label: '推进中心', icon: '进' },
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
       { key: 'knowledge', label: '知识库', icon: '知' },
@@ -10947,7 +10985,7 @@ const vueAppConfig = {
       selectedPositionIds: [],
       autoPositionId: '',
       extracting: false,
-      form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '' },
+      form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' },
     });
     const selectedCompany = computed(() => workbenchV2.companies.find(item => item.id === workbenchRoute.id) || null);
     const selectedPosition = computed(() => workbenchV2.positions.find(item => item.id === workbenchRoute.id) || null);
@@ -10966,6 +11004,9 @@ const vueAppConfig = {
       }).sort((a, b) => (Date.parse(b.updatedAt || b.createdAt || '') || 0) - (Date.parse(a.updatedAt || a.createdAt || '') || 0));
     });
     const filteredWorkbenchCandidates = computed(() => WorkbenchV2.filterCandidates(workbenchV2.candidates, candidateFilters));
+    // 人才库列表模板用到的两个只读辅助函数，委托到 WorkbenchV2 库实现（避免在模板/return 中引用未定义标识符导致整页渲染失败）
+    const candidateResumeCompleteness = (candidate) => WorkbenchV2.candidateResumeCompleteness(candidate || {});
+    const candidateLastUpdated = (candidate) => WorkbenchV2.candidateLastUpdated(candidate || {});
     const selectedCandidateApplications = computed(() => workbenchV2.applications.filter(item => item.candidateId === selectedCandidate.value?.id));
     // 按候选人获取简历版本列表（resumeVersions 优先，否则用电子简历文本兜底构造一份）
     function getCandidateResumeVersions(candidate) {
@@ -10999,7 +11040,7 @@ const vueAppConfig = {
     });
     const hasCandidateResumeOriginal = computed(() => {
       const v = activeCandidateResumeVersion.value;
-      return !!(v && (v.fileData || v.sourceResumeId));
+      return !!(v && (v.fileId || v.fileData || v.sourceResumeId));
     });
     const selectedApplicationCandidate = computed(() => workbenchV2.candidates.find(c => c.id === selectedApplication.value?.candidateId) || null);
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));
@@ -11573,7 +11614,7 @@ const vueAppConfig = {
     function uploadCandidateStandalone() {
       Object.assign(candidateUpload, {
         open: true, step: 'form', loading: false, error: '', duplicates: [], createdId: '', selectedPositionIds: [], autoPositionId: '',
-        form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '' },
+        form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' },
       });
       globalCreateMenu.value = false;
     }
@@ -11597,7 +11638,15 @@ const vueAppConfig = {
           reader.readAsDataURL(file);
         });
         candidateUpload.form.fileName = file.name;
-        candidateUpload.form.fileData = fileData;
+        candidateUpload.form.fileData = fileData; // 仅会话内用于文本提取与旧预览兜底，不写入快照
+        // 阶段 3：二进制原件存外部 IndexedDB，快照只保留 fileId/哈希等元数据
+        const fileId = (crypto.randomUUID && crypto.randomUUID()) || `fid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+        const fileHash = await hashResumeData(fileData);
+        await saveResumeBlob(fileId, file, { fileName: file.name, fileType: file.type || '', fileSize: file.size, fileHash });
+        candidateUpload.form.fileId = fileId;
+        candidateUpload.form.fileHash = fileHash;
+        candidateUpload.form.fileSize = file.size;
+        candidateUpload.form.fileType = file.type || '';
         candidateUpload.form.rawText = await extractResumeText({ name: file.name, type: file.type, data: fileData });
         // 后台智能提取姓名/公司/职位/城市：姓名优先取自电子简历识别结果，而非文件名
         autoFillCandidateInfoFromResume(candidateUpload.form);
@@ -11859,25 +11908,51 @@ const vueAppConfig = {
         batchSmartOrganizing.value = false;
       }
     }
+    // 阶段 3：把表单落成一份简历版本元数据（二进制已在 onStandaloneResumeFile 存外部），供入库/合并复用。
+    function buildStandaloneResumeVersion() {
+      const form = candidateUpload.form;
+      if (!form.fileName && !form.rawText) return null;
+      return {
+        id: `resume_${Date.now().toString(36)}`,
+        fileName: form.fileName,
+        fileId: form.fileId,            // 外部二进制存储键，快照不存 base64
+        fileType: form.fileType,
+        fileSize: form.fileSize,
+        fileHash: form.fileHash,
+        rawText: form.rawText,
+        uploadedAt: new Date().toISOString(),
+      };
+    }
+
+    // 阶段 3：统一入口入库。尊重查重确认：新建/合并/取消。AI 解析无身份不建人。
     async function saveCandidateOnly(forceCreate = false) {
       const form = candidateUpload.form;
       if (!form.name.trim()) {
         candidateUpload.error = '请填写候选人姓名';
         return null;
       }
-      const duplicates = WorkbenchV2.findDuplicateCandidates(workbenchV2.candidates, form);
+      const duplicates = WorkbenchV2.findDuplicateCandidates(workbenchV2.candidates, {
+        name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, fileHash: form.fileHash,
+      });
       if (duplicates.length && !forceCreate) {
         candidateUpload.duplicates = duplicates;
         candidateUpload.step = 'duplicate';
         return null;
       }
-      const candidate = WorkbenchV2.createCandidate({
+      // AI 解析无身份信息时不建人（防止解析失败/空结果静默创建空人才）
+      if (!WorkbenchV2.shouldCreateTalentFromParsed(form)) {
+        candidateUpload.error = '未能从简历识别到姓名/电话/邮箱，无法入库，请手动补全后保存';
+        return null;
+      }
+      const version = buildStandaloneResumeVersion();
+      const baseFields = {
         name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
         currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
         owner: form.owner.trim(), status: form.status, source: '独立上传',
-        resumeVersions: form.fileName || form.rawText ? [{ id: `resume_${Date.now().toString(36)}`, fileName: form.fileName, rawText: form.rawText, fileData: form.fileData, uploadedAt: new Date().toISOString() }] : [],
-      });
-      workbenchV2.candidates.push(candidate);
+      };
+      // 统一入口：新人才 → createTalent（forceCreate 显式允许重复，仍经统一入口）
+      const candidate = WorkbenchV2.createTalent(workbenchV2, baseFields, { allowDuplicate: Boolean(forceCreate) });
+      if (version) WorkbenchV2.appendTalentResumeVersion(workbenchV2, candidate.id, version);
       let linkedToPosition = false;
       if (candidateUpload.autoPositionId) {
         try {
@@ -11889,9 +11964,37 @@ const vueAppConfig = {
       candidateUpload.step = 'complete';
       if (await saveWorkbenchV2()) {
         if (cloudReady) schedulePush();
-        showToast(linkedToPosition ? '候选人已入库并加入当前岗位' : '候选人已保存到人才库');
+        showToast(linkedToPosition ? '人才已入库并加入当前岗位' : '人才已保存到人才库');
       }
       return candidate;
+    }
+
+    // 阶段 3 查重确认：合并到已有人员（只补充空字段 + 追加简历版本，不覆盖手工字段）
+    async function mergeCandidateToExisting() {
+      const form = candidateUpload.form;
+      const target = candidateUpload.duplicates[0] && candidateUpload.duplicates[0].candidate;
+      if (!target) return;
+      const existing = WorkbenchV2.getTalentById(workbenchV2, target.id) || target;
+      const parsed = { name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, currentTitle: form.currentTitle, city: form.city, owner: form.owner, education: form.education, experienceYears: form.experienceYears, skills: form.skills, keywords: form.keywords, directions: form.directions, summary: form.summary, profileText: form.profileText };
+      const { merged } = WorkbenchV2.reconcileParsedFields(existing, parsed); // 只补充空字段，非空生成 diff 不覆盖
+      WorkbenchV2.updateTalent(workbenchV2, target.id, merged);
+      const version = buildStandaloneResumeVersion();
+      if (version) WorkbenchV2.appendTalentResumeVersion(workbenchV2, target.id, version);
+      candidateUpload.createdId = target.id;
+      candidateUpload.step = 'complete';
+      if (await saveWorkbenchV2()) { if (cloudReady) schedulePush(); showToast('已合并到既有人才并追加简历版本'); }
+    }
+
+    // 阶段 3 查重确认：保存为已有人员的新简历版本（不改任何人才基础资料）
+    async function saveAsNewResumeVersion() {
+      const form = candidateUpload.form;
+      const target = candidateUpload.duplicates[0] && candidateUpload.duplicates[0].candidate;
+      if (!target) return;
+      const version = buildStandaloneResumeVersion();
+      if (version) WorkbenchV2.appendTalentResumeVersion(workbenchV2, target.id, version);
+      candidateUpload.createdId = target.id;
+      candidateUpload.step = 'complete';
+      if (await saveWorkbenchV2()) { if (cloudReady) schedulePush(); showToast('已保存为新简历版本'); }
     }
     function openCandidateResumeVersion(version, candidate = selectedCandidate.value) {
       if (!version) return;
@@ -11910,6 +12013,20 @@ const vueAppConfig = {
         data: fd,
         electronicResumeText: version.rawText || candidate?.electronicResumeText || '',
       });
+      // 阶段 3：若原件已存外部存储，异步取回并回填（不阻塞电子简历展示）
+      if (version.fileId && !fd) {
+        getResumeBlob(version.fileId).then(rec => {
+          if (!rec || !rec.blob) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result;
+            resumePreview.currentResume.data = dataUrl;
+            if (dataUrl.startsWith('data:image')) resumePreview.imageSrc = dataUrl;
+            else resumePreview.blobUrl = URL.createObjectURL(rec.blob);
+          };
+          reader.readAsDataURL(rec.blob);
+        }).catch(() => {});
+      }
     }
 
     // —— 候选人详情页简历内联查看（免弹窗，直接在 tab 内展示 + 切换电子/原始）——
@@ -11934,6 +12051,17 @@ const vueAppConfig = {
       if (candidateResumeView.blobUrl) { URL.revokeObjectURL(candidateResumeView.blobUrl); candidateResumeView.blobUrl = ''; }
       candidateResumeView.imageSrc = '';
       try {
+        // 阶段 3：优先从外部 IndexedDB 按 fileId 取回二进制原件
+        if (version.fileId) {
+          const rec = await getResumeBlob(version.fileId);
+          if (rec && rec.blob) {
+            const url = URL.createObjectURL(rec.blob);
+            if (String(rec.fileType || '').startsWith('image/')) candidateResumeView.imageSrc = url;
+            else candidateResumeView.blobUrl = url;
+            return;
+          }
+        }
+        // 旧版兼容：fileData（base64 快照）或 Gist 同步原件
         let fd = version.fileData || '';
         if (!fd && (version.sourceResumeId || version.id)) {
           const resume = { id: version.id, sourceResumeId: version.sourceResumeId || version.id, name: version.fileName || '简历', data: '' };
@@ -22578,14 +22706,14 @@ ${clipped}`
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
-      candidateFilters, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, selectedCandidateApplications, selectedCandidateResumeVersions,
+      candidateFilters, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
       filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription,
-      openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, createApplicationsFromUpload,
+      openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       gistSettings, gistSettingsModalOpen, saveGistSettingsFromModal,
@@ -22915,6 +23043,57 @@ window.WorkBuddyBootApp = bootApp;
       errEl.innerHTML = '⚠️ 页面加载失败<br><small>请检查网络连接后刷新页面</small>';
     }
   }, 8000);
+})();
+</script>
+<script>
+// —— 沙箱/离线预览：Supabase 不可用时自动绕过认证门禁，直接挂载 Vue 应用 ——
+(function(){
+  var PREVIEW_TIMEOUT = 4000;
+  var appEl = document.getElementById('app');
+  var authEl = document.getElementById('wb-auth');
+  // 已挂载（v-cloak 被移除）则跳过
+  if (!appEl || !appEl.hasAttribute('v-cloak')) return;
+
+  // —— 安全门禁 ——
+  // 预览模式会绕过认证并注入 admin 权限，仅允许在 file:// / localhost / 显式标记环境下启用。
+  // 生产、GitHub Pages 等真实域名下：即使 Supabase 认证失败或超时，也绝不进入预览模式。
+  var previewGate = window.WorkBuddyPreviewGate;
+  if (!previewGate || typeof previewGate.isPreviewEnvAllowed !== 'function'
+      || !previewGate.isPreviewEnvAllowed(window.location, window)) {
+    return;
+  }
+
+  setTimeout(function(){
+    if (!appEl.hasAttribute('v-cloak')) return; // 已经挂载了，无需干预
+    console.warn('[preview] 检测到认证未完成（可能无 Supabase 后端），进入预览模式');
+    // 隐藏认证遮罩
+    if (authEl) authEl.style.display = 'none';
+    // 注入最小权限的 mock 访问对象
+    window.WorkBuddyAccess = Object.freeze({
+      profile: { display_name: '预览用户', username: 'preview', role: 'admin' },
+      canWrite: true,
+      canConfigureAi: true,
+      canManageMembers: true
+    });
+    // 显示 app 根容器
+    appEl.style.display = 'block';
+    // 直接调用 bootApp 挂载 Vue
+    if (window.WorkBuddyBootApp && typeof window.WorkBuddyBootApp === 'function') {
+      window.WorkBuddyBootApp().catch(function(e){
+        console.error('[preview] bootApp 失败:', e && e.message || e);
+        appEl.innerHTML = '<div style="padding:40px;font-family:system-ui;color:#333"><h2>⚠️ 预览模式加载失败</h2><pre style="background:#f5f5f5;padding:12px;border-radius:8px;margin-top:12px;overflow:auto">' + String((e&&e.stack)||e||'未知错误').replace(/</g,'&lt;') + '</pre></div>';
+      });
+    } else {
+      console.warn('[preview] WorkBuddyBootApp 尚未就绪，等待...');
+      var retry = setInterval(function(){
+        if (window.WorkBuddyBootApp && typeof window.WorkBuddyBootApp === 'function') {
+          clearInterval(retry);
+          window.WorkBuddyBootApp();
+        }
+      }, 500);
+      setTimeout(function(){ clearInterval(retry); }, 10000);
+    }
+  }, PREVIEW_TIMEOUT);
 })();
 </script>
 </body>

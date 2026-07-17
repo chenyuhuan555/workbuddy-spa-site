@@ -79,6 +79,7 @@
   function createCandidate(input = {}) {
     return stamp('cand', {
       name: '',
+      // 资产状态（open/active/archived 等），不是 pipeline 阶段；岗位阶段只存在于 application.stage
       status: 'open',
       owner: '',
       tags: [],
@@ -351,7 +352,7 @@
       if (filters.title && !includes(candidate.currentTitle, filters.title)) return false;
       if (filters.education && filters.education !== 'all' && !includes(candidate.education, filters.education)) return false;
       if (filters.source && filters.source !== 'all' && !includes(candidate.source, filters.source)) return false;
-      if (filters.status && filters.status !== 'all' && candidate.status !== filters.status) return false;
+      if (filters.status && filters.status !== 'all' && candidate.status !== filters.status) return false; // 按人才资产状态过滤（非 pipeline 阶段）
       if (filters.tag && !(candidate.tags || []).some(item => includes(item, filters.tag))) return false;
       if (filters.experienceMin && Number(candidate.experienceYears || 0) < Number(filters.experienceMin)) return false;
       if (filters.experienceMax && Number(candidate.experienceYears || 0) > Number(filters.experienceMax)) return false;
@@ -359,23 +360,68 @@
     });
   }
 
+  // 人才库 Phase 1：简历完整度，按核心画像字段填充度计算 0-100（不读取/写入存储）
+  function candidateResumeCompleteness(candidate = {}) {
+    const str = value => String(value || '').trim();
+    const checks = [
+      () => str(candidate.name).length > 0,
+      () => str(candidate.currentCompany).length > 0,
+      () => str(candidate.currentTitle).length > 0,
+      () => str(candidate.city).length > 0,
+      () => str(candidate.owner).length > 0,
+      () => Boolean(str(candidate.phone || candidate.email).length > 0),
+      () => (candidate.skills || candidate.keywords || []).length > 0,
+      () => (candidate.directions || []).length > 0,
+      () => str(candidate.education).length > 0,
+      () => Number(candidate.experienceYears || 0) > 0,
+      () => {
+        const text = str(candidate.electronicResumeText)
+          || (candidate.resumeVersions || []).some(version => str(version && version.rawText).length > 0);
+        return Boolean(text);
+      },
+    ];
+    const passed = checks.filter(fn => fn()).length;
+    return Math.round(passed / checks.length * 100);
+  }
+
+  // 人才库 Phase 1：最近更新时间，回退到创建时间（不读取/写入存储）
+  function candidateLastUpdated(candidate = {}) {
+    return candidate.updatedAt || candidate.createdAt || null;
+  }
+
+  // 阶段 3 查重：按可信度排序。硬匹配（直接复用/必须提示）→ hard；需人工确认 → review。
+  // 规则覆盖：①手机号 ②邮箱 ③原始文件哈希 ④姓名+当前公司 ⑤姓名+手机号后四位 ⑥姓名+学历/职位相似。
   function findDuplicateCandidates(candidates, input = {}) {
     const normalizePhone = value => String(value || '').replace(/\D/g, '');
     const normalizeEmail = value => String(value || '').trim().toLowerCase();
     const name = String(input.name || '').trim();
     const company = String(input.currentCompany || '').trim();
+    const fileHash = String(input.fileHash || '').trim().toLowerCase();
+    const phoneLast4 = normalizePhone(input.phone || '').slice(-4);
+    const education = String(input.education || '').trim();
+    const title = String(input.currentTitle || input.currentPosition || '').trim();
     const matches = [];
     for (const candidate of candidates || []) {
       const reasons = [];
       if (input.sourceResumeId && candidate.sourceResumeId === input.sourceResumeId) reasons.push('sourceResumeId一致');
       if (input.phone && normalizePhone(candidate.phone) === normalizePhone(input.phone)) reasons.push('手机号一致');
       if (input.email && normalizeEmail(candidate.email) === normalizeEmail(input.email)) reasons.push('邮箱一致');
+      const candHashes = (candidate.resumeVersions || [])
+        .map(v => String(v.fileHash || '').toLowerCase()).filter(Boolean);
+      if (fileHash && candHashes.includes(fileHash)) reasons.push('原始文件哈希一致');
+      if (phoneLast4 && candidate.name === name && normalizePhone(candidate.phone || '').slice(-4) === phoneLast4) {
+        reasons.push('姓名+手机号后四位一致');
+      }
       if (reasons.length) {
         matches.push({ candidate, confidence: 'hard', reasons });
         continue;
       }
+      const sameEducation = education && String(candidate.education || '').trim() === education;
+      const sameTitle = title && String(candidate.currentTitle || candidate.currentPosition || '').trim() === title;
       if (name && company && candidate.name === name && candidate.currentCompany === company) {
         matches.push({ candidate, confidence: 'review', reasons: ['姓名和当前公司一致'] });
+      } else if (name && (sameEducation || sameTitle)) {
+        matches.push({ candidate, confidence: 'review', reasons: ['姓名和学历或职位一致，请人工确认'] });
       }
     }
     return matches.sort((a, b) => (a.confidence === b.confidence ? 0 : a.confidence === 'hard' ? -1 : 1));
@@ -459,6 +505,100 @@
     });
   }
 
+  // —— 阶段 2：Talent（人才）× Application（岗位候选关系）统一访问入口 ——
+  // 现有 candidate 即 Talent（长期人才资产），application 即 Talent×Job 的岗位候选关系。
+  // 以下函数仅做语义化封装与护栏，不新增重复模型；阶段 / 面试 / Offer / 入职等状态只存在于 application。
+
+  function getTalentById(bundle, talentId) {
+    return (bundle.candidates || []).find(item => item.id === talentId) || null;
+  }
+
+  // 阶段 3 简历入库的唯一人才写入入口：先用硬身份键去重，命中则复用现有人才并保留其 id，
+  // 不新建平行人才；软冲突（同名 + 同公司）不自动合并，交由上层提示用户。
+  function createTalent(bundle, data = {}, options = {}) {
+    const input = copy(data);
+    if (!options.allowDuplicate) {
+      const hard = (findDuplicateCandidates(bundle.candidates, input) || [])
+        .find(item => item.confidence === 'hard');
+      if (hard) return hard.candidate;
+    }
+    const candidate = createCandidate(input);
+    bundle.candidates.push(candidate);
+    return candidate;
+  }
+
+  // 仅更新人才基础资料；拒绝把岗位阶段类字段写入人才，避免污染 Talent 全局状态。
+  const TALENT_FORBIDDEN_FIELDS = ['stage', 'stageEnteredAt', 'pipelineEvents', 'matchScore', 'matchReason', 'evaluation', 'clientReport', 'note'];
+  function updateTalent(bundle, talentId, patch = {}) {
+    const candidate = getTalentById(bundle, talentId);
+    if (!candidate) throw new Error('人才不存在');
+    const source = copy(patch);
+    Object.keys(source).forEach(key => {
+      if (TALENT_FORBIDDEN_FIELDS.includes(key)) {
+        throw new Error(`字段 ${key} 属于 Application，不应写入人才`);
+      }
+    });
+    Object.assign(candidate, source);
+    candidate.updatedAt = nowIso();
+    return candidate;
+  }
+
+  function getTalentApplications(bundle, talentId) {
+    return (bundle.applications || []).filter(item => item.candidateId === talentId);
+  }
+
+  // 按 id 定位推进记录并推进阶段；只修改 application，绝不回写人才基础资料。
+  function updateApplicationStage(bundle, applicationId, stage, metadata = {}) {
+    const application = (bundle.applications || []).find(item => item.id === applicationId);
+    if (!application) throw new Error('推进记录不存在');
+    return changeApplicationStage(application, { toStage: stage, ...metadata });
+  }
+
+  // 阶段 3：向人才追加一份简历版本（仅元数据，二进制存外部）。经 updateTalent 统一入口，受岗位阶段护栏保护。
+  function appendTalentResumeVersion(bundle, talentId, version = {}) {
+    const candidate = getTalentById(bundle, talentId);
+    if (!candidate) throw new Error('人才不存在');
+    const list = Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions.slice() : [];
+    const entry = {
+      id: version.id || makeId('resume'),
+      sourceResumeId: version.sourceResumeId || version.id || '',
+      fileName: version.fileName || '',
+      fileId: version.fileId || '',        // 外部二进制存储键（RESUME_CACHE_STORE），快照只存元数据
+      fileType: version.fileType || '',
+      fileSize: version.fileSize || 0,
+      fileHash: version.fileHash || '',
+      uploadedAt: version.uploadedAt || nowIso(),
+      rawText: version.rawText || '',
+    };
+    list.push(entry);
+    updateTalent(bundle, talentId, { resumeVersions: list });
+    return entry;
+  }
+
+  // 阶段 3 重新解析：默认只补充空字段；对非空字段生成差异，不直接覆盖顾问已确认字段。
+  function reconcileParsedFields(existing = {}, parsed = {}) {
+    const fields = ['name', 'phone', 'email', 'currentCompany', 'currentTitle', 'city', 'owner', 'education', 'experienceYears', 'skills', 'keywords', 'directions', 'summary', 'profileText'];
+    const isEmpty = value => value === undefined || value === null || value === '' || (Array.isArray(value) && !value.length);
+    const merged = {};
+    const diff = {};
+    for (const f of fields) {
+      const pv = parsed[f];
+      if (isEmpty(pv)) continue;
+      const ev = existing[f];
+      if (isEmpty(ev)) merged[f] = pv;
+      else if (JSON.stringify(ev) !== JSON.stringify(pv)) diff[f] = pv;
+    }
+    return { merged, diff };
+  }
+
+  // 阶段 3：AI 解析结果不足以构成人才时返回 false，避免解析失败/空结果静默创建空人才。
+  function shouldCreateTalentFromParsed(parsed = {}) {
+    const hasIdentity = Boolean(String(parsed.name || '').trim()
+      || String(parsed.phone || '').replace(/\D/g, '').trim()
+      || String(parsed.email || '').trim());
+    return hasIdentity;
+  }
+
   root.WorkbenchV2 = {
     VERSION,
     createEmptyBundle,
@@ -477,10 +617,20 @@
     validateBundle,
     filterCandidates,
     findDuplicateCandidates,
+    candidateResumeCompleteness,
+    candidateLastUpdated,
     APPLICATION_STAGES,
     changeApplicationStage,
     matchPositions,
     matchCandidates,
     filterApplications,
+    getTalentById,
+    createTalent,
+    updateTalent,
+    getTalentApplications,
+    updateApplicationStage,
+    appendTalentResumeVersion,
+    reconcileParsedFields,
+    shouldCreateTalentFromParsed,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
