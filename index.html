@@ -4106,6 +4106,7 @@
             <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建公司</button>
             <button @click="selectWorkbenchNav('companies')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建岗位</button>
             <button @click="uploadCandidateStandalone" class="w-full text-left px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">上传人才简历</button>
+            <button @click="openBatchUpload" class="w-full text-left px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">批量上传简历</button>
             <button @click="selectWorkbenchNav('candidates')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建人才</button>
             <button @click="selectWorkbenchNav('applications')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建推进记录</button>
           </div>
@@ -5499,7 +5500,7 @@
   </div>
 
   <teleport to="body">
-    <div v-if="candidateUpload.open" class="fixed inset-0 z-[110] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="candidateUpload.open = false">
+    <div v-if="candidateUpload.open" class="fixed inset-0 z-[110] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" :style="candidateUpload.batchTaskId ? { zIndex: 120 } : null" @click.self="candidateUpload.open = false">
       <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-2xl">
         <div class="px-6 py-5 border-b border-slate-100 flex justify-between gap-4"><div><p class="text-xs font-semibold text-orange-700">独立候选人入库</p><h2 class="text-xl font-bold mt-1">上传候选人简历</h2><p class="text-sm text-slate-500 mt-1">无需选择公司和岗位，可仅保存到候选人库。</p></div><button @click="candidateUpload.open = false" aria-label="关闭上传候选人弹窗" class="w-8 h-8 rounded-lg bg-slate-100">×</button></div>
         <div v-if="candidateUpload.step === 'form'" class="p-6 space-y-4">
@@ -5507,9 +5508,98 @@
           <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm text-slate-600">姓名 *<input v-model="candidateUpload.form.name" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">负责人<input v-model="candidateUpload.form.owner" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">手机号<input v-model="candidateUpload.form.phone" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">邮箱<input v-model="candidateUpload.form.email" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">当前公司<input v-model="candidateUpload.form.currentCompany" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">当前职位<input v-model="candidateUpload.form.currentTitle" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label><label class="text-sm text-slate-600">城市<input v-model="candidateUpload.form.city" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label></div><p v-if="candidateUpload.extracting" class="text-xs text-emerald-600 flex items-center gap-1.5"><span class="inline-block w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>正在从简历识别公司、职位、城市…</p>
           <div><div class="flex items-center justify-between"><span class="text-sm text-slate-600">简历文本</span><button type="button" @click="autoFillCandidateInfoFromResume(candidateUpload.form)" :disabled="candidateUpload.extracting || !candidateUpload.form.rawText.trim()" class="text-xs text-emerald-700 hover:text-emerald-800 disabled:text-slate-300 font-semibold">{{ candidateUpload.extracting ? '识别中…' : '从文本提取信息' }}</button></div><textarea v-model="candidateUpload.form.rawText" rows="6" placeholder="粘贴 BOSS、猎聘或其他简历文本" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></textarea></div><p v-if="candidateUpload.error" class="text-sm text-red-600">{{ candidateUpload.error }}</p>
         </div>
-        <div v-else-if="candidateUpload.step === 'duplicate'" class="p-6"><h3 class="font-bold">发现疑似重复人才</h3><p class="text-sm text-slate-500 mt-1">请选择处理方式（不会自动创建重复人才）。</p><div v-for="match in candidateUpload.duplicates" :key="match.candidate.id" class="mt-3 border border-amber-200 bg-amber-50 rounded-lg p-4"><b>{{ match.candidate.name }}</b><p class="text-sm text-slate-600 mt-1">{{ match.candidate.currentCompany }} · {{ match.candidate.currentTitle }}</p><p class="text-xs text-amber-700 mt-2">{{ match.reasons.join('、') }}</p></div><div class="mt-4 flex flex-wrap gap-2"><button @click="mergeCandidateToExisting" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">合并到已有人员</button><button @click="saveAsNewResumeVersion" class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold">保存为新简历版本</button><button @click="saveCandidateOnly(true)" class="px-3 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">仍然创建新人</button><button @click="candidateUpload.open = false" class="px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消入库</button></div></div>
+        <div v-else-if="candidateUpload.step === 'duplicate'" class="p-6"><h3 class="font-bold">发现疑似重复人才</h3><p class="text-sm text-slate-500 mt-1">请选择处理方式（不会自动创建重复人才）。</p><div v-for="match in candidateUpload.duplicates" :key="match.candidate.id" class="mt-3 border border-amber-200 bg-amber-50 rounded-lg p-4"><b>{{ match.candidate.name }}</b><p class="text-sm text-slate-600 mt-1">{{ match.candidate.currentCompany }} · {{ match.candidate.currentTitle }}</p><p class="text-xs text-amber-700 mt-2">{{ match.reasons.join('、') }}</p></div><div class="mt-4 flex flex-wrap gap-2"><button @click="mergeCandidateToExisting" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">合并到已有人员</button><button @click="saveAsNewResumeVersion" class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold">保存为新简历版本</button><button @click="saveCandidateOnly(true)" class="px-3 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">仍然创建新人</button><button @click="onCancelDedup" class="px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消入库</button></div></div>
         <div v-else class="p-8 text-center"><div class="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl">✓</div><h3 class="font-bold text-lg mt-3">候选人已入库</h3><p class="text-sm text-slate-500 mt-1">可以只保存候选人，也可以选择开放岗位创建推进。</p><div class="mt-5 max-h-44 overflow-y-auto text-left border border-slate-200 rounded-lg"><label v-for="position in workbenchV2.positions.filter(item => item.status === 'open')" :key="position.id" class="flex items-center gap-3 px-3 py-2 border-b border-slate-100 text-sm"><input v-model="candidateUpload.selectedPositionIds" type="checkbox" :value="position.id"><span>{{ workbenchV2.companies.find(item => item.id === position.companyId)?.name }} · {{ position.title }}</span></label><p v-if="!workbenchV2.positions.some(item => item.status === 'open')" class="p-4 text-center text-slate-400 text-sm">暂无开放岗位</p></div></div>
         <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2"><button @click="candidateUpload.open = false" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消</button><button v-if="candidateUpload.step === 'form'" @click="saveCandidateOnly(false)" :disabled="candidateUpload.loading" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold disabled:opacity-50">仅保存候选人</button><button v-else-if="candidateUpload.step === 'complete'" @click="createApplicationsFromUpload" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">{{ candidateUpload.selectedPositionIds.length ? '创建推进并查看' : '查看候选人' }}</button></div>
+      </div>
+    </div>
+  </teleport>
+
+  <!-- 阶段 3.5：批量 / 拖拽简历入库弹窗 -->
+  <teleport to="body">
+    <div v-if="batchUpload.open" aria-label="批量上传简历" class="fixed inset-0 z-[115] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="batchUpload.open = false">
+      <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-2xl">
+        <div class="px-6 py-5 border-b border-slate-100 flex justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold text-orange-700">批量入库</p>
+            <h2 class="text-xl font-bold mt-1">批量上传简历</h2>
+            <p class="text-sm text-slate-500 mt-1">支持一次选择多份或拖拽多份；每份独立处理，互不影响。</p>
+          </div>
+          <button @click="batchUpload.open = false" aria-label="关闭批量上传弹窗" class="w-8 h-8 rounded-lg bg-slate-100">×</button>
+        </div>
+
+        <!-- 拖拽 / 选择区 -->
+        <div class="p-6 space-y-3">
+          <label
+            class="block border-2 rounded-xl p-6 text-center cursor-pointer transition"
+            :class="batchDragOver ? 'border-emerald-500 bg-emerald-50' : 'border-dashed border-slate-200 hover:border-orange-400'"
+            @dragover="onBatchDragOver" @dragleave="onBatchDragLeave" @drop="onBatchDrop">
+            <input type="file" accept=".pdf,.doc,.docx,image/*,.txt" multiple class="sr-only" @change="addBatchFiles($event.target.files); $event.target.value=''">
+            <span class="font-semibold text-slate-700">拖拽多份简历到此，或点击选择 PDF / Word / 图片 / 文本</span>
+            <small class="block text-slate-400 mt-1">不支持的格式会逐条提示，不会中断其他文件</small>
+          </label>
+
+          <!-- 进度概要 -->
+          <div class="flex flex-wrap items-center gap-2 text-xs" v-if="batchUpload.tasks.length">
+            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">成功 {{ batchUpload.tasks.filter(t=>t.status==='success').length }}</span>
+            <span class="px-2 py-1 rounded-full bg-rose-50 text-rose-700">失败 {{ batchUpload.tasks.filter(t=>t.status==='error').length }}</span>
+            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700">疑似重复 {{ batchUpload.tasks.filter(t=>t.status==='duplicate').length }}</span>
+            <span class="px-2 py-1 rounded-full bg-sky-50 text-sky-700">待确认 {{ batchUpload.tasks.filter(t=>t.status==='needs_review').length }}</span>
+            <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600">处理中 {{ batchUpload.tasks.filter(t=>['reading','parsing','saving'].includes(t.status)).length }}</span>
+            <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600">总计 {{ batchUpload.tasks.length }}</span>
+          </div>
+        </div>
+
+        <!-- 任务列表 -->
+        <div class="px-6 pb-2 space-y-2" v-if="batchUpload.tasks.length">
+          <div v-for="task in batchUpload.tasks" :key="task.id" class="border border-slate-200 rounded-lg p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-slate-800 truncate">{{ task.fileName }}</p>
+                <p class="text-xs text-slate-400 mt-0.5">{{ task.fileType || '文件' }} · {{ (task.fileSize/1024).toFixed(1) }} KB</p>
+              </div>
+              <span class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium" :data-status="task.status"
+                :class="{
+                  'bg-slate-100 text-slate-600': ['queued','reading','parsing','saving','cancelled'].includes(task.status),
+                  'bg-emerald-100 text-emerald-700': task.status==='success',
+                  'bg-rose-100 text-rose-700': task.status==='error',
+                  'bg-amber-100 text-amber-700': task.status==='duplicate',
+                  'bg-sky-100 text-sky-700': task.status==='needs_review',
+                  'bg-slate-200 text-slate-500': task.status==='skipped',
+                }">{{ batchStatusLabel(task.status) }}</span>
+            </div>
+
+            <p class="text-xs text-slate-500 mt-1.5" v-if="task.parsedName">解析到人才：<b>{{ task.parsedName }}</b></p>
+            <p class="text-xs text-slate-400 mt-1.5" v-else-if="['success','needs_review','duplicate'].includes(task.status) && !task.parsedName">解析到人才：<span class="text-slate-400">（未识别到姓名）</span></p>
+
+            <p class="text-xs text-amber-700 mt-1.5" v-if="task.duplicates.length">查重结果：{{ task.duplicates[0].candidate.name }}{{ task.duplicates[0].reasons && task.duplicates[0].reasons.length ? '（'+task.duplicates[0].reasons.join('、')+'）' : '' }}</p>
+
+            <p class="text-xs text-rose-600 mt-1.5" v-if="task.status==='error'">{{ task.error }}</p>
+
+            <!-- needs_review：补全姓名后保存 -->
+            <div class="mt-2 flex items-center gap-2" v-if="task.status==='needs_review'">
+              <input v-model="task.form.name" placeholder="补全姓名后保存" class="flex-1 px-2 py-1.5 text-sm rounded-lg border border-slate-200">
+              <button @click="saveBatchNeedsReview(task.id, task.form.name)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold">保存</button>
+              <button @click="skipBatchTask(task.id)" class="px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold">跳过</button>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button v-if="task.status==='success' && task.createdId" @click="openCandidateDetail(task.createdId)" class="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-semibold">查看人才</button>
+              <button v-if="task.status==='error'" @click="retryBatchTask(task.id)" class="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold">重试</button>
+              <button v-if="['queued','reading','parsing','needs_review'].includes(task.status)" @click="cancelBatchTask(task.id)" class="px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold">取消</button>
+              <button v-if="['success','skipped','error','cancelled'].includes(task.status)" @click="removeBatchTask(task.id)" class="px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold">移除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="px-6 py-4 border-t border-slate-100 flex flex-wrap gap-2 justify-end" v-if="batchUpload.tasks.length">
+          <button @click="startBatchAll" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">全部开始</button>
+          <button @click="retryBatchFailed" class="px-3 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">仅重试失败项</button>
+          <button @click="clearBatchSucceeded" class="px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">清除已成功项</button>
+          <button @click="cancelBatchQueued" class="px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">取消未开始项</button>
+        </div>
       </div>
     </div>
   </teleport>
@@ -10498,7 +10588,7 @@ async function cacheResumeData(resumeId, data, extraFields) {
 // 阶段 3：原始简历二进制存外部 IndexedDB，复用现有 RESUME_CACHE_STORE（'files'），
 // 不新建 store、不改 schema 版本、不把 base64 写进人才快照；快照只存 fileId/fileType/fileSize/fileHash 等元数据。
 async function saveResumeBlob(fileId, blob, meta = {}) {
-  if (!fileId || !blob) return;
+  if (!fileId || !blob) return false;
   try {
     await withResumeCacheStore('readwrite', (store) => {
       store.put({
@@ -10511,8 +10601,10 @@ async function saveResumeBlob(fileId, blob, meta = {}) {
         uploadedAt: new Date().toISOString(),
       });
     });
+    return true;
   } catch (e) {
     console.warn('原始简历文件保存失败:', e.message);
+    return false;
   }
 }
 
@@ -10985,7 +11077,105 @@ const vueAppConfig = {
       selectedPositionIds: [],
       autoPositionId: '',
       extracting: false,
+      batchTaskId: '',
       form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' },
+    });
+
+    // 阶段 3.5：批量 / 拖拽入库状态（由 WorkbenchV2 批量引擎驱动，复用既有人才写入能力，不复制第二套逻辑）
+    const batchUpload = reactive({
+      open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2),
+      tasks: [], hashes: {}, active: 0, gate: Promise.resolve(),
+    });
+    const batchDragOver = ref(false);
+    const BATCH_STATUS_LABEL = {
+      queued: '等待中', reading: '读取中', parsing: '解析中', needs_review: '待确认', duplicate: '疑似重复',
+      saving: '保存中', success: '成功', skipped: '已跳过', error: '失败', cancelled: '已取消',
+    };
+    const batchStatusLabel = (s) => BATCH_STATUS_LABEL[s] || s;
+    const batchDeps = {
+      bundle: workbenchV2,
+      parseFile: async (task) => readAndParseResumeFile(task.file, { persistBlob: false }),
+      persistFile: async (task) => {
+        const saved = await saveResumeBlob(task.fileId, task.file, {
+          fileName: task.fileName,
+          fileType: task.fileType,
+          fileSize: task.fileSize,
+          fileHash: task.fileHash,
+        });
+        if (!saved) throw new Error(`原始简历保存失败：${task.fileName || '未知文件'}`);
+      },
+      persist: saveWorkbenchV2,
+    };
+    function openBatchUpload() {
+      batchUpload.open = true;
+      globalCreateMenu.value = false;
+    }
+    function addBatchFiles(fileList) {
+      WorkbenchV2.batchAddFiles(batchUpload, Array.from(fileList || []));
+      WorkbenchV2.batchPump(batchUpload, batchDeps); // 拖入/选择后立即开始处理；"全部开始"可再次触发续跑
+    }
+    function startBatchAll() { batchUpload.running = true; WorkbenchV2.batchPump(batchUpload, batchDeps); }
+    function retryBatchFailed() { WorkbenchV2.batchRetryFailed(batchUpload); WorkbenchV2.batchPump(batchUpload, batchDeps); }
+    function retryBatchTask(id) {
+      const t = batchUpload.tasks.find(x => x.id === id);
+      if (t && t.status === 'error') { t.status = 'queued'; t.error = ''; t.cancelled = false; WorkbenchV2.batchPump(batchUpload, batchDeps); }
+    }
+    function clearBatchSucceeded() { WorkbenchV2.batchClearSucceeded(batchUpload); }
+    function cancelBatchQueued() { WorkbenchV2.batchCancelQueued(batchUpload); }
+    function cancelBatchTask(id) { WorkbenchV2.batchCancelTask(batchUpload, id); }
+    function removeBatchTask(id) { batchUpload.tasks = batchUpload.tasks.filter(t => t.id !== id); }
+    function resolveBatchDuplicate(taskId, action) { WorkbenchV2.batchResolveDuplicate(batchUpload, taskId, action, batchDeps); }
+    function saveBatchNeedsReview(taskId, name) { WorkbenchV2.batchSaveNeedsReview(batchUpload, taskId, name, batchDeps); }
+    function skipBatchTask(taskId) { const t = batchUpload.tasks.find(x => x.id === taskId); if (t) t.status = 'skipped'; }
+    // 复用现有查重四选弹窗：把批量任务装入 candidateUpload 代理上下文，处理完再写回任务
+    function finalizeBatchProxy(result, taskId) {
+      const id = taskId || candidateUpload.batchTaskId;
+      const task = batchUpload.tasks.find(t => t.id === id);
+      if (task) { task.status = result; task.createdId = candidateUpload.createdId || task.createdId; }
+      candidateUpload.batchTaskId = '';
+      candidateUpload.open = false;
+      candidateUpload.step = 'form';
+      candidateUpload.duplicates = [];
+      candidateUpload.createdId = '';
+      candidateUpload.error = '';
+      WorkbenchV2.batchPump(batchUpload, batchDeps);
+    }
+    async function resolveBatchProxy(action) {
+      const taskId = candidateUpload.batchTaskId;
+      await WorkbenchV2.batchResolveDuplicate(batchUpload, taskId, action, batchDeps);
+      const task = batchUpload.tasks.find(item => item.id === taskId);
+      const status = task?.status || 'error';
+      if (['success', 'skipped', 'error', 'cancelled'].includes(status)) {
+        finalizeBatchProxy(status, taskId);
+      } else {
+        candidateUpload.error = task?.error || '当前任务尚未完成，请稍后再试';
+      }
+      return task;
+    }
+    // 批量任务进入 duplicate 时，自动以代理方式打开现有四选弹窗
+    watch(() => batchUpload.tasks.map(t => t.id + ':' + t.status).join('|'), () => {
+      const dup = batchUpload.tasks.find(t => t.status === 'duplicate' && t.id !== candidateUpload.batchTaskId);
+      if (dup && !candidateUpload.open) {
+        candidateUpload.form = { ...dup.form };
+        candidateUpload.duplicates = dup.duplicates;
+        candidateUpload.step = 'duplicate';
+        candidateUpload.open = true;
+        candidateUpload.batchTaskId = dup.id;
+      }
+    });
+    function onBatchDrop(e) {
+      e.preventDefault();
+      batchDragOver.value = false;
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length) addBatchFiles(files);
+    }
+    function onBatchDragOver(e) { e.preventDefault(); batchDragOver.value = true; }
+    function onBatchDragLeave(e) { e.preventDefault(); batchDragOver.value = false; }
+    // 关闭页面前，若仍有未完成任务则提示
+    window.addEventListener('beforeunload', (e) => {
+      if (batchUpload.open && batchUpload.tasks.some(t => !['success', 'skipped', 'error', 'cancelled'].includes(t.status))) {
+        e.preventDefault(); e.returnValue = '';
+      }
     });
     const selectedCompany = computed(() => workbenchV2.companies.find(item => item.id === workbenchRoute.id) || null);
     const selectedPosition = computed(() => workbenchV2.positions.find(item => item.id === workbenchRoute.id) || null);
@@ -11624,6 +11814,28 @@ const vueAppConfig = {
       candidateUpload.autoPositionId = selectedPosition.value.id;
       candidateUpload.form.owner = selectedPosition.value.owner || '';
     }
+    // 读取 + 文本提取 + 自动补全（单份与批量共用，避免第二套解析逻辑）
+    async function readAndParseResumeFile(file, options = {}) {
+      const fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('读取文件失败'));
+        reader.readAsDataURL(file);
+      });
+      const fileId = (crypto.randomUUID && crypto.randomUUID()) || `fid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+      const fileHash = await hashResumeData(fileData);
+      if (options.persistBlob !== false) {
+        const saved = await saveResumeBlob(fileId, file, { fileName: file.name, fileType: file.type || '', fileSize: file.size, fileHash });
+        if (!saved) throw new Error(`原始简历保存失败：${file.name}`);
+      }
+      const rawText = await extractResumeText({ name: file.name, type: file.type, data: fileData });
+      const form = {
+        name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open',
+        rawText, fileName: file.name, fileData: '', fileId, fileHash, fileSize: file.size, fileType: file.type || '',
+      };
+      await autoFillCandidateInfoFromResume(form);
+      return { form, fileId, fileHash, fileSize: file.size, fileType: file.type || '', rawText };
+    }
     async function onStandaloneResumeFile(event) {
       const file = event.target.files?.[0];
       event.target.value = '';
@@ -11631,25 +11843,8 @@ const vueAppConfig = {
       candidateUpload.loading = true;
       candidateUpload.error = '';
       try {
-        const fileData = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(reader.error || new Error('读取文件失败'));
-          reader.readAsDataURL(file);
-        });
-        candidateUpload.form.fileName = file.name;
-        candidateUpload.form.fileData = fileData; // 仅会话内用于文本提取与旧预览兜底，不写入快照
-        // 阶段 3：二进制原件存外部 IndexedDB，快照只保留 fileId/哈希等元数据
-        const fileId = (crypto.randomUUID && crypto.randomUUID()) || `fid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
-        const fileHash = await hashResumeData(fileData);
-        await saveResumeBlob(fileId, file, { fileName: file.name, fileType: file.type || '', fileSize: file.size, fileHash });
-        candidateUpload.form.fileId = fileId;
-        candidateUpload.form.fileHash = fileHash;
-        candidateUpload.form.fileSize = file.size;
-        candidateUpload.form.fileType = file.type || '';
-        candidateUpload.form.rawText = await extractResumeText({ name: file.name, type: file.type, data: fileData });
-        // 后台智能提取姓名/公司/职位/城市：姓名优先取自电子简历识别结果，而非文件名
-        autoFillCandidateInfoFromResume(candidateUpload.form);
+        const r = await readAndParseResumeFile(file);
+        Object.assign(candidateUpload.form, r.form); // 复用同一解析流程，不复制
       } catch (error) {
         candidateUpload.error = error.message || '简历解析失败，可继续粘贴文本';
       } finally {
@@ -11908,24 +12103,18 @@ const vueAppConfig = {
         batchSmartOrganizing.value = false;
       }
     }
-    // 阶段 3：把表单落成一份简历版本元数据（二进制已在 onStandaloneResumeFile 存外部），供入库/合并复用。
+    // 阶段 3：把表单落成一份简历版本元数据（二进制已在 readAndParseResumeFile 存外部），供入库/合并复用。
     function buildStandaloneResumeVersion() {
-      const form = candidateUpload.form;
-      if (!form.fileName && !form.rawText) return null;
-      return {
-        id: `resume_${Date.now().toString(36)}`,
-        fileName: form.fileName,
-        fileId: form.fileId,            // 外部二进制存储键，快照不存 base64
-        fileType: form.fileType,
-        fileSize: form.fileSize,
-        fileHash: form.fileHash,
-        rawText: form.rawText,
-        uploadedAt: new Date().toISOString(),
-      };
+      return WorkbenchV2.buildResumeVersionFromForm(candidateUpload.form); // 复用批量引擎的同一实现，只存 fileId 元数据
     }
 
     // 阶段 3：统一入口入库。尊重查重确认：新建/合并/取消。AI 解析无身份不建人。
     async function saveCandidateOnly(forceCreate = false) {
+      // 批量代理模式：复用批量引擎的同一套查重/写入逻辑（含同批次合成重复的安全兜底）
+      if (candidateUpload.batchTaskId) {
+        await resolveBatchProxy(forceCreate ? 'forceCreate' : 'merge');
+        return null;
+      }
       const form = candidateUpload.form;
       if (!form.name.trim()) {
         candidateUpload.error = '请填写候选人姓名';
@@ -11962,6 +12151,7 @@ const vueAppConfig = {
       }
       candidateUpload.createdId = candidate.id;
       candidateUpload.step = 'complete';
+      if (candidateUpload.batchTaskId) { finalizeBatchProxy('success'); return candidate; } // 批量代理：写回任务并续跑队列
       if (await saveWorkbenchV2()) {
         if (cloudReady) schedulePush();
         showToast(linkedToPosition ? '人才已入库并加入当前岗位' : '人才已保存到人才库');
@@ -11971,6 +12161,10 @@ const vueAppConfig = {
 
     // 阶段 3 查重确认：合并到已有人员（只补充空字段 + 追加简历版本，不覆盖手工字段）
     async function mergeCandidateToExisting() {
+      if (candidateUpload.batchTaskId) {
+        await resolveBatchProxy('merge');
+        return;
+      }
       const form = candidateUpload.form;
       const target = candidateUpload.duplicates[0] && candidateUpload.duplicates[0].candidate;
       if (!target) return;
@@ -11982,11 +12176,16 @@ const vueAppConfig = {
       if (version) WorkbenchV2.appendTalentResumeVersion(workbenchV2, target.id, version);
       candidateUpload.createdId = target.id;
       candidateUpload.step = 'complete';
+      if (candidateUpload.batchTaskId) { finalizeBatchProxy('success'); return; } // 批量代理
       if (await saveWorkbenchV2()) { if (cloudReady) schedulePush(); showToast('已合并到既有人才并追加简历版本'); }
     }
 
     // 阶段 3 查重确认：保存为已有人员的新简历版本（不改任何人才基础资料）
     async function saveAsNewResumeVersion() {
+      if (candidateUpload.batchTaskId) {
+        await resolveBatchProxy('newVersion');
+        return;
+      }
       const form = candidateUpload.form;
       const target = candidateUpload.duplicates[0] && candidateUpload.duplicates[0].candidate;
       if (!target) return;
@@ -11994,7 +12193,13 @@ const vueAppConfig = {
       if (version) WorkbenchV2.appendTalentResumeVersion(workbenchV2, target.id, version);
       candidateUpload.createdId = target.id;
       candidateUpload.step = 'complete';
+      if (candidateUpload.batchTaskId) { finalizeBatchProxy('success'); return; } // 批量代理
       if (await saveWorkbenchV2()) { if (cloudReady) schedulePush(); showToast('已保存为新简历版本'); }
+    }
+    // 查重弹窗取消：批量代理时写回任务为 skipped，否则关闭单份弹窗
+    function onCancelDedup() {
+      if (candidateUpload.batchTaskId) { finalizeBatchProxy('skipped'); return; }
+      candidateUpload.open = false;
     }
     function openCandidateResumeVersion(version, candidate = selectedCandidate.value) {
       if (!version) return;
@@ -22714,6 +22919,8 @@ ${clipped}`
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
+      // 阶段 3.5 批量 / 拖拽入库
+      batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       gistSettings, gistSettingsModalOpen, saveGistSettingsFromModal,

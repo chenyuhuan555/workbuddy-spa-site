@@ -599,6 +599,297 @@
     return hasIdentity;
   }
 
+  // —— 阶段 3.5：批量 / 拖拽简历入库引擎（纯函数核心，UI 无关）——
+  // 严格复用上述 createTalent / updateTalent / findDuplicateCandidates /
+  // appendTalentResumeVersion / reconcileParsedFields / shouldCreateTalentFromParsed，
+  // 不复制第二套解析 / 查重 / 保存逻辑；并发默认 2，写入门禁串行。
+  const BATCH_PARSE_LIMIT = 2;
+
+  // 格式分类：支持 PDF / Word / 图片 / 文本；其余拒绝（逐条提示，不拖垮批次）
+  function classifyResumeFile(name, type) {
+    const n = String(name || '').toLowerCase();
+    const t = String(type || '');
+    if (n.endsWith('.pdf') || t === 'application/pdf') return { ok: true, kind: 'pdf' };
+    if (/\.(doc|docx)$/.test(n) || /word/.test(t)) return { ok: true, kind: 'word' };
+    if (/^image\//.test(t) || /\.(png|jpe?g|gif|bmp|webp)$/.test(n)) return { ok: true, kind: 'image' };
+    if (n.endsWith('.txt') || t === 'text/plain') return { ok: true, kind: 'text' };
+    return { ok: false, kind: 'unsupported' };
+  }
+
+  function emptyBatchForm(file) {
+    return {
+      name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open',
+      rawText: '', fileName: file ? file.name : '', fileData: '', fileId: '', fileHash: '', fileSize: file ? file.size || 0 : 0, fileType: file ? file.type || '' : '',
+    };
+  }
+
+  function batchMakeTaskId() {
+    return makeId('btask');
+  }
+
+  function batchMakeTask(file) {
+    return {
+      id: batchMakeTaskId(),
+      file,
+      fileName: file ? file.name : '',
+      fileSize: file ? file.size || 0 : 0,
+      fileType: file ? file.type || '' : '',
+      status: 'queued',        // queued|reading|parsing|needs_review|duplicate|saving|success|skipped|error|cancelled
+      error: '',
+      parsedName: '',
+      fileId: '', fileHash: '', rawText: '',
+      form: emptyBatchForm(file),
+      duplicates: [],
+      createdId: '',
+      cancelled: false,
+      filePersisted: false,
+    };
+  }
+
+  // 把简历版本落成元数据（只存 fileId/哈希，不写 base64）。被单份 buildStandaloneResumeVersion 复用。
+  function buildResumeVersionFromForm(form) {
+    if (!form.fileName && !form.rawText) return null;
+    return {
+      id: `resume_${Date.now().toString(36)}`,
+      fileName: form.fileName,
+      fileId: form.fileId,
+      fileType: form.fileType,
+      fileSize: form.fileSize,
+      fileHash: form.fileHash,
+      rawText: form.rawText,
+      uploadedAt: nowIso(),
+    };
+  }
+
+  // 同批次内相同文件哈希的第一份任务（用于互相查重，避免同一文件被保存两次）
+  function batchSameBatchHashTask(state, task) {
+    if (!task.fileHash) return null;
+    const firstId = state.hashes[task.fileHash];
+    if (!firstId || firstId === task.id) return null;
+    return state.tasks.find((t) => t.id === firstId) || null;
+  }
+
+  // 入队：逐条生成任务；不支持格式直接标记 error（不阻断其他文件）
+  function batchAddFiles(state, files) {
+    const added = [];
+    for (const file of (files || [])) {
+      const task = batchMakeTask(file);
+      const cls = classifyResumeFile(file ? file.name : '', file ? file.type : '');
+      if (!cls.ok) {
+        task.status = 'error';
+        task.error = `不支持的格式：${file ? file.name : '未知文件'}（仅支持 PDF / Word / 图片 / 文本）`;
+      }
+      state.tasks.push(task);
+      added.push(task);
+    }
+    return added;
+  }
+
+  // 写入门禁：串行执行，保证同批次查重 / 创建基于一致状态
+  function batchWithGate(state, fn) {
+    const run = state.gate.then(() => fn(), () => fn());
+    state.gate = run.catch(() => {});
+    return run;
+  }
+
+  // 二进制只在任务确认入库后保存。同批次相同哈希复用首份文件引用，避免重复占用 IndexedDB。
+  async function batchPersistFile(state, task, deps) {
+    if (task.filePersisted) return;
+    const sameTask = batchSameBatchHashTask(state, task);
+    if (sameTask && sameTask.filePersisted) {
+      task.fileId = sameTask.fileId;
+      task.form.fileId = sameTask.fileId;
+      task.filePersisted = true;
+      return;
+    }
+    if (typeof deps.persistFile === 'function') await deps.persistFile(task);
+    task.filePersisted = true;
+  }
+
+  // 单任务处理：读取 → 解析（并发受限，由 batchPump 控制） → 写入门禁（串行）
+  async function batchProcessTask(state, task, deps) {
+    if (task.cancelled) { task.status = 'cancelled'; return; }
+    try {
+      task.status = 'reading';
+      const parsed = await deps.parseFile(task); // 读取 + 文本提取 + 自动补全，可能抛错
+      if (task.cancelled) { task.status = 'cancelled'; return; }
+      Object.assign(task, {
+        form: parsed.form, fileId: parsed.fileId, fileHash: parsed.fileHash,
+        fileSize: parsed.fileSize, fileType: parsed.fileType, rawText: parsed.rawText,
+      });
+      task.status = 'parsing';
+      task.parsedName = String(task.form.name || '').trim();
+      if (task.fileHash) state.hashes[task.fileHash] = state.hashes[task.fileHash] || task.id;
+      await batchWithGate(state, () => batchGate(state, task, deps));
+    } catch (e) {
+      if (task.cancelled) { task.status = 'cancelled'; return; }
+      task.status = 'error';
+      task.error = (e && e.message) ? e.message : '处理失败';
+    }
+  }
+
+  // 写入门禁内的核心决策：查重（既有人才 + 同批次哈希）→ 重复暂停 / 无身份待确认 / 创建
+  async function batchGate(state, task, deps) {
+    const bundle = deps.bundle;
+    const form = task.form;
+    let duplicates = findDuplicateCandidates(bundle.candidates, {
+      name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, fileHash: task.fileHash,
+    });
+    const sameTask = batchSameBatchHashTask(state, task);
+    if (sameTask) {
+      if (sameTask.createdId) {
+        const t = getTalentById(bundle, sameTask.createdId);
+        if (t && !duplicates.some((d) => d.candidate.id === t.id)) {
+          duplicates = duplicates.concat([{ candidate: t, reasons: ['本批次已存在相同文件'], confidence: 'hard' }]);
+        }
+      } else {
+        // 同批次相同文件尚未保存完成 → 视为重复，避免重复创建
+        duplicates = duplicates.concat([{ candidate: { id: sameTask.id, name: sameTask.parsedName || sameTask.fileName, _synthetic: true }, reasons: ['本批次已存在相同文件（待处理）'], confidence: 'hard' }]);
+      }
+    }
+    if (duplicates.length) {
+      task.duplicates = duplicates;
+      task.status = 'duplicate'; // 暂停，等待用户选择四选一
+      return;
+    }
+    if (!shouldCreateTalentFromParsed(form)) {
+      task.status = 'needs_review';
+      task.error = '未能从简历识别到姓名 / 电话 / 邮箱，请补全后保存';
+      return;
+    }
+    task.status = 'saving';
+    await batchPersistFile(state, task, deps);
+    const candidate = createTalent(bundle, {
+      name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
+      currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
+      owner: form.owner.trim(), status: form.status, source: '批量上传',
+    }, { allowDuplicate: false });
+    const version = buildResumeVersionFromForm(form);
+    if (version) appendTalentResumeVersion(bundle, candidate.id, version);
+    task.createdId = candidate.id;
+    await deps.persist();
+    task.status = 'success';
+  }
+
+  // 四选一处理：merge / newVersion / forceCreate / skip（复用 reconcileParsedFields / updateTalent / createTalent / appendTalentResumeVersion）
+  async function batchResolveDuplicate(state, taskId, action, deps) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const bundle = deps.bundle;
+    const form = task.form;
+    try {
+    const dup = (task.duplicates[0] && task.duplicates[0].candidate) || null;
+    const referencedTask = dup && dup._synthetic ? state.tasks.find((item) => item.id === dup.id) : null;
+    const referencedTalent = referencedTask && referencedTask.createdId ? getTalentById(bundle, referencedTask.createdId) : null;
+    const target = dup && !dup._synthetic ? (getTalentById(bundle, dup.id) || dup) : referencedTalent;
+    const baseFields = {
+      name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
+      currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
+      owner: form.owner.trim(), status: form.status, source: '批量上传',
+    };
+    const applyVersionAndFinish = (candidateId) => {
+      const version = buildResumeVersionFromForm(form);
+      if (version && candidateId) appendTalentResumeVersion(bundle, candidateId, version);
+      task.createdId = candidateId || '';
+    };
+    if (action === 'skip') { task.status = 'skipped'; return; }
+    if (action === 'forceCreate') {
+      task.status = 'saving';
+      await batchPersistFile(state, task, deps);
+      const candidate = createTalent(bundle, baseFields, { allowDuplicate: true });
+      applyVersionAndFinish(candidate.id);
+      await deps.persist();
+      task.status = 'success';
+      return;
+    }
+    if (action === 'merge') {
+      if (dup && dup._synthetic && !target) {
+        task.status = 'duplicate';
+        task.error = '相同文件仍在处理中，请稍后再试';
+        return;
+      }
+      task.status = 'saving';
+      await batchPersistFile(state, task, deps);
+      if (!target) {
+        const candidate = createTalent(bundle, baseFields, { allowDuplicate: false });
+        applyVersionAndFinish(candidate.id);
+      } else {
+        const parsed = { name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, currentTitle: form.currentTitle, city: form.city, owner: form.owner };
+        const { merged } = reconcileParsedFields(target, parsed);
+        updateTalent(bundle, target.id, merged);
+        applyVersionAndFinish(target.id);
+      }
+      await deps.persist();
+      task.status = 'success';
+      return;
+    }
+    if (action === 'newVersion') {
+      if (dup && dup._synthetic && !target) {
+        task.status = 'duplicate';
+        task.error = '相同文件仍在处理中，请稍后再试';
+        return;
+      }
+      task.status = 'saving';
+      await batchPersistFile(state, task, deps);
+      if (!target) {
+        const candidate = createTalent(bundle, baseFields, { allowDuplicate: false });
+        applyVersionAndFinish(candidate.id);
+      } else {
+        applyVersionAndFinish(target.id);
+      }
+      await deps.persist();
+      task.status = 'success';
+      return;
+    }
+    } catch (e) {
+      task.status = 'error';
+      task.error = (e && e.message) ? e.message : '保存失败';
+    }
+  }
+
+  // 待确认（needs_review）补全姓名后保存：重新走门禁（查重 + 创建）
+  async function batchSaveNeedsReview(state, taskId, name, deps) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (name && String(name).trim()) task.form.name = String(name).trim();
+    if (!shouldCreateTalentFromParsed(task.form)) { task.error = '请填写姓名 / 电话 / 邮箱'; return; }
+    await batchWithGate(state, () => batchGate(state, task, deps));
+  }
+
+  // 调度：解析并发不超过 concurrency；读取/解析阶段才计入并发，等待态（duplicate/needs_review）释放槽位
+  function batchPump(state, deps) {
+    if (!state.open) return;
+    const parsing = state.tasks.filter((t) => t.status === 'reading' || t.status === 'parsing').length;
+    if (parsing >= state.concurrency) return;
+    const next = state.tasks.find((t) => t.status === 'queued' && !t.cancelled);
+    if (!next) {
+      state.running = state.tasks.some((t) => ['reading', 'parsing', 'saving', 'needs_review', 'duplicate'].includes(t.status));
+      return;
+    }
+    next.status = 'reading';
+    batchProcessTask(state, next, deps).finally(() => batchPump(state, deps));
+    batchPump(state, deps);
+  }
+
+  function batchStartAll(state, deps) { state.running = true; batchPump(state, deps); }
+  function batchRetryFailed(state) {
+    state.tasks.forEach((t) => { if (t.status === 'error') { t.status = 'queued'; t.error = ''; t.cancelled = false; } });
+  }
+  function batchClearSucceeded(state) {
+    state.tasks = state.tasks.filter((t) => t.status !== 'success');
+  }
+  function batchCancelQueued(state) {
+    state.tasks.forEach((t) => { if (t.status === 'queued') { t.cancelled = true; t.status = 'cancelled'; } });
+  }
+  function batchCancelTask(state, taskId) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (['queued', 'reading', 'parsing', 'needs_review'].includes(task.status)) {
+      task.cancelled = true;
+      task.status = 'cancelled';
+    }
+  }
+
   root.WorkbenchV2 = {
     VERSION,
     createEmptyBundle,
@@ -632,5 +923,20 @@
     appendTalentResumeVersion,
     reconcileParsedFields,
     shouldCreateTalentFromParsed,
+    // 阶段 3.5 批量 / 拖拽引擎
+    BATCH_PARSE_LIMIT,
+    classifyResumeFile,
+    buildResumeVersionFromForm,
+    batchAddFiles,
+    batchPump,
+    batchStartAll,
+    batchProcessTask,
+    batchGate,
+    batchResolveDuplicate,
+    batchSaveNeedsReview,
+    batchRetryFailed,
+    batchClearSucceeded,
+    batchCancelQueued,
+    batchCancelTask,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
