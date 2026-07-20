@@ -12353,6 +12353,7 @@ const vueAppConfig = {
         try { WorkbenchV2.createApplication(workbenchV2, { candidateId, positionId }); created += 1; } catch {}
       });
       candidateUpload.open = false;
+      if (!candidateUpload.batchTaskId) batchUpload.open = false;
       if (candidateId) openCandidateDetail(candidateId);
       if (created && await saveWorkbenchV2()) showToast(`已创建 ${created} 条推进记录`);
     }
