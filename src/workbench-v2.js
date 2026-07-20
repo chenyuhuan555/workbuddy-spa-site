@@ -581,7 +581,9 @@
   function assignTalentCategories(bundle, talentId, categoryIds = []) {
     const candidate = getTalentById(bundle, talentId);
     if (!candidate) throw new Error('人才不存在');
-    candidate.categoryIds = [...new Set((categoryIds || []).map(id => String(id || '').trim()).filter(Boolean))];
+    const validIds = new Set(getTalentCategoryPaths(bundle).map(category => category.id));
+    candidate.categoryIds = [...new Set((categoryIds || []).map(id => String(id || '').trim())
+      .filter(id => id && validIds.has(id)))];
     candidate.updatedAt = nowIso();
     return candidate;
   }
@@ -608,10 +610,16 @@
         }
       }
     }
-    const ids = new Set(removedIds);
-    (bundle.candidates || []).forEach(candidate => {
-      if (Array.isArray(candidate.categoryIds)) candidate.categoryIds = candidate.categoryIds.filter(id => !ids.has(id));
-    });
+    if (removed) {
+      const ids = new Set(removedIds);
+      (bundle.candidates || []).forEach(candidate => {
+        if (!Array.isArray(candidate.categoryIds)) return;
+        const categoryIds = candidate.categoryIds.filter(id => !ids.has(id));
+        if (categoryIds.length === candidate.categoryIds.length) return;
+        candidate.categoryIds = categoryIds;
+        candidate.updatedAt = nowIso();
+      });
+    }
     return removed;
   }
 

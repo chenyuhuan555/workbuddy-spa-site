@@ -403,3 +403,48 @@ test('removeTalentCategory 删除主分类及子分类标记，不删除人才�
   assert.equal(bundle.candidates.length, 1, '删除分类不得删除人才');
   assert.equal(bundle.applications.length, 1, '删除分类不得删除岗位推进');
 });
+
+test('assignTalentCategories 仅保留分类目录中存在的 ID', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [{ id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] }];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+
+  const talent = WorkbenchV2.assignTalentCategories(bundle, 'c1', ['backend', 'missing', 'tech', 'missing']);
+  assert.deepEqual(talent.categoryIds, ['backend', 'tech']);
+});
+
+test('removeTalentCategory 仅更新时间发生分类变化的人才，删除不存在分类无副作用', () => {
+  const unchangedAt = '2026-01-01T00:00:00.000Z';
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', categoryIds: ['backend'], updatedAt: unchangedAt }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c2', name: '李四', categoryIds: ['product'], updatedAt: unchangedAt }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c3', name: '王五', categoryIds: [], updatedAt: unchangedAt }));
+
+  WorkbenchV2.removeTalentCategory(bundle, 'backend');
+  assert.notEqual(bundle.candidates[0].updatedAt, unchangedAt, '子分类标记被清理的人才应更新时间');
+  assert.equal(bundle.candidates[1].updatedAt, unchangedAt, '未关联子分类的人才不应更新时间');
+  assert.equal(bundle.candidates[2].updatedAt, unchangedAt, '未分类人才不应更新时间');
+
+  const updatedAfterChildRemoval = bundle.candidates.map(candidate => candidate.updatedAt);
+  WorkbenchV2.removeTalentCategory(bundle, 'missing');
+  assert.deepEqual(bundle.candidates.map(candidate => candidate.updatedAt), updatedAfterChildRemoval, '删除不存在分类不应更新时间');
+});
+
+test('removeTalentCategory 删除主分类时只更新时间发生分类变化的人才', () => {
+  const unchangedAt = '2026-01-01T00:00:00.000Z';
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', categoryIds: ['tech', 'backend'], updatedAt: unchangedAt }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c2', name: '李四', categoryIds: ['product'], updatedAt: unchangedAt }));
+
+  WorkbenchV2.removeTalentCategory(bundle, 'tech');
+  assert.notEqual(bundle.candidates[0].updatedAt, unchangedAt);
+  assert.equal(bundle.candidates[1].updatedAt, unchangedAt);
+});
