@@ -338,3 +338,68 @@ test('validateBundle 保留简历版本元数据(fileId/fileHash)且人才数量
   assert.equal(v.rawText, 'txt');
 });
 
+// ---------------------------------------------------------------------------
+// (7) 人才分类目录与分类筛选
+// ---------------------------------------------------------------------------
+
+test('getTalentCategories / getTalentCategoryPaths 只读取 settings 中有序的主分类与子分类', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+
+  assert.equal(WorkbenchV2.getTalentCategories(bundle), bundle.settings.talentCategories);
+  assert.deepEqual(WorkbenchV2.getTalentCategoryPaths(bundle), [
+    { id: 'tech', name: '技术', path: '技术', parentId: null },
+    { id: 'backend', name: '后端', path: '技术 / 后端', parentId: 'tech' },
+    { id: 'product', name: '产品', path: '产品', parentId: null },
+  ]);
+  assert.deepEqual(WorkbenchV2.getTalentCategories(WorkbenchV2.createEmptyBundle()), []);
+});
+
+test('filterCandidatesByCategory 选择主分类时包含其子分类，选择子分类时只匹配自身', () => {
+  const categories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }, { id: 'frontend', name: '前端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  const candidates = [
+    { id: 'c1', categoryIds: ['tech'] },
+    { id: 'c2', categoryIds: ['backend'] },
+    { id: 'c3', categoryIds: ['frontend', 'product'] },
+    { id: 'c4', categoryIds: [] },
+  ];
+
+  assert.deepEqual(WorkbenchV2.filterCandidatesByCategory(candidates, categories, 'tech').map(item => item.id), ['c1', 'c2', 'c3']);
+  assert.deepEqual(WorkbenchV2.filterCandidatesByCategory(candidates, categories, 'backend').map(item => item.id), ['c2']);
+  assert.deepEqual(WorkbenchV2.filterCandidatesByCategory(candidates, categories, 'all').map(item => item.id), ['c1', 'c2', 'c3', 'c4']);
+});
+
+test('assignTalentCategories 以去重后的分类 ID 更新人才，且不改动岗位推进', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [{ id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] }];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: '后端工程师' }));
+  const application = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1', stage: 'screening' });
+
+  const talent = WorkbenchV2.assignTalentCategories(bundle, 'c1', ['backend', 'backend', 'tech']);
+  assert.deepEqual(talent.categoryIds, ['backend', 'tech']);
+  assert.equal(application.stage, 'screening');
+});
+
+test('removeTalentCategory 删除主分类及子分类标记，不删除人才或岗位推进', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', categoryIds: ['tech', 'backend', 'product'] }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: '后端工程师' }));
+  WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+
+  WorkbenchV2.removeTalentCategory(bundle, 'tech');
+  assert.deepEqual(bundle.settings.talentCategories.map(item => item.id), ['product']);
+  assert.deepEqual(bundle.candidates[0].categoryIds, ['product']);
+  assert.equal(bundle.candidates.length, 1, '删除分类不得删除人才');
+  assert.equal(bundle.applications.length, 1, '删除分类不得删除岗位推进');
+});

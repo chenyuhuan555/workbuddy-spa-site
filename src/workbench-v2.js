@@ -547,6 +547,74 @@
     return (bundle.applications || []).filter(item => item.candidateId === talentId);
   }
 
+  // 人才分类仅属于现有快照 settings；分类选择不建立第二套人才数据。
+  function getTalentCategories(bundle) {
+    return Array.isArray(bundle && bundle.settings && bundle.settings.talentCategories)
+      ? bundle.settings.talentCategories
+      : [];
+  }
+
+  function getTalentCategoryPaths(bundle) {
+    return getTalentCategories(bundle).flatMap(category => [
+      { id: category.id, name: category.name, path: category.name, parentId: null },
+      ...(Array.isArray(category.subCategories) ? category.subCategories : []).map(subCategory => ({
+        id: subCategory.id,
+        name: subCategory.name,
+        path: `${category.name} / ${subCategory.name}`,
+        parentId: category.id,
+      })),
+    ]);
+  }
+
+  // 选择主分类时把其直属子分类一并纳入；空值/all 保持不过滤。
+  function filterCandidatesByCategory(candidates, categories, categoryId) {
+    if (!categoryId || categoryId === 'all') return candidates || [];
+    const selected = (categories || []).find(category => category.id === categoryId);
+    const includedIds = new Set(selected
+      ? [selected.id, ...(selected.subCategories || []).map(subCategory => subCategory.id)]
+      : [categoryId]);
+    return (candidates || []).filter(candidate =>
+      (candidate.categoryIds || []).some(id => includedIds.has(id))
+    );
+  }
+
+  function assignTalentCategories(bundle, talentId, categoryIds = []) {
+    const candidate = getTalentById(bundle, talentId);
+    if (!candidate) throw new Error('人才不存在');
+    candidate.categoryIds = [...new Set((categoryIds || []).map(id => String(id || '').trim()).filter(Boolean))];
+    candidate.updatedAt = nowIso();
+    return candidate;
+  }
+
+  // 删除主分类会连同其子分类清理人才标记；删除子分类只清理自身标记。
+  // 只处理分类目录与人才分类字段，不触碰人才主档或岗位推进关系。
+  function removeTalentCategory(bundle, categoryId) {
+    const categories = getTalentCategories(bundle);
+    const parentIndex = categories.findIndex(category => category.id === categoryId);
+    let removedIds = [categoryId];
+    let removed = null;
+    if (parentIndex >= 0) {
+      removed = categories[parentIndex];
+      removedIds = [removed.id, ...(removed.subCategories || []).map(subCategory => subCategory.id)];
+      categories.splice(parentIndex, 1);
+    } else {
+      for (const category of categories) {
+        const subCategories = Array.isArray(category.subCategories) ? category.subCategories : [];
+        const subIndex = subCategories.findIndex(subCategory => subCategory.id === categoryId);
+        if (subIndex >= 0) {
+          removed = subCategories[subIndex];
+          subCategories.splice(subIndex, 1);
+          break;
+        }
+      }
+    }
+    const ids = new Set(removedIds);
+    (bundle.candidates || []).forEach(candidate => {
+      if (Array.isArray(candidate.categoryIds)) candidate.categoryIds = candidate.categoryIds.filter(id => !ids.has(id));
+    });
+    return removed;
+  }
+
   // 按 id 定位推进记录并推进阶段；只修改 application，绝不回写人才基础资料。
   function updateApplicationStage(bundle, applicationId, stage, metadata = {}) {
     const application = (bundle.applications || []).find(item => item.id === applicationId);
@@ -919,6 +987,11 @@
     createTalent,
     updateTalent,
     getTalentApplications,
+    getTalentCategories,
+    getTalentCategoryPaths,
+    filterCandidatesByCategory,
+    assignTalentCategories,
+    removeTalentCategory,
     updateApplicationStage,
     appendTalentResumeVersion,
     reconcileParsedFields,
