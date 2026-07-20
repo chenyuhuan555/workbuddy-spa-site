@@ -4558,7 +4558,7 @@
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
+          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="openTalentJobMatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">岗位匹配</button><button type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== 'closed').map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-6 gap-2"><input v-model="candidateFilters.query" type="search" placeholder="搜索姓名、公司或技能" class="lg:col-span-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><select v-model="candidateFilters.category" aria-label="按分类筛选人才" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部分类</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select><select v-model="candidateFilters.direction" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部人才方向</option><option v-for="direction in candidateDirections" :key="direction" :value="direction">{{ direction }}</option></select><select v-model="candidateFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select v-model="candidateFilters.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select></div>
           <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== 'closed').length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
@@ -5638,6 +5638,39 @@
         </div>
         <div class="px-6 py-4 border-t border-slate-100 flex justify-end"><button @click="talentCategoryManager.open = false" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">完成</button></div>
       </div>
+    </div>
+  </teleport>
+
+  <!-- 人才库岗位匹配：复用 WorkbenchV2 评分；临时 JD 只分析，不创建业务数据 -->
+  <teleport to="body">
+    <div v-if="talentJobMatch.open" aria-label="人才库岗位匹配" class="fixed inset-0 z-[116] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="closeTalentJobMatch">
+      <section class="w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-2xl">
+        <header class="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4">
+          <div><p class="text-xs font-semibold text-emerald-700">人才库</p><h2 class="text-xl font-bold mt-1">岗位匹配</h2><p class="text-sm text-slate-500 mt-1">选择现有岗位可创建推进；临时 JD 仅生成匹配分析，不会创建公司、岗位或推进记录。</p></div>
+          <button type="button" @click="closeTalentJobMatch" aria-label="关闭岗位匹配" class="w-8 h-8 rounded-lg bg-slate-100 text-lg">×</button>
+        </header>
+        <div class="p-6 space-y-5">
+          <div class="flex flex-wrap gap-2" role="tablist" aria-label="岗位来源">
+            <button type="button" @click="talentJobMatch.mode = 'existing'; talentJobMatch.hasRun = false" :class="['px-4 py-2 rounded-lg text-sm font-semibold border', talentJobMatch.mode === 'existing' ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600']">现有岗位</button>
+            <button type="button" @click="talentJobMatch.mode = 'temporary'; talentJobMatch.hasRun = false" :class="['px-4 py-2 rounded-lg text-sm font-semibold border', talentJobMatch.mode === 'temporary' ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600']">临时 JD</button>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <label class="block text-sm font-medium text-slate-700">匹配人才范围
+              <select v-model="talentJobMatch.categoryId" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm"><option value="all">全部分类</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select>
+            </label>
+            <label v-if="talentJobMatch.mode === 'existing'" class="block text-sm font-medium text-slate-700">选择开放岗位
+              <select v-model="talentJobMatch.positionId" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm"><option value="">请选择岗位</option><option v-for="position in talentJobMatchOpenPositions" :key="position.id" :value="position.id">{{ workbenchV2.companies.find(company => company.id === position.companyId)?.name || '未关联公司' }} · {{ position.title }}</option></select>
+            </label>
+          </div>
+          <div v-if="talentJobMatch.mode === 'temporary'" class="grid md:grid-cols-2 gap-4">
+            <label class="block text-sm font-medium text-slate-700">岗位名称<input v-model="talentJobMatch.temporary.title" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="例如：高级后端工程师"></label>
+            <label class="block text-sm font-medium text-slate-700">目标公司（仅用于展示）<input v-model="talentJobMatch.temporary.company" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="例如：某科技公司"></label>
+            <label class="block text-sm font-medium text-slate-700 md:col-span-2">粘贴 JD<textarea v-model="talentJobMatch.temporary.description" rows="5" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm leading-relaxed" placeholder="粘贴岗位职责、任职要求和技能关键词。系统会从现有人才技能中识别 JD 已提及的技能后评分。"></textarea></label>
+          </div>
+          <div class="flex justify-end"><button type="button" @click="runTalentJobMatch" :disabled="!canRunTalentJobMatch" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50">开始匹配</button></div>
+          <div v-if="talentJobMatch.hasRun" class="border-t border-slate-100 pt-5"><p class="text-sm text-slate-500">共 {{ talentJobMatchResults.length }} 位人才{{ talentJobMatch.categoryId !== 'all' ? '符合当前分类范围' : '' }}。</p><div v-for="match in talentJobMatchResults" :key="match.candidateId" class="mt-3 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row gap-4 sm:items-center"><div class="min-w-0 flex-1"><button type="button" @click="openCandidateDetail(match.candidateId); closeTalentJobMatch()" class="font-bold text-left hover:text-emerald-700">{{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.name || '人才已删除' }}</button><p class="text-xs text-slate-500 mt-1">{{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.currentCompany || '公司待补充' }} · {{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.currentTitle || '职位待补充' }}</p><p class="text-xs text-slate-600 mt-2">{{ match.reason }}</p><p v-if="match.gaps.length" class="text-xs text-amber-700 mt-1">{{ match.gaps.join('；') }}</p></div><strong class="text-xl text-emerald-700">{{ match.score }}</strong><button v-if="talentJobMatch.mode === 'existing'" type="button" @click="createTalentJobMatchApplication(match)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold">创建推进</button><span v-else class="text-xs text-slate-400">临时 JD 不创建推进</span></div><p v-if="!talentJobMatchResults.length" class="py-8 text-center text-sm text-slate-400">当前范围没有可匹配人才。</p></div>
+        </div>
+      </section>
     </div>
   </teleport>
 
@@ -11093,6 +11126,15 @@ const vueAppConfig = {
     const positionDescriptionEdit = reactive({ open: false, value: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const talentCategoryManager = reactive({ open: false, mainName: '' });
+    const talentJobMatch = reactive({
+      open: false,
+      mode: 'existing',
+      positionId: '',
+      categoryId: 'all',
+      temporary: { title: '', company: '', description: '' },
+      results: [],
+      hasRun: false,
+    });
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
     const applicationViewMode = ref('table');
     const talentPoolPeriod = ref('30');
@@ -11269,6 +11311,54 @@ const vueAppConfig = {
       talentCategories.value,
       candidateFilters.category
     ));
+    const talentJobMatchOpenPositions = computed(() => workbenchV2.positions.filter(position => ['open', 'hiring', 'active'].includes(position.status || 'open')));
+    const talentJobMatchCandidates = computed(() => WorkbenchV2.filterCandidatesByCategory(
+      workbenchV2.candidates,
+      talentCategories.value,
+      talentJobMatch.categoryId
+    ));
+    const talentJobMatchResults = computed(() => talentJobMatch.results);
+    const canRunTalentJobMatch = computed(() => talentJobMatch.mode === 'existing'
+      ? !!talentJobMatch.positionId
+      : !!(talentJobMatch.temporary.title || talentJobMatch.temporary.description.trim()));
+    function openTalentJobMatch() {
+      talentJobMatch.open = true;
+      talentJobMatch.hasRun = false;
+      talentJobMatch.results = [];
+      if (!talentJobMatch.positionId && talentJobMatchOpenPositions.value.length) {
+        talentJobMatch.positionId = talentJobMatchOpenPositions.value[0].id;
+      }
+    }
+    function closeTalentJobMatch() {
+      talentJobMatch.open = false;
+    }
+    function temporaryTalentJobMatchPosition() {
+      const text = `${talentJobMatch.temporary.title} ${talentJobMatch.temporary.description}`.toLowerCase();
+      const skills = Array.from(new Set(workbenchV2.candidates.flatMap(candidate => candidate.skills || candidate.keywords || [])
+        .map(skill => String(skill || '').trim())
+        .filter(skill => skill && text.includes(skill.toLowerCase()))));
+      return {
+        id: '',
+        companyId: '',
+        status: 'open',
+        title: talentJobMatch.temporary.title.trim(),
+        description: talentJobMatch.temporary.description.trim(),
+        skills,
+      };
+    }
+    function runTalentJobMatch() {
+      if (!canRunTalentJobMatch.value) return;
+      const position = talentJobMatch.mode === 'existing'
+        ? workbenchV2.positions.find(item => item.id === talentJobMatch.positionId)
+        : temporaryTalentJobMatchPosition();
+      if (!position) { showToast('请选择开放岗位', 'error'); return; }
+      talentJobMatch.results = WorkbenchV2.matchCandidates(position, talentJobMatchCandidates.value).slice(0, 50);
+      talentJobMatch.hasRun = true;
+    }
+    async function createTalentJobMatchApplication(match) {
+      if (talentJobMatch.mode !== 'existing' || !talentJobMatch.positionId) return;
+      await createApplicationFromMatch(match.candidateId, talentJobMatch.positionId, match);
+    }
     async function persistTalentCategories(message) {
       const saved = await saveWorkbenchV2();
       if (saved && cloudReady) schedulePush();
@@ -23073,7 +23163,7 @@ ${clipped}`
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
-      candidateFilters, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
+      candidateFilters, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
