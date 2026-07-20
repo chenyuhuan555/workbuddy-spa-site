@@ -5543,17 +5543,17 @@
           <div v-if="talentIntakeDirectEntryOpen" class="rounded-xl border border-slate-200 p-4 space-y-3">
             <p class="text-sm text-slate-500">手填或粘贴文本后入库；文件请直接拖入或从上方选择，可一次处理多份。</p>
             <div class="grid sm:grid-cols-2 gap-3">
-              <label class="text-sm text-slate-600">姓名 *<input v-model="candidateUpload.form.name" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">负责人<input v-model="candidateUpload.form.owner" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">手机号<input v-model="candidateUpload.form.phone" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">邮箱<input v-model="candidateUpload.form.email" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">当前公司<input v-model="candidateUpload.form.currentCompany" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">当前职位<input v-model="candidateUpload.form.currentTitle" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">城市<input v-model="candidateUpload.form.city" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">姓名 *<input v-model="talentIntakeDirectForm.name" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">负责人<input v-model="talentIntakeDirectForm.owner" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">手机号<input v-model="talentIntakeDirectForm.phone" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">邮箱<input v-model="talentIntakeDirectForm.email" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">当前公司<input v-model="talentIntakeDirectForm.currentCompany" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">当前职位<input v-model="talentIntakeDirectForm.currentTitle" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">城市<input v-model="talentIntakeDirectForm.city" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
             </div>
-            <div><div class="flex items-center justify-between"><span class="text-sm text-slate-600">简历文本</span><button type="button" @click="autoFillCandidateInfoFromResume(candidateUpload.form)" :disabled="candidateUpload.extracting || !candidateUpload.form.rawText.trim()" class="text-xs text-emerald-700 hover:text-emerald-800 disabled:text-slate-300 font-semibold">{{ candidateUpload.extracting ? '识别中…' : '从文本提取信息' }}</button></div><textarea v-model="candidateUpload.form.rawText" rows="6" placeholder="粘贴 BOSS、猎聘或其他简历文本" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></textarea></div>
-            <p v-if="candidateUpload.error" class="text-sm text-red-600">{{ candidateUpload.error }}</p>
-            <div class="flex justify-end"><button type="button" @click="saveTalentIntakeDirectEntry" :disabled="candidateUpload.loading" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold disabled:opacity-50">保存人才</button></div>
+            <div><div class="flex items-center justify-between"><span class="text-sm text-slate-600">简历文本</span><button type="button" @click="autoFillTalentIntakeDirectInfo" :disabled="talentIntakeDirectExtracting || !talentIntakeDirectForm.rawText.trim()" class="text-xs text-emerald-700 hover:text-emerald-800 disabled:text-slate-300 font-semibold">{{ talentIntakeDirectExtracting ? '识别中…' : '从文本提取信息' }}</button></div><textarea v-model="talentIntakeDirectForm.rawText" rows="6" placeholder="粘贴 BOSS、猎聘或其他简历文本" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></textarea></div>
+            <p v-if="talentIntakeDirectError" class="text-sm text-red-600">{{ talentIntakeDirectError }}</p>
+            <div class="flex justify-end"><button type="button" @click="saveTalentIntakeDirectEntry" :disabled="talentIntakeDirectExtracting || candidateUpload.loading" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold disabled:opacity-50">保存人才</button></div>
           </div>
 
           <!-- 进度概要 -->
@@ -11104,6 +11104,9 @@ const vueAppConfig = {
       tasks: [], hashes: {}, active: 0, gate: Promise.resolve(),
     });
     const talentIntakeDirectEntryOpen = ref(false);
+    const talentIntakeDirectForm = reactive({ name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' });
+    const talentIntakeDirectExtracting = ref(false);
+    const talentIntakeDirectError = ref('');
     const batchDragOver = ref(false);
     const BATCH_STATUS_LABEL = {
       queued: '等待中', reading: '读取中', parsing: '解析中', needs_review: '待确认', duplicate: '疑似重复',
@@ -11134,14 +11137,26 @@ const vueAppConfig = {
         form: { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' },
       });
     }
+    function resetTalentIntakeDirectForm() {
+      Object.assign(talentIntakeDirectForm, { name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' });
+      talentIntakeDirectExtracting.value = false;
+      talentIntakeDirectError.value = '';
+    }
     function openTalentIntake() {
       if (!candidateUpload.batchTaskId) resetCandidateUploadForm();
+      resetTalentIntakeDirectForm();
       talentIntakeDirectEntryOpen.value = false;
       openBatchUpload();
     }
     async function saveTalentIntakeDirectEntry() {
+      Object.assign(candidateUpload.form, talentIntakeDirectForm);
+      candidateUpload.error = '';
       candidateUpload.open = true;
       await saveCandidateOnly(false);
+      if (candidateUpload.step === 'form' && candidateUpload.error) {
+        talentIntakeDirectError.value = candidateUpload.error;
+        candidateUpload.open = false;
+      }
     }
     function addBatchFiles(fileList) {
       WorkbenchV2.batchAddFiles(batchUpload, Array.from(fileList || []));
@@ -11888,13 +11903,14 @@ const vueAppConfig = {
     }
     // 从电子简历文本后台识别姓名/公司/职位/城市，自动填入上传表单的空字段（不覆盖用户已填）。
     // 候选人姓名优先取自电子简历中识别到的姓名；无 DeepSeek Key、识别失败或文本不足时，才回退到文件名。
-    async function autoFillCandidateInfoFromResume(form) {
+    async function autoFillCandidateInfoFromResume(form, extractingRef = null) {
       const text = String(form.rawText || '').trim();
       if (text.length < 40) {
         if (!form.name.trim()) form.name = fallbackNameFromFileName(form.fileName);
         return;
       }
-      candidateUpload.extracting = true;
+      if (extractingRef) extractingRef.value = true;
+      else candidateUpload.extracting = true;
       try {
         const info = await extractCandidateBasicInfoWithDeepSeek(text, form.fileName);
         // 姓名：优先使用电子简历识别到的姓名，仅当用户尚未填写时填充
@@ -11907,7 +11923,16 @@ const vueAppConfig = {
         console.warn('自动提取候选人信息失败:', e.message);
         if (!form.name.trim()) form.name = fallbackNameFromFileName(form.fileName);
       } finally {
-        candidateUpload.extracting = false;
+        if (extractingRef) extractingRef.value = false;
+        else candidateUpload.extracting = false;
+      }
+    }
+    async function autoFillTalentIntakeDirectInfo() {
+      talentIntakeDirectError.value = '';
+      try {
+        await autoFillCandidateInfoFromResume(talentIntakeDirectForm, talentIntakeDirectExtracting);
+      } catch (error) {
+        talentIntakeDirectError.value = error.message || '信息提取失败，请手动填写';
       }
     }
     // 从候选人对象取可用于 AI 提取的简历文本（优先 electronicResumeText，否则 resumeVersions 的 rawText）
@@ -22952,7 +22977,7 @@ ${clipped}`
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
-      batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, openTalentIntake, talentIntakeDirectEntryOpen, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
+      batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, openTalentIntake, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       gistSettings, gistSettingsModalOpen, saveGistSettingsFromModal,
