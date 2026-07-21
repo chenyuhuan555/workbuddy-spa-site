@@ -69,6 +69,14 @@ test('工作台启动时会持久化回填既有迁移岗位的空职责', () =>
   assert.match(INDEX_HTML, /await reconcileMigratedPositionDescriptions\(\);/);
 });
 
+test('岗位详情提供基础信息编辑与 AI 匹配关键词提取入口', () => {
+  assert.match(INDEX_HTML, /编辑岗位信息与职责/, '岗位详情应提供完整的基础信息编辑入口');
+  assert.match(INDEX_HTML, /v-model="positionDescriptionEdit\.salary"/, '编辑表单应允许填写薪资');
+  assert.match(INDEX_HTML, /v-model="positionDescriptionEdit\.skills"/, '编辑表单应允许维护匹配关键词');
+  assert.match(INDEX_HTML, /extractPositionSkillsWithDeepSeek/, '岗位详情应提供 AI 关键词提取动作');
+  assert.match(INDEX_HTML, /task: 'position-match-skill-extraction'/, 'AI 提取应使用独立任务标识');
+});
+
 test('createApplication 建立 talent×position 推进且仅允许一条活跃推进', () => {
   const bundle = WorkbenchV2.createEmptyBundle();
   bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '王五' }));
