@@ -11170,6 +11170,7 @@ const vueAppConfig = {
       error: '',
       results: [],
       bdLoadingCompanyName: '',
+      requestGeneration: 0,
     });
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
     const applicationViewMode = ref('table');
@@ -11401,6 +11402,7 @@ const vueAppConfig = {
       await createApplicationFromMatch(match.candidateId, talentJobMatch.positionId, match);
     }
     function openTalentCompanyResearch() {
+      ++talentCompanyResearch.requestGeneration;
       talentCompanyResearch.open = true;
       talentCompanyResearch.loading = false;
       talentCompanyResearch.error = '';
@@ -11408,7 +11410,10 @@ const vueAppConfig = {
       talentCompanyResearch.bdLoadingCompanyName = '';
     }
     function closeTalentCompanyResearch() {
+      ++talentCompanyResearch.requestGeneration;
       talentCompanyResearch.open = false;
+      talentCompanyResearch.loading = false;
+      talentCompanyResearch.bdLoadingCompanyName = '';
     }
     function normalizeCompanyName(name) {
       return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -11426,12 +11431,14 @@ const vueAppConfig = {
     }
     async function runTalentCompanyResearch() {
       const scopedCandidates = talentCompanyResearchCandidates.value;
+      const requestGeneration = ++talentCompanyResearch.requestGeneration;
       if (!scopedCandidates.length) {
         talentCompanyResearch.error = '当前筛选范围没有可用于挖掘的人才';
         return;
       }
       talentCompanyResearch.loading = true;
       talentCompanyResearch.error = '';
+      talentCompanyResearch.results = [];
       try {
         const profiles = talentCompanyResearchProfiles(scopedCandidates);
         const scopedIds = new Set(profiles.map(candidate => candidate.id));
@@ -11450,7 +11457,8 @@ const vueAppConfig = {
           }],
         });
         const companies = Array.isArray(parsed?.companies) ? parsed.companies : [];
-        talentCompanyResearch.results = companies.map(company => {
+        const seenCompanyNames = new Set();
+        const normalizedResults = companies.map(company => {
           const name = String(company?.name || '').trim();
           return {
             name,
@@ -11460,11 +11468,20 @@ const vueAppConfig = {
               .map(id => String(id || '').trim()).filter(id => scopedIds.has(id)))),
             bdPlan: '',
           };
-        }).filter(company => company.name && !existingCompanyNames.some(name => normalizeCompanyName(name) === normalizeCompanyName(company.name))).slice(0, 12);
+        }).filter(company => {
+          const normalizedName = normalizeCompanyName(company.name);
+          if (!normalizedName || existingCompanyNames.some(name => normalizeCompanyName(name) === normalizedName) || seenCompanyNames.has(normalizedName)) return false;
+          seenCompanyNames.add(normalizedName);
+          return true;
+        }).slice(0, 12);
+        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
+        talentCompanyResearch.results = normalizedResults;
         if (!talentCompanyResearch.results.length) talentCompanyResearch.error = '没有得到可用的目标公司，请调整人才范围后重试';
       } catch (error) {
+        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
         talentCompanyResearch.error = error.message || '目标公司挖掘失败，请重试';
       } finally {
+        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
         talentCompanyResearch.loading = false;
       }
     }
@@ -11482,6 +11499,7 @@ const vueAppConfig = {
     }
     async function generateTalentCompanyBdPlan(result) {
       if (!result?.name || talentCompanyResearch.bdLoadingCompanyName) return;
+      const requestGeneration = ++talentCompanyResearch.requestGeneration;
       talentCompanyResearch.bdLoadingCompanyName = result.name;
       try {
         const candidates = talentCompanyResearchCandidates.value.filter(candidate => result.candidateIds.includes(candidate.id));
@@ -11500,10 +11518,13 @@ const vueAppConfig = {
         });
         const steps = Array.isArray(parsed?.steps) ? parsed.steps.map(item => String(item || '').trim()).filter(Boolean) : [];
         const talkingPoints = Array.isArray(parsed?.talkingPoints) ? parsed.talkingPoints.map(item => String(item || '').trim()).filter(Boolean) : [];
+        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
         result.bdPlan = [String(parsed?.summary || '').trim(), ...steps.map(item => `- ${item}`), ...talkingPoints.map(item => `沟通要点：${item}`)].filter(Boolean).join('\n');
       } catch (error) {
+        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
         talentCompanyResearch.error = error.message || 'BD 方案生成失败，请重试';
       } finally {
+        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
         talentCompanyResearch.bdLoadingCompanyName = '';
       }
     }
