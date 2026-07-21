@@ -4558,10 +4558,10 @@
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="openTalentJobMatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">岗位匹配</button><button type="button" @click="openTalentCompanyResearch" class="px-4 py-2 rounded-lg border border-violet-200 text-violet-700 text-sm font-semibold hover:bg-violet-50">目标公司挖掘</button><button type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
+          <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="openTalentJobMatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">岗位匹配</button><button v-if="canConfigureAi" type="button" @click="openTalentCompanyResearch" class="px-4 py-2 rounded-lg border border-violet-200 text-violet-700 text-sm font-semibold hover:bg-violet-50">目标公司挖掘</button><button v-if="canWrite && canConfigureAi" type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button v-if="canWrite" @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== 'closed').map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-6 gap-2"><input v-model="candidateFilters.query" type="search" placeholder="搜索姓名、公司或技能" class="lg:col-span-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><select v-model="candidateFilters.category" aria-label="按分类筛选人才" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部分类</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select><select v-model="candidateFilters.direction" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部人才方向</option><option v-for="direction in candidateDirections" :key="direction" :value="direction">{{ direction }}</option></select><select v-model="candidateFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select v-model="candidateFilters.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select></div>
-          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== 'closed').length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== 'closed').length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button v-if="canWrite" @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'candidate' && selectedCandidate" class="wb-v2-candidate-detail mx-auto space-y-4">
@@ -4598,7 +4598,7 @@
               <dl class="wb-v2-candidate-info grid sm:grid-cols-2 text-sm">
                 <div><dt class="font-medium text-slate-500">技术栈</dt><dd class="mt-2 leading-6 text-slate-700">{{ (selectedCandidate.skills || selectedCandidate.keywords || []).join('、') || '待补充' }}</dd></div>
                 <div><dt class="font-medium text-slate-500">人才方向</dt><dd class="mt-2 flex flex-wrap gap-1.5"><span v-for="direction in selectedCandidate.directions || []" :key="direction" class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">{{ direction }}</span><span v-if="!(selectedCandidate.directions || []).length" class="leading-6 text-slate-700">待识别</span></dd></div>
-                <div class="sm:col-span-2"><dt class="font-medium text-slate-500">人才分类</dt><dd class="mt-2 flex flex-wrap gap-2"><label v-for="category in talentCategoryPaths" :key="category.id" class="cursor-pointer"><input :checked="(selectedCandidate.categoryIds || []).includes(category.id)" @change="updateSelectedCandidateCategories(category.id, $event.target.checked)" type="checkbox" class="sr-only"><span :class="['inline-flex px-2.5 py-1 rounded-full border text-xs font-medium transition', (selectedCandidate.categoryIds || []).includes(category.id) ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300']">{{ category.path }}</span></label><span v-if="!talentCategoryPaths.length" class="text-xs text-slate-400">请先在人才库创建分类</span></dd></div>
+                <div class="sm:col-span-2"><dt class="font-medium text-slate-500">人才分类</dt><dd class="mt-2 flex flex-wrap gap-2"><label v-for="category in talentCategoryPaths" :key="category.id" :class="canWrite ? 'cursor-pointer' : 'cursor-default'"><input :checked="(selectedCandidate.categoryIds || []).includes(category.id)" :disabled="!canWrite" @change="updateSelectedCandidateCategories(category.id, $event.target.checked)" type="checkbox" class="sr-only"><span :class="['inline-flex px-2.5 py-1 rounded-full border text-xs font-medium transition', (selectedCandidate.categoryIds || []).includes(category.id) ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300']">{{ category.path }}</span></label><span v-if="!talentCategoryPaths.length" class="text-xs text-slate-400">请先在人才库创建分类</span></dd></div>
                 <div><dt class="font-medium text-slate-500">沟通人</dt><dd class="mt-2 leading-6 text-slate-700">{{ selectedCandidate.owner || '未分配' }}</dd></div>
                 <div><dt class="font-medium text-slate-500">联系方式</dt><dd class="mt-2 leading-6 text-slate-700">{{ selectedCandidate.phone || selectedCandidate.email || '待补充' }}</dd></div>
               </dl>
@@ -5516,7 +5516,7 @@
 
   <!-- 统一简历入库：批量 / 拖拽与直接录入共用同一入口 -->
   <teleport to="body">
-    <div v-if="batchUpload.open" aria-label="上传简历" class="fixed inset-0 z-[115] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="batchUpload.open = false">
+    <div v-if="batchUpload.open && canWrite" aria-label="上传简历" class="fixed inset-0 z-[115] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="batchUpload.open = false">
       <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-2xl">
         <div class="px-6 py-5 border-b border-slate-100 flex justify-between gap-4">
           <div>
@@ -5553,7 +5553,7 @@
               <label class="text-sm text-slate-600">城市<input v-model="talentIntakeDirectForm.city" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
             </div>
             <div><p class="text-sm text-slate-600 mb-2">人才分类</p><div v-if="talentCategoryPaths.length" class="flex flex-wrap gap-2"><label v-for="category in talentCategoryPaths" :key="category.id" class="cursor-pointer"><input v-model="talentIntakeDirectForm.categoryIds" type="checkbox" :value="category.id" class="sr-only"><span :class="['inline-flex px-2.5 py-1 rounded-full border text-xs font-medium transition', (talentIntakeDirectForm.categoryIds || []).includes(category.id) ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300']">{{ category.path }}</span></label></div><p v-else class="text-xs text-slate-400">暂无分类，可先在人才库中创建。</p></div>
-            <div><div class="flex items-center justify-between"><span class="text-sm text-slate-600">简历文本</span><button type="button" @click="autoFillTalentIntakeDirectInfo" :disabled="talentIntakeDirectExtracting || !talentIntakeDirectForm.rawText.trim()" class="text-xs text-emerald-700 hover:text-emerald-800 disabled:text-slate-300 font-semibold">{{ talentIntakeDirectExtracting ? '识别中…' : '从文本提取信息' }}</button></div><textarea v-model="talentIntakeDirectForm.rawText" rows="6" placeholder="粘贴 BOSS、猎聘或其他简历文本" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></textarea></div>
+            <div><div class="flex items-center justify-between"><span class="text-sm text-slate-600">简历文本</span><button v-if="canConfigureAi" type="button" @click="autoFillTalentIntakeDirectInfo" :disabled="talentIntakeDirectExtracting || !talentIntakeDirectForm.rawText.trim()" class="text-xs text-emerald-700 hover:text-emerald-800 disabled:text-slate-300 font-semibold">{{ talentIntakeDirectExtracting ? '识别中…' : '从文本提取信息' }}</button></div><textarea v-model="talentIntakeDirectForm.rawText" rows="6" placeholder="粘贴 BOSS、猎聘或其他简历文本" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></textarea></div>
             <p v-if="talentIntakeDirectError" class="text-sm text-red-600">{{ talentIntakeDirectError }}</p>
             <div class="flex justify-end"><button type="button" @click="saveTalentIntakeDirectEntry" :disabled="talentIntakeDirectExtracting || candidateUpload.loading" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold disabled:opacity-50">保存人才</button></div>
           </div>
@@ -5629,11 +5629,11 @@
       <div class="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-xl shadow-2xl">
         <div class="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4"><div><p class="text-xs font-semibold text-orange-700">人才库</p><h2 class="text-xl font-bold mt-1">分类管理</h2><p class="text-sm text-slate-500 mt-1">主分类可包含子分类；一个人才可同时属于多个分类。</p></div><button @click="talentCategoryManager.open = false" aria-label="关闭分类管理" class="w-8 h-8 rounded-lg bg-slate-100">×</button></div>
         <div class="p-6 space-y-4">
-          <form @submit.prevent="addTalentMainCategory" class="flex gap-2"><input v-model="talentCategoryManager.mainName" aria-label="新主分类名称" placeholder="新增主分类，例如：技术" class="min-w-0 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><button class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">新增主分类</button></form>
+          <form v-if="canWrite" @submit.prevent="addTalentMainCategory" class="flex gap-2"><input v-model="talentCategoryManager.mainName" aria-label="新主分类名称" placeholder="新增主分类，例如：技术" class="min-w-0 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><button class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">新增主分类</button></form>
           <div v-if="!talentCategories.length" class="py-8 text-center text-sm text-slate-400">暂无分类，请先新增主分类。</div>
           <section v-for="(category, categoryIndex) in talentCategories" :key="category.id" class="rounded-xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center gap-2 px-4 py-3 bg-slate-50"><b class="min-w-0 flex-1 text-sm text-slate-800">{{ category.name }}</b><button type="button" @click="moveTalentCategory(category.id, null, -1)" :disabled="categoryIndex === 0" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="主分类上移">↑</button><button type="button" @click="moveTalentCategory(category.id, null, 1)" :disabled="categoryIndex === talentCategories.length - 1" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="主分类下移">↓</button><button type="button" @click="renameTalentCategory(category.id)" class="px-2 py-1 text-xs rounded border border-slate-200">改名</button><button type="button" @click="deleteTalentCategory(category.id)" class="px-2 py-1 text-xs rounded border border-rose-200 text-rose-600">删除</button></div>
-            <div class="px-4 py-3 space-y-2"><div v-for="(subCategory, subIndex) in category.subCategories || []" :key="subCategory.id" class="flex items-center gap-2 text-sm"><span class="min-w-0 flex-1 text-slate-600">{{ subCategory.name }}</span><button type="button" @click="moveTalentCategory(subCategory.id, category.id, -1)" :disabled="subIndex === 0" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="子分类上移">↑</button><button type="button" @click="moveTalentCategory(subCategory.id, category.id, 1)" :disabled="subIndex === (category.subCategories || []).length - 1" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="子分类下移">↓</button><button type="button" @click="renameTalentCategory(subCategory.id)" class="px-2 py-1 text-xs rounded border border-slate-200">改名</button><button type="button" @click="deleteTalentCategory(subCategory.id)" class="px-2 py-1 text-xs rounded border border-rose-200 text-rose-600">删除</button></div><button type="button" @click="addTalentSubCategory(category.id)" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">+ 新增子分类</button></div>
+            <div class="flex items-center gap-2 px-4 py-3 bg-slate-50"><b class="min-w-0 flex-1 text-sm text-slate-800">{{ category.name }}</b><template v-if="canWrite"><button type="button" @click="moveTalentCategory(category.id, null, -1)" :disabled="categoryIndex === 0" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="主分类上移">↑</button><button type="button" @click="moveTalentCategory(category.id, null, 1)" :disabled="categoryIndex === talentCategories.length - 1" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="主分类下移">↓</button><button type="button" @click="renameTalentCategory(category.id)" class="px-2 py-1 text-xs rounded border border-slate-200">改名</button><button type="button" @click="deleteTalentCategory(category.id)" class="px-2 py-1 text-xs rounded border border-rose-200 text-rose-600">删除</button></template></div>
+            <div class="px-4 py-3 space-y-2"><div v-for="(subCategory, subIndex) in category.subCategories || []" :key="subCategory.id" class="flex items-center gap-2 text-sm"><span class="min-w-0 flex-1 text-slate-600">{{ subCategory.name }}</span><template v-if="canWrite"><button type="button" @click="moveTalentCategory(subCategory.id, category.id, -1)" :disabled="subIndex === 0" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="子分类上移">↑</button><button type="button" @click="moveTalentCategory(subCategory.id, category.id, 1)" :disabled="subIndex === (category.subCategories || []).length - 1" class="px-2 py-1 text-xs rounded border border-slate-200 disabled:opacity-30" aria-label="子分类下移">↓</button><button type="button" @click="renameTalentCategory(subCategory.id)" class="px-2 py-1 text-xs rounded border border-slate-200">改名</button><button type="button" @click="deleteTalentCategory(subCategory.id)" class="px-2 py-1 text-xs rounded border border-rose-200 text-rose-600">删除</button></template></div><button v-if="canWrite" type="button" @click="addTalentSubCategory(category.id)" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">+ 新增子分类</button></div>
           </section>
         </div>
         <div class="px-6 py-4 border-t border-slate-100 flex justify-end"><button @click="talentCategoryManager.open = false" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">完成</button></div>
@@ -5668,7 +5668,7 @@
             <label class="block text-sm font-medium text-slate-700 md:col-span-2">粘贴 JD<textarea v-model="talentJobMatch.temporary.description" rows="5" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm leading-relaxed" placeholder="粘贴岗位职责、任职要求和技能关键词。系统会从现有人才技能中识别 JD 已提及的技能后评分。"></textarea></label>
           </div>
           <div class="flex justify-end"><button type="button" @click="runTalentJobMatch" :disabled="!canRunTalentJobMatch" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50">开始匹配</button></div>
-          <div v-if="talentJobMatch.hasRun" class="border-t border-slate-100 pt-5"><p class="text-sm text-slate-500">共 {{ talentJobMatchResults.length }} 位人才{{ talentJobMatch.categoryId !== 'all' ? '符合当前分类范围' : '' }}。</p><div v-for="match in talentJobMatchResults" :key="match.candidateId" class="mt-3 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row gap-4 sm:items-center"><div class="min-w-0 flex-1"><button type="button" @click="openCandidateDetail(match.candidateId); closeTalentJobMatch()" class="font-bold text-left hover:text-emerald-700">{{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.name || '人才已删除' }}</button><p class="text-xs text-slate-500 mt-1">{{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.currentCompany || '公司待补充' }} · {{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.currentTitle || '职位待补充' }}</p><p class="text-xs text-slate-600 mt-2">{{ match.reason }}</p><p v-if="match.gaps.length" class="text-xs text-amber-700 mt-1">{{ match.gaps.join('；') }}</p></div><strong class="text-xl text-emerald-700">{{ match.score }}</strong><button v-if="talentJobMatch.mode === 'existing'" type="button" @click="createTalentJobMatchApplication(match)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold">创建推进</button><span v-else class="text-xs text-slate-400">临时 JD 不创建推进</span></div><p v-if="!talentJobMatchResults.length" class="py-8 text-center text-sm text-slate-400">当前范围没有可匹配人才。</p></div>
+          <div v-if="talentJobMatch.hasRun" class="border-t border-slate-100 pt-5"><p class="text-sm text-slate-500">共 {{ talentJobMatchResults.length }} 位人才{{ talentJobMatch.categoryId !== 'all' ? '符合当前分类范围' : '' }}。</p><div v-for="match in talentJobMatchResults" :key="match.candidateId" class="mt-3 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row gap-4 sm:items-center"><div class="min-w-0 flex-1"><button type="button" @click="openCandidateDetail(match.candidateId); closeTalentJobMatch()" class="font-bold text-left hover:text-emerald-700">{{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.name || '人才已删除' }}</button><p class="text-xs text-slate-500 mt-1">{{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.currentCompany || '公司待补充' }} · {{ workbenchV2.candidates.find(candidate => candidate.id === match.candidateId)?.currentTitle || '职位待补充' }}</p><p class="text-xs text-slate-600 mt-2">{{ match.reason }}</p><p v-if="match.gaps.length" class="text-xs text-amber-700 mt-1">{{ match.gaps.join('；') }}</p></div><strong class="text-xl text-emerald-700">{{ match.score }}</strong><button v-if="canWrite && talentJobMatch.mode === 'existing'" type="button" @click="createTalentJobMatchApplication(match)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold">创建推进</button><span v-else-if="talentJobMatch.mode !== 'existing'" class="text-xs text-slate-400">临时 JD 不创建推进</span></div><p v-if="!talentJobMatchResults.length" class="py-8 text-center text-sm text-slate-400">当前范围没有可匹配人才。</p></div>
         </div>
       </section>
     </div>
@@ -5687,13 +5687,13 @@
             <label class="block text-sm font-medium text-slate-700">人才范围
               <select v-model="talentCompanyResearch.categoryId" class="mt-1.5 w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm"><option value="all">沿用当前筛选（全部分类）</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select>
             </label>
-            <button type="button" @click="runTalentCompanyResearch" :disabled="talentCompanyResearch.loading" class="px-4 py-2 rounded-lg bg-violet-700 text-white text-sm font-semibold disabled:opacity-50">{{ talentCompanyResearch.loading ? '挖掘中…' : '开始挖掘' }}</button>
+            <button type="button" @click="runTalentCompanyResearch" :disabled="!canConfigureAi || talentCompanyResearch.loading" class="px-4 py-2 rounded-lg bg-violet-700 text-white text-sm font-semibold disabled:opacity-50">{{ talentCompanyResearch.loading ? '挖掘中…' : '开始挖掘' }}</button>
           </div>
           <p class="text-xs text-slate-500">当前将分析 {{ talentCompanyResearchCandidates.length }} 位人才；其当前公司会自动排除，不作为目标公司推荐。</p>
           <p v-if="talentCompanyResearch.error" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ talentCompanyResearch.error }}</p>
           <div v-if="talentCompanyResearch.results.length" class="border-t border-slate-100 pt-5 space-y-3">
             <article v-for="result in talentCompanyResearch.results" :key="result.name" class="border border-slate-200 rounded-xl p-4">
-              <div class="flex flex-col sm:flex-row sm:items-start gap-3"><div class="min-w-0 flex-1"><h3 class="font-bold">{{ result.name }}</h3><p class="text-xs text-violet-700 mt-1">{{ result.industry || '行业待确认' }}</p><p class="text-sm text-slate-600 mt-2">{{ result.reason || '推荐理由待补充' }}</p><p class="text-xs text-slate-500 mt-2">关联人才：<button v-for="candidateId in result.candidateIds" :key="candidateId" type="button" @click="openCandidateDetail(candidateId); closeTalentCompanyResearch()" class="mr-2 text-emerald-700 hover:underline">{{ workbenchV2.candidates.find(candidate => candidate.id === candidateId)?.name || candidateId }}</button><span v-if="!result.candidateIds.length">未关联到当前范围的人才</span></p></div><div class="flex flex-wrap gap-2 sm:justify-end"><button v-if="canWrite" type="button" @click="createCompanyFromTalentResearch(result)" class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold">创建公司</button><button type="button" @click="generateTalentCompanyBdPlan(result)" :disabled="!!talentCompanyResearch.bdLoadingCompanyName" class="px-3 py-1.5 rounded-lg border border-violet-200 text-violet-700 text-xs font-semibold disabled:opacity-50">{{ talentCompanyResearch.bdLoadingCompanyName === result.name ? '生成中…' : '生成 BD 方案' }}</button></div></div>
+              <div class="flex flex-col sm:flex-row sm:items-start gap-3"><div class="min-w-0 flex-1"><h3 class="font-bold">{{ result.name }}</h3><p class="text-xs text-violet-700 mt-1">{{ result.industry || '行业待确认' }}</p><p class="text-sm text-slate-600 mt-2">{{ result.reason || '推荐理由待补充' }}</p><p class="text-xs text-slate-500 mt-2">关联人才：<button v-for="candidateId in result.candidateIds" :key="candidateId" type="button" @click="openCandidateDetail(candidateId); closeTalentCompanyResearch()" class="mr-2 text-emerald-700 hover:underline">{{ workbenchV2.candidates.find(candidate => candidate.id === candidateId)?.name || candidateId }}</button><span v-if="!result.candidateIds.length">未关联到当前范围的人才</span></p></div><div class="flex flex-wrap gap-2 sm:justify-end"><button v-if="canWrite" type="button" @click="createCompanyFromTalentResearch(result)" class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold">创建公司</button><button v-if="canConfigureAi" type="button" @click="generateTalentCompanyBdPlan(result)" :disabled="!!talentCompanyResearch.bdLoadingCompanyName" class="px-3 py-1.5 rounded-lg border border-violet-200 text-violet-700 text-xs font-semibold disabled:opacity-50">{{ talentCompanyResearch.bdLoadingCompanyName === result.name ? '生成中…' : '生成 BD 方案' }}</button></div></div>
               <pre v-if="result.bdPlan" class="mt-3 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">{{ result.bdPlan }}</pre>
             </article>
           </div>
@@ -11214,6 +11214,16 @@ const vueAppConfig = {
       saving: '保存中', success: '成功', skipped: '已跳过', error: '失败', cancelled: '已取消',
     };
     const batchStatusLabel = (s) => BATCH_STATUS_LABEL[s] || s;
+    function requireTalentWritePermission() {
+      if (canWrite) return true;
+      showToast('当前账号仅可查看，无法修改人才库', 'error');
+      return false;
+    }
+    function requireTalentAiPermission() {
+      if (canConfigureAi) return true;
+      showToast('当前账号无 AI 功能权限', 'error');
+      return false;
+    }
     const batchDeps = {
       bundle: workbenchV2,
       parseFile: async (task) => readAndParseResumeFile(task.file, { persistBlob: false }),
@@ -11229,6 +11239,7 @@ const vueAppConfig = {
       persist: saveWorkbenchV2,
     };
     function openBatchUpload() {
+      if (!requireTalentWritePermission()) return;
       batchUpload.open = true;
       globalCreateMenu.value = false;
     }
@@ -11244,12 +11255,14 @@ const vueAppConfig = {
       talentIntakeDirectError.value = '';
     }
     function openTalentIntake() {
+      if (!requireTalentWritePermission()) return;
       if (!candidateUpload.batchTaskId) resetCandidateUploadForm();
       resetTalentIntakeDirectForm();
       talentIntakeDirectEntryOpen.value = false;
       openBatchUpload();
     }
     async function saveTalentIntakeDirectEntry() {
+      if (!requireTalentWritePermission()) return;
       Object.assign(candidateUpload.form, talentIntakeDirectForm);
       candidateUpload.error = '';
       candidateUpload.open = true;
@@ -11260,22 +11273,24 @@ const vueAppConfig = {
       }
     }
     function addBatchFiles(fileList) {
+      if (!requireTalentWritePermission()) return;
       WorkbenchV2.batchAddFiles(batchUpload, Array.from(fileList || []));
       WorkbenchV2.batchPump(batchUpload, batchDeps); // 拖入/选择后立即开始处理；"全部开始"可再次触发续跑
     }
-    function startBatchAll() { batchUpload.running = true; WorkbenchV2.batchPump(batchUpload, batchDeps); }
-    function retryBatchFailed() { WorkbenchV2.batchRetryFailed(batchUpload); WorkbenchV2.batchPump(batchUpload, batchDeps); }
+    function startBatchAll() { if (!requireTalentWritePermission()) return; batchUpload.running = true; WorkbenchV2.batchPump(batchUpload, batchDeps); }
+    function retryBatchFailed() { if (!requireTalentWritePermission()) return; WorkbenchV2.batchRetryFailed(batchUpload); WorkbenchV2.batchPump(batchUpload, batchDeps); }
     function retryBatchTask(id) {
+      if (!requireTalentWritePermission()) return;
       const t = batchUpload.tasks.find(x => x.id === id);
       if (t && t.status === 'error') { t.status = 'queued'; t.error = ''; t.cancelled = false; WorkbenchV2.batchPump(batchUpload, batchDeps); }
     }
-    function clearBatchSucceeded() { WorkbenchV2.batchClearSucceeded(batchUpload); }
-    function cancelBatchQueued() { WorkbenchV2.batchCancelQueued(batchUpload); }
-    function cancelBatchTask(id) { WorkbenchV2.batchCancelTask(batchUpload, id); }
-    function removeBatchTask(id) { batchUpload.tasks = batchUpload.tasks.filter(t => t.id !== id); }
-    function resolveBatchDuplicate(taskId, action) { WorkbenchV2.batchResolveDuplicate(batchUpload, taskId, action, batchDeps); }
-    function saveBatchNeedsReview(taskId, name) { WorkbenchV2.batchSaveNeedsReview(batchUpload, taskId, name, batchDeps); }
-    function skipBatchTask(taskId) { const t = batchUpload.tasks.find(x => x.id === taskId); if (t) t.status = 'skipped'; }
+    function clearBatchSucceeded() { if (!requireTalentWritePermission()) return; WorkbenchV2.batchClearSucceeded(batchUpload); }
+    function cancelBatchQueued() { if (!requireTalentWritePermission()) return; WorkbenchV2.batchCancelQueued(batchUpload); }
+    function cancelBatchTask(id) { if (!requireTalentWritePermission()) return; WorkbenchV2.batchCancelTask(batchUpload, id); }
+    function removeBatchTask(id) { if (!requireTalentWritePermission()) return; batchUpload.tasks = batchUpload.tasks.filter(t => t.id !== id); }
+    function resolveBatchDuplicate(taskId, action) { if (!requireTalentWritePermission()) return; WorkbenchV2.batchResolveDuplicate(batchUpload, taskId, action, batchDeps); }
+    function saveBatchNeedsReview(taskId, name) { if (!requireTalentWritePermission()) return; WorkbenchV2.batchSaveNeedsReview(batchUpload, taskId, name, batchDeps); }
+    function skipBatchTask(taskId) { if (!requireTalentWritePermission()) return; const t = batchUpload.tasks.find(x => x.id === taskId); if (t) t.status = 'skipped'; }
     // 复用现有查重四选弹窗：把批量任务装入 candidateUpload 代理上下文，处理完再写回任务
     function finalizeBatchProxy(result, taskId) {
       const id = taskId || candidateUpload.batchTaskId;
@@ -11290,6 +11305,7 @@ const vueAppConfig = {
       WorkbenchV2.batchPump(batchUpload, batchDeps);
     }
     async function resolveBatchProxy(action) {
+      if (!requireTalentWritePermission()) return null;
       const taskId = candidateUpload.batchTaskId;
       await WorkbenchV2.batchResolveDuplicate(batchUpload, taskId, action, batchDeps);
       const task = batchUpload.tasks.find(item => item.id === taskId);
@@ -11399,10 +11415,12 @@ const vueAppConfig = {
       talentJobMatch.hasRun = true;
     }
     async function createTalentJobMatchApplication(match) {
+      if (!requireTalentWritePermission()) return;
       if (talentJobMatch.mode !== 'existing' || !talentJobMatch.positionId) return;
       await createApplicationFromMatch(match.candidateId, talentJobMatch.positionId, match);
     }
     function openTalentCompanyResearch() {
+      if (!requireTalentAiPermission()) return;
       ++talentCompanyResearch.requestGeneration;
       ++talentCompanyResearch.bdRequestGeneration;
       talentCompanyResearch.open = true;
@@ -11433,6 +11451,7 @@ const vueAppConfig = {
       })).filter(candidate => candidate.id && candidate.name);
     }
     async function runTalentCompanyResearch() {
+      if (!requireTalentAiPermission()) return;
       const scopedCandidates = talentCompanyResearchCandidates.value;
       const requestGeneration = ++talentCompanyResearch.requestGeneration;
       ++talentCompanyResearch.bdRequestGeneration;
@@ -11492,7 +11511,7 @@ const vueAppConfig = {
       }
     }
     async function createCompanyFromTalentResearch(result) {
-      if (!canWrite || !result?.name) return;
+      if (!requireTalentWritePermission() || !result?.name) return;
       const normalizedName = normalizeCompanyName(result.name);
       const existing = workbenchV2.companies.find(company => normalizeCompanyName(company.name) === normalizedName);
       if (existing) {
@@ -11504,7 +11523,7 @@ const vueAppConfig = {
       await createWorkbenchCompany({ name: result.name, industry: result.industry, status: 'potential' });
     }
     async function generateTalentCompanyBdPlan(result) {
-      if (!result?.name || talentCompanyResearch.bdLoadingCompanyName) return;
+      if (!requireTalentAiPermission() || !result?.name || talentCompanyResearch.bdLoadingCompanyName) return;
       const requestGeneration = talentCompanyResearch.requestGeneration;
       const bdRequestGeneration = ++talentCompanyResearch.bdRequestGeneration;
       talentCompanyResearch.bdLoadingCompanyName = result.name;
@@ -11555,6 +11574,7 @@ const vueAppConfig = {
       talentCategoryManager.open = true;
     }
     async function addTalentMainCategory() {
+      if (!requireTalentWritePermission()) return;
       const name = talentCategoryManager.mainName.trim();
       if (!name) return;
       ensureTalentCategories().push({ id: talentCategoryId('cat'), name, subCategories: [] });
@@ -11562,6 +11582,7 @@ const vueAppConfig = {
       await persistTalentCategories('已新增主分类');
     }
     async function addTalentSubCategory(parentId) {
+      if (!requireTalentWritePermission()) return;
       const name = window.prompt('请输入子分类名称');
       if (!name || !name.trim()) return;
       const parent = ensureTalentCategories().find(item => item.id === parentId);
@@ -11579,6 +11600,7 @@ const vueAppConfig = {
       return null;
     }
     async function renameTalentCategory(categoryId) {
+      if (!requireTalentWritePermission()) return;
       const found = findTalentCategory(categoryId);
       if (!found) return;
       const name = window.prompt('请输入分类名称', found.item.name);
@@ -11587,6 +11609,7 @@ const vueAppConfig = {
       await persistTalentCategories('分类名称已更新');
     }
     async function deleteTalentCategory(categoryId) {
+      if (!requireTalentWritePermission()) return;
       const found = findTalentCategory(categoryId);
       if (!found || !window.confirm(`删除「${found.item.name}」分类？人才不会被删除，已关联的分类标记会被移除。`)) return;
       const removedIds = new Set([categoryId, ...(found.parent ? [] : (found.item.subCategories || []).map(item => item.id))]);
@@ -11595,6 +11618,7 @@ const vueAppConfig = {
       await persistTalentCategories('分类已删除，关联人才已保留');
     }
     async function moveTalentCategory(categoryId, parentId, direction) {
+      if (!requireTalentWritePermission()) return;
       const list = parentId
         ? (ensureTalentCategories().find(item => item.id === parentId)?.subCategories || [])
         : ensureTalentCategories();
@@ -11605,6 +11629,7 @@ const vueAppConfig = {
       await persistTalentCategories('分类顺序已更新');
     }
     async function updateSelectedCandidateCategories(categoryId, checked) {
+      if (!requireTalentWritePermission()) return;
       const candidate = selectedCandidate.value;
       if (!candidate) return;
       const next = new Set(candidate.categoryIds || []);
@@ -12221,6 +12246,7 @@ const vueAppConfig = {
       nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
     function uploadCandidateStandalone() {
+      if (!requireTalentWritePermission()) return;
       resetCandidateUploadForm();
       candidateUpload.open = true;
       globalCreateMenu.value = false;
@@ -12299,6 +12325,7 @@ const vueAppConfig = {
       }
     }
     async function autoFillTalentIntakeDirectInfo() {
+      if (!requireTalentAiPermission()) return;
       talentIntakeDirectError.value = '';
       try {
         await autoFillCandidateInfoFromResume(talentIntakeDirectForm, talentIntakeDirectExtracting);
@@ -12366,6 +12393,7 @@ const vueAppConfig = {
     const batchSmartOrganizing = ref(false);
     const batchDirectionRecognitionProgress = reactive({ done: 0, total: 0 });
     async function batchRecognizeCandidateDirections() {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       if (batchDirectionRecognizing.value) return;
       if (!aiConfig.apiKey) { showToast('请先在设置中配置 DeepSeek API Key', 'error'); return; }
       const targets = filteredWorkbenchCandidates.value.filter(candidate => {
@@ -12433,6 +12461,7 @@ const vueAppConfig = {
     const batchInfoExtracting = ref(false);
     const batchInfoExtractProgress = reactive({ done: 0, total: 0 });
     async function batchExtractCandidateInfo() {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       if (batchInfoExtracting.value) return;
       if (!aiConfig.apiKey) { showToast('请先在设置中配置 DeepSeek API Key', 'error'); return; }
       const targets = filteredWorkbenchCandidates.value.filter(c => {
@@ -12484,6 +12513,7 @@ const vueAppConfig = {
     const batchNameRefilling = ref(false);
     const batchNameRefillProgress = reactive({ done: 0, total: 0 });
     async function batchRefillCandidateNames(skipConfirmation = false) {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       if (batchNameRefilling.value) return;
       if (!aiConfig.apiKey) { showToast('请先在设置中配置 DeepSeek API Key', 'error'); return; }
       const targets = workbenchV2.candidates.filter(c => looksLikeFileName(c.name) && getCandidateResumeText(c).length >= 40);
@@ -12518,6 +12548,7 @@ const vueAppConfig = {
       }
     }
     async function runCandidateSmartOrganize() {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       if (batchSmartOrganizing.value) return;
       if (!aiConfig.apiKey) { showToast('请先在设置中配置 DeepSeek API Key', 'error'); return; }
       batchSmartOrganizing.value = true;
@@ -12537,6 +12568,7 @@ const vueAppConfig = {
 
     // 阶段 3：统一入口入库。尊重查重确认：新建/合并/取消。AI 解析无身份不建人。
     async function saveCandidateOnly(forceCreate = false) {
+      if (!requireTalentWritePermission()) return null;
       // 批量代理模式：复用批量引擎的同一套查重/写入逻辑（含同批次合成重复的安全兜底）
       if (candidateUpload.batchTaskId) {
         await resolveBatchProxy(forceCreate ? 'forceCreate' : 'merge');
@@ -12589,6 +12621,7 @@ const vueAppConfig = {
 
     // 阶段 3 查重确认：合并到已有人员（只补充空字段 + 追加简历版本，不覆盖手工字段）
     async function mergeCandidateToExisting() {
+      if (!requireTalentWritePermission()) return;
       if (candidateUpload.batchTaskId) {
         await resolveBatchProxy('merge');
         return;
@@ -12610,6 +12643,7 @@ const vueAppConfig = {
 
     // 阶段 3 查重确认：保存为已有人员的新简历版本（不改任何人才基础资料）
     async function saveAsNewResumeVersion() {
+      if (!requireTalentWritePermission()) return;
       if (candidateUpload.batchTaskId) {
         await resolveBatchProxy('newVersion');
         return;
@@ -12744,6 +12778,7 @@ const vueAppConfig = {
       openCandidateResumeVersion(version, candidate);
     }
     async function createApplicationsFromUpload() {
+      if (!requireTalentWritePermission()) return;
       const candidateId = candidateUpload.createdId;
       let created = 0;
       candidateUpload.selectedPositionIds.forEach(positionId => {
@@ -12755,6 +12790,7 @@ const vueAppConfig = {
       if (created && await saveWorkbenchV2()) showToast(`已创建 ${created} 条推进记录`);
     }
     async function createApplicationFromMatch(candidateId, positionId, match = {}) {
+      if (!requireTalentWritePermission()) return null;
       try {
         const application = WorkbenchV2.createApplication(workbenchV2, {
           candidateId, positionId, matchScore: match.score ?? null, matchReason: match.reason || '',
