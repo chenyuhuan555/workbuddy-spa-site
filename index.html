@@ -4303,7 +4303,7 @@
         </div>
 
         <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><div><h1 class="text-2xl font-bold">公司看板</h1><p class="text-sm text-slate-500 mt-1">以客户为中心查看岗位需求、候选人推进和业务风险。</p></div><button v-if="canWrite" @click="openCompanyCreate" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800">＋ 新建公司</button></div>
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><div><h1 class="text-2xl font-bold">公司看板</h1><p class="text-sm text-slate-500 mt-1">以客户为中心查看岗位需求、候选人推进和业务风险。</p></div><div v-if="canWrite" class="flex flex-wrap gap-2"><button v-if="canConfigureAi" @click="runBulkPositionSkillsExtraction" :disabled="positionSkillsBatch.running" class="px-4 py-2 rounded-lg border border-indigo-200 text-indigo-700 text-sm font-semibold hover:bg-indigo-50 disabled:text-slate-400">{{ positionSkillsBatch.running ? `AI 重提取 ${positionSkillsBatch.completed}/${positionSkillsBatch.total}` : 'AI 重新提取全部岗位关键词' }}</button><button @click="openCompanyCreate" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800">＋ 新建公司</button></div></div>
           <form v-if="companyCreate.open && canWrite" @submit.prevent="createWorkbenchCompany" class="bg-white border border-emerald-200 rounded-xl p-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <input v-model="companyCreate.name" required autofocus placeholder="公司名称 *" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
             <input v-model="companyCreate.industry" placeholder="行业" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
@@ -11153,6 +11153,7 @@ const vueAppConfig = {
     const companyPositionCreate = reactive({ open: false, title: '', city: '', salary: '', owner: '' });
     const positionDescriptionEdit = reactive({ open: false, value: '', city: '', salary: '', owner: '', skills: '' });
     const positionSkillsExtracting = ref(false);
+    const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, current: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const talentCategoryManager = reactive({ open: false, mainName: '' });
     const talentJobMatch = reactive({
@@ -18592,31 +18593,38 @@ ${ocrText}`
       positionDescriptionEdit.open = false;
       showToast(saved ? '岗位信息与职责已保存' : '岗位信息与职责已暂存到浏览器');
     }
+    function normalizePositionSkills(values) {
+      return Array.from(new Set((Array.isArray(values) ? values : [])
+        .map(item => String(item || '').trim())
+        .filter(Boolean))).slice(0, 20);
+    }
+    async function extractPositionSkillsForPosition(position) {
+      const description = String(position.description || '').trim();
+      if (!description) throw new Error('岗位职责与要求为空');
+      const parsed = await callDeepSeekWithProgress({
+        task: 'position-match-skill-extraction',
+        getApiKey: requireDeepSeekApiKey,
+        temperature: 0.1,
+        timeout: 20000,
+        schema: 'json',
+        messages: [{
+          role: 'system',
+          content: '你是猎头岗位匹配关键词提取助手。只输出严格 JSON，不要解释。'
+        }, {
+          role: 'user',
+          content: `从岗位信息中提取 6-16 个用于人才匹配的关键词。输出 JSON：\n{\n  "skills": ["关键词1", "关键词2"]\n}\n\n规则：\n- 优先提取核心职能、专业技能、行业经验、管理对象、业务场景、工具和方法论\n- 不要输出薪资、城市、公司名、泛泛的“沟通能力”等软性表述\n- 只依据提供信息，不确定时宁可少输出\n\n岗位：${position.title || '未知'}\n地点：${position.city || '未知'}\n职责与要求：\n${description.slice(0, 7000)}`
+        }]
+      });
+      const skills = normalizePositionSkills(parsed?.skills);
+      if (!skills.length) throw new Error('未能提取有效的匹配关键词');
+      return skills;
+    }
     async function extractPositionSkillsWithDeepSeek() {
       if (!canWrite || !canConfigureAi || !selectedPosition.value || positionSkillsExtracting.value) return;
       const position = selectedPosition.value;
-      const description = String(position.description || '').trim();
-      if (!description) { showToast('请先填写岗位职责与要求，再使用 AI 提取关键词', 'error'); return; }
       positionSkillsExtracting.value = true;
       try {
-        const parsed = await callDeepSeekWithProgress({
-          task: 'position-match-skill-extraction',
-          getApiKey: requireDeepSeekApiKey,
-          temperature: 0.1,
-          timeout: 20000,
-          schema: 'json',
-          messages: [{
-            role: 'system',
-            content: '你是猎头岗位匹配关键词提取助手。只输出严格 JSON，不要解释。'
-          }, {
-            role: 'user',
-            content: `从岗位信息中提取 6-16 个用于人才匹配的关键词。输出 JSON：\n{\n  "skills": ["关键词1", "关键词2"]\n}\n\n规则：\n- 优先提取核心职能、专业技能、行业经验、管理对象、业务场景、工具和方法论\n- 不要输出薪资、城市、公司名、泛泛的“沟通能力”等软性表述\n- 只依据提供信息，不确定时宁可少输出\n\n岗位：${position.title || '未知'}\n地点：${position.city || '未知'}\n职责与要求：\n${description.slice(0, 7000)}`
-          }]
-        });
-        const skills = Array.from(new Set((Array.isArray(parsed?.skills) ? parsed.skills : [])
-          .map(item => String(item || '').trim())
-          .filter(Boolean))).slice(0, 20);
-        if (!skills.length) throw new Error('未能提取有效的匹配关键词');
+        const skills = await extractPositionSkillsForPosition(position);
         position.skills = skills;
         position.updatedAt = new Date().toISOString();
         const saved = await saveWorkbenchV2();
@@ -18626,6 +18634,40 @@ ${ocrText}`
         showToast(`AI 提取失败：${error.message || '请检查 AI 配置后重试'}`, 'error');
       } finally {
         positionSkillsExtracting.value = false;
+      }
+    }
+    async function runBulkPositionSkillsExtraction() {
+      if (!canWrite || !canConfigureAi || positionSkillsBatch.running) return;
+      const positions = workbenchV2.positions.filter(position => String(position.description || '').trim());
+      if (!positions.length) { showToast('暂无包含岗位职责的岗位可提取关键词', 'error'); return; }
+      Object.assign(positionSkillsBatch, { running: true, total: positions.length, completed: 0, succeeded: 0, failed: 0, current: '' });
+      try {
+        for (const position of positions) {
+          positionSkillsBatch.current = position.title || '未命名岗位';
+          try {
+            const skills = await extractPositionSkillsForPosition(position);
+            position.skills = skills;
+            position.updatedAt = new Date().toISOString();
+            positionSkillsBatch.succeeded += 1;
+          } catch (error) {
+            positionSkillsBatch.failed += 1;
+            console.warn('[workbenchV2] 岗位关键词提取失败:', position.id, error.message);
+          } finally {
+            positionSkillsBatch.completed += 1;
+          }
+        }
+        if (positionSkillsBatch.succeeded) {
+          const saved = await saveWorkbenchV2();
+          if (cloudReady) schedulePush();
+          showToast(saved
+            ? `全部岗位关键词提取完成：成功 ${positionSkillsBatch.succeeded}，失败 ${positionSkillsBatch.failed}`
+            : `关键词已暂存：成功 ${positionSkillsBatch.succeeded}，失败 ${positionSkillsBatch.failed}`);
+        } else {
+          showToast(`未能提取有效关键词：失败 ${positionSkillsBatch.failed}`, 'error');
+        }
+      } finally {
+        positionSkillsBatch.running = false;
+        positionSkillsBatch.current = '';
       }
     }
 
@@ -23451,14 +23493,14 @@ ${clipped}`
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
-      companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
+      companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
       candidateFilters, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
       filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
-      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek,
+      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
       batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, openTalentIntake, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
