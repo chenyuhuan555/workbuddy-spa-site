@@ -12915,6 +12915,10 @@ const vueAppConfig = {
           console.warn('[diag] V2 localStorage 备用快照读取失败:', fallbackError.message);
           return false;
         });
+      }).then(async loaded => {
+        const categoriesSeeded = WorkbenchV2.seedDefaultTalentCategories(workbenchV2);
+        if (categoriesSeeded) await saveWorkbenchV2();
+        return loaded;
       });
     }
 
