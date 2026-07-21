@@ -12956,6 +12956,19 @@ const vueAppConfig = {
       }
     }
 
+    async function reconcileMigratedPositionDescriptions() {
+      if (window.WorkBuddyAccess && !window.WorkBuddyAccess.canWrite) return false;
+      const updatedIds = WorkbenchV2.reconcilePositionDescriptions(workbenchV2, {
+        columns: JSON.parse(JSON.stringify(columns)),
+      });
+      if (!updatedIds.length) return false;
+      const saved = await saveWorkbenchV2();
+      if (!saved) return false;
+      if (cloudReady) schedulePush();
+      console.info('[workbenchV2] 已从旧岗位数据补齐职责:', updatedIds.length);
+      return true;
+    }
+
     function previewWorkbenchMigration() {
       migrationDialog.error = '';
       migrationDialog.preview = WorkbenchV2.previewMigration({
@@ -15548,6 +15561,7 @@ ${ocrText}`
       await localLoad(); // 第一优先级：立即展示本地缓存
       if (migrateCandidatePipelineData()) localSave();
       await loadWorkbenchV2(); // 加载独立公司、候选人和推进记录
+      await reconcileMigratedPositionDescriptions();
       await initializePrivateTodos(); // 加载当前账号私有待办，并由管理员认领旧共享待办
       console.log('[diag] onMounted: loadWorkbenchV2 完成后 workbenchV2 =', {
         companies: workbenchV2.companies.length,
@@ -15564,6 +15578,7 @@ ${ocrText}`
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
       await initCloud(); // 登录后以 workspace_state 作为共享业务数据源
+      await reconcileMigratedPositionDescriptions();
       appHydrating = false;
       updateActiveNavFromScroll();
       window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });

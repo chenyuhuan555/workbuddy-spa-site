@@ -38,6 +38,37 @@ test('validateBundle 拒绝错误版本且补全 resumeVersions', () => {
   assert.equal(bundle.candidates[0].resumeVersions[0].rawText, '十年后端经验');
 });
 
+test('迁移旧岗位时保留 detail 岗位职责，并只为既有空职责安全回填', () => {
+  const legacy = {
+    columns: [{
+      name: '顾问A',
+      jobs: [{
+        id: 'company_legacy_1',
+        company: '测试科技',
+        positions: [{ id: 'position_legacy_1', name: '算法工程师', detail: '负责模型训练与部署。' }],
+      }],
+    }],
+  };
+  const preview = WorkbenchV2.previewMigration(legacy);
+  assert.equal(preview.bundle.positions[0].description, '负责模型训练与部署。', '新迁移必须读取旧版 detail');
+
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.positions.push(
+    WorkbenchV2.createPosition({ id: 'pos_empty', sourceId: 'position_legacy_1', title: '算法工程师', description: '' }),
+    WorkbenchV2.createPosition({ id: 'pos_written', sourceId: 'position_legacy_1', title: '算法工程师', description: '顾问已更新的职责' }),
+  );
+  const updatedIds = WorkbenchV2.reconcilePositionDescriptions(bundle, legacy);
+  assert.deepEqual(updatedIds, ['pos_empty'], '仅应回填空职责的对应岗位');
+  assert.equal(bundle.positions[0].description, '负责模型训练与部署。');
+  assert.equal(bundle.positions[1].description, '顾问已更新的职责', '不得覆盖已填写的新职责');
+});
+
+test('工作台启动时会持久化回填既有迁移岗位的空职责', () => {
+  assert.match(INDEX_HTML, /async function reconcileMigratedPositionDescriptions\(\)/);
+  assert.match(INDEX_HTML, /WorkbenchV2\.reconcilePositionDescriptions\(workbenchV2, \{\s*columns:/);
+  assert.match(INDEX_HTML, /await reconcileMigratedPositionDescriptions\(\);/);
+});
+
 test('createApplication 建立 talent×position 推进且仅允许一条活跃推进', () => {
   const bundle = WorkbenchV2.createEmptyBundle();
   bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '王五' }));

@@ -201,6 +201,36 @@
     }, {});
   }
 
+  function legacyPositionDescription(position = {}) {
+    return String(position.description || position.jd || position.detail || '').trim();
+  }
+
+  // 旧版岗位职责使用 detail 字段。已完成迁移的 V2 数据只补齐空职责，
+  // 以 sourceId 精确对应，绝不覆盖顾问后来在新版手工维护的内容。
+  function reconcilePositionDescriptions(bundle, legacy = {}) {
+    const legacyDescriptions = new Map();
+    for (const column of legacy.columns || []) {
+      for (const job of column.jobs || []) {
+        for (const position of job.positions || []) {
+          const sourceId = String(position.id || '').trim();
+          const description = legacyPositionDescription(position);
+          if (sourceId && description) legacyDescriptions.set(sourceId, description);
+        }
+      }
+    }
+
+    const updatedIds = [];
+    for (const position of bundle?.positions || []) {
+      if (String(position.description || '').trim()) continue;
+      const description = legacyDescriptions.get(String(position.sourceId || '').trim());
+      if (!description) continue;
+      position.description = description;
+      position.updatedAt = nowIso();
+      updatedIds.push(position.id);
+    }
+    return updatedIds;
+  }
+
   function previewMigration(legacy = {}) {
     const source = copy(legacy);
     const bundle = createEmptyBundle();
@@ -237,7 +267,7 @@
             title: legacyPosition.name || legacyPosition.title || '未命名岗位',
             owner: legacyPosition.owner || column.name || '',
             status: legacyPosition.status || 'open',
-            description: legacyPosition.description || legacyPosition.jd || '',
+            description: legacyPositionDescription(legacyPosition),
             sourceId: legacyPosition.id || '',
           });
           bundle.positions.push(position);
@@ -1004,6 +1034,7 @@
     previewMigration,
     executeMigration,
     rollbackMigration,
+    reconcilePositionDescriptions,
     validateBundle,
     filterCandidates,
     findDuplicateCandidates,
