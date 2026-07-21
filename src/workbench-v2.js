@@ -554,6 +554,29 @@
       : [];
   }
 
+  // 仅为尚无分类目录的既有工作台补入 resume-matrix 默认分类；用户已有目录绝不覆盖。
+  const DEFAULT_TALENT_CATEGORIES = [
+    ['quantum-computing', '量子计算', [['quantum-algorithm', '量子算法'], ['quantum-hardware', '量子硬件'], ['quantum-software', '量子软件/编程'], ['quantum-communication', '量子通信']]],
+    ['embodied-intelligence', '具身智能', [['robot-perception', '机器人感知'], ['motion-control', '运动控制'], ['human-robot-interaction', '人机交互'], ['embodied-llm', '具身大模型']]],
+    ['biomedicine', '生物医药', [['ai-drug-discovery', 'AI制药'], ['gene-editing', '基因编辑'], ['medical-devices', '医疗器械'], ['clinical-research', '临床研究']]],
+    ['nuclear-fusion', '核聚变', [['plasma-physics', '等离子体物理'], ['superconducting-magnets', '超导磁体'], ['laser-ignition', '激光点火'], ['fusion-engineering', '聚变工程']]],
+    ['new-energy', '新能源', [['hydrogen-energy', '氢能'], ['energy-storage', '储能'], ['photovoltaics', '光伏'], ['new-energy-vehicles', '新能源汽车']]],
+    ['artificial-intelligence', '人工智能', [['llm', '大模型/LLM'], ['computer-vision', '计算机视觉'], ['autonomous-driving', '自动驾驶'], ['ai-infrastructure', 'AI基础设施']]],
+    ['frontier-technology-other', '前沿科技（其他）', []],
+  ];
+
+  function seedDefaultTalentCategories(bundle) {
+    if (!bundle) throw new Error('工作台数据不存在');
+    if (!bundle.settings || typeof bundle.settings !== 'object') bundle.settings = {};
+    if (Array.isArray(bundle.settings.talentCategories) && bundle.settings.talentCategories.length > 0) return false;
+    bundle.settings.talentCategories = DEFAULT_TALENT_CATEGORIES.map(([id, name, subCategories]) => ({
+      id,
+      name,
+      subCategories: subCategories.map(([subId, subName]) => ({ id: subId, name: subName })),
+    }));
+    return true;
+  }
+
   function getTalentCategoryPaths(bundle) {
     return getTalentCategories(bundle).flatMap(category => [
       { id: category.id, name: category.name, path: category.name, parentId: null },
@@ -996,6 +1019,7 @@
     updateTalent,
     getTalentApplications,
     getTalentCategories,
+    seedDefaultTalentCategories,
     getTalentCategoryPaths,
     filterCandidatesByCategory,
     assignTalentCategories,
