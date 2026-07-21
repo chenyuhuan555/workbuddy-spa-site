@@ -482,3 +482,9 @@ test('目标公司挖掘会废弃过期 AI 响应并按规范化公司名去重'
   assert.match(INDEX_HTML, /const seenCompanyNames = new Set\(\)/, '结果归一化需要维护已见公司名');
   assert.match(INDEX_HTML, /seenCompanyNames\.has\(normalizedName\)/, '同名公司只能保留一个结果卡片');
 });
+
+test('新的目标公司挖掘会取消进行中的 BD 方案生成', () => {
+  assert.match(INDEX_HTML, /bdRequestGeneration:\s*0/, 'BD 方案需要有独立请求代次');
+  assert.match(INDEX_HTML, /\+\+talentCompanyResearch\.bdRequestGeneration;\s*\n\s*talentCompanyResearch\.bdLoadingCompanyName = '';/, '重新挖掘时必须取消并清除 BD 加载状态');
+  assert.match(INDEX_HTML, /bdRequestGeneration !== talentCompanyResearch\.bdRequestGeneration/, 'BD 返回前必须确认仍是最新 BD 请求');
+});

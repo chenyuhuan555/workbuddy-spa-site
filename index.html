@@ -11171,6 +11171,7 @@ const vueAppConfig = {
       results: [],
       bdLoadingCompanyName: '',
       requestGeneration: 0,
+      bdRequestGeneration: 0,
     });
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
     const applicationViewMode = ref('table');
@@ -11403,6 +11404,7 @@ const vueAppConfig = {
     }
     function openTalentCompanyResearch() {
       ++talentCompanyResearch.requestGeneration;
+      ++talentCompanyResearch.bdRequestGeneration;
       talentCompanyResearch.open = true;
       talentCompanyResearch.loading = false;
       talentCompanyResearch.error = '';
@@ -11411,6 +11413,7 @@ const vueAppConfig = {
     }
     function closeTalentCompanyResearch() {
       ++talentCompanyResearch.requestGeneration;
+      ++talentCompanyResearch.bdRequestGeneration;
       talentCompanyResearch.open = false;
       talentCompanyResearch.loading = false;
       talentCompanyResearch.bdLoadingCompanyName = '';
@@ -11432,13 +11435,16 @@ const vueAppConfig = {
     async function runTalentCompanyResearch() {
       const scopedCandidates = talentCompanyResearchCandidates.value;
       const requestGeneration = ++talentCompanyResearch.requestGeneration;
+      ++talentCompanyResearch.bdRequestGeneration;
+      talentCompanyResearch.bdLoadingCompanyName = '';
+      talentCompanyResearch.loading = false;
+      talentCompanyResearch.results = [];
       if (!scopedCandidates.length) {
         talentCompanyResearch.error = '当前筛选范围没有可用于挖掘的人才';
         return;
       }
       talentCompanyResearch.loading = true;
       talentCompanyResearch.error = '';
-      talentCompanyResearch.results = [];
       try {
         const profiles = talentCompanyResearchProfiles(scopedCandidates);
         const scopedIds = new Set(profiles.map(candidate => candidate.id));
@@ -11499,7 +11505,8 @@ const vueAppConfig = {
     }
     async function generateTalentCompanyBdPlan(result) {
       if (!result?.name || talentCompanyResearch.bdLoadingCompanyName) return;
-      const requestGeneration = ++talentCompanyResearch.requestGeneration;
+      const requestGeneration = talentCompanyResearch.requestGeneration;
+      const bdRequestGeneration = ++talentCompanyResearch.bdRequestGeneration;
       talentCompanyResearch.bdLoadingCompanyName = result.name;
       try {
         const candidates = talentCompanyResearchCandidates.value.filter(candidate => result.candidateIds.includes(candidate.id));
@@ -11518,13 +11525,13 @@ const vueAppConfig = {
         });
         const steps = Array.isArray(parsed?.steps) ? parsed.steps.map(item => String(item || '').trim()).filter(Boolean) : [];
         const talkingPoints = Array.isArray(parsed?.talkingPoints) ? parsed.talkingPoints.map(item => String(item || '').trim()).filter(Boolean) : [];
-        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
+        if (requestGeneration !== talentCompanyResearch.requestGeneration || bdRequestGeneration !== talentCompanyResearch.bdRequestGeneration) return;
         result.bdPlan = [String(parsed?.summary || '').trim(), ...steps.map(item => `- ${item}`), ...talkingPoints.map(item => `沟通要点：${item}`)].filter(Boolean).join('\n');
       } catch (error) {
-        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
+        if (requestGeneration !== talentCompanyResearch.requestGeneration || bdRequestGeneration !== talentCompanyResearch.bdRequestGeneration) return;
         talentCompanyResearch.error = error.message || 'BD 方案生成失败，请重试';
       } finally {
-        if (requestGeneration !== talentCompanyResearch.requestGeneration) return;
+        if (requestGeneration !== talentCompanyResearch.requestGeneration || bdRequestGeneration !== talentCompanyResearch.bdRequestGeneration) return;
         talentCompanyResearch.bdLoadingCompanyName = '';
       }
     }
