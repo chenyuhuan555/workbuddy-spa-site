@@ -15539,10 +15539,16 @@ ${ocrText}`
         const workspaceClient = getWorkspaceStateClient();
         const remote = await workspaceClient.loadWorkspace();
         cloudWorkspaceVersion = remote.version;
-        if (hasWorkspaceBusinessData(remote.data)) {
+        const localPacked = packWorkspaceState();
+        const remoteHasData = hasWorkspaceBusinessData(remote.data);
+        const localHasData = hasWorkspaceBusinessData(localPacked);
+        if (remoteHasData && !localHasData) {
           await applyWorkspaceState(remote.data);
-        } else if (window.WorkBuddyAccess?.canWrite && hasWorkspaceBusinessData(packWorkspaceState())) {
-          const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: packWorkspaceState() });
+        } else if (!remoteHasData && localHasData && window.WorkBuddyAccess?.canWrite) {
+          const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: localPacked });
+          cloudWorkspaceVersion = saved.version;
+        } else if (remoteHasData && localHasData && window.WorkBuddyAccess?.canWrite) {
+          const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: localPacked });
           cloudWorkspaceVersion = saved.version;
         }
         syncStatus.value = 'synced';
@@ -15993,6 +15999,8 @@ ${ocrText}`
       }));
       touchEntity(pos);
       touchEntity(job);
+      localSave();
+      if (cloudReady) schedulePush();
       // ★ 标记匹配过期（JD 变更后推荐可能不准确）
       if (pos.systemMatches && pos.systemMatches.length > 0) {
         pos.matchVersion = (pos.matchVersion || 1) + 1;

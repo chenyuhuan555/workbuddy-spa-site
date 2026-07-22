@@ -69,6 +69,15 @@ test('工作台启动时会持久化回填既有迁移岗位的空职责', () =>
   assert.match(INDEX_HTML, /await reconcileMigratedPositionDescriptions\(\);/);
 });
 
+test('旧版岗位编辑会立即保存并安排云端同步，避免薪资刷新后丢失', () => {
+  assert.match(INDEX_HTML, /touchEntity\(pos\);\s*touchEntity\(job\);\s*localSave\(\);\s*if \(cloudReady\) schedulePush\(\);/);
+});
+
+test('云端初始化不会用旧快照覆盖已有本地岗位资料', () => {
+  assert.match(INDEX_HTML, /const localPacked = packWorkspaceState\(\);\s*const remoteHasData = hasWorkspaceBusinessData\(remote\.data\);\s*const localHasData = hasWorkspaceBusinessData\(localPacked\);/);
+  assert.match(INDEX_HTML, /if \(remoteHasData && !localHasData\) \{\s*await applyWorkspaceState\(remote\.data\);/);
+});
+
 test('岗位详情提供基础信息编辑与 AI 匹配关键词提取入口', () => {
   assert.match(INDEX_HTML, /编辑岗位信息与职责/, '岗位详情应提供完整的基础信息编辑入口');
   assert.match(INDEX_HTML, /v-model="positionDescriptionEdit\.salary"/, '编辑表单应允许填写薪资');
