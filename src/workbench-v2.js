@@ -2,7 +2,21 @@
   'use strict';
 
   const VERSION = 2;
-  const APPLICATION_STAGES = ['discovered', 'contacted', 'responded', 'screening', 'to_recommend', 'recommended', 'client_accepted', 'interview_pending', 'interviewing', 'interview_passed', 'offer', 'offer_accepted', 'preboarding', 'onboarded', 'probation', 'regularized', 'closed'];
+  /* 阶段常量优先取共享模块 src/constants/pipeline-stages.js；
+     Node 测试环境无此模块时回退到内联定义，保证独立可运行。 */
+  const _shared = root.WorkBuddyStages;
+  const KEYS = _shared ? _shared.KEYS : Object.freeze({
+    DISCOVERED: 'discovered', CONTACTED: 'contacted', RESPONDED: 'responded',
+    SCREENING: 'screening', TO_RECOMMEND: 'to_recommend', RECOMMENDED: 'recommended',
+    CLIENT_ACCEPTED: 'client_accepted', INTERVIEW_PENDING: 'interview_pending',
+    INTERVIEWING: 'interviewing', INTERVIEW_PASSED: 'interview_passed',
+    OFFER: 'offer', OFFER_ACCEPTED: 'offer_accepted', PREBOARDING: 'preboarding',
+    ONBOARDED: 'onboarded', PROBATION: 'probation', REGULARIZED: 'regularized',
+    CLOSED: 'closed',
+  });
+  const APPLICATION_STAGES = _shared
+    ? _shared.STAGES.map(s => s.key)
+    : ['discovered', 'contacted', 'responded', 'screening', 'to_recommend', 'recommended', 'client_accepted', 'interview_pending', 'interviewing', 'interview_passed', 'offer', 'offer_accepted', 'preboarding', 'onboarded', 'probation', 'regularized', 'closed'];
 
   function nowIso() {
     return new Date().toISOString();
@@ -101,7 +115,7 @@
 
     const application = stamp('app', {
       companyId: position.companyId,
-      stage: 'discovered',
+      stage: KEYS.DISCOVERED,
       stageEnteredAt: nowIso(),
       pipelineEvents: [],
     }, input);
@@ -192,7 +206,7 @@
       owner: resume.owner || resume.uploaderName || owner || '',
       matchScore: Number.isFinite(Number(resume.aiScore)) ? Number(resume.aiScore) : null,
       matchReason: resume.evaluationReason || '',
-      stage: resume.pipelineStage || 'discovered',
+      stage: resume.pipelineStage || KEYS.DISCOVERED,
       stageEnteredAt: resume.pipelineStageEnteredAt || resume.uploadedAt || nowIso(),
       pipelineEvents: copy(resume.pipelineEvents || []),
       evaluation: resume.evaluation || 'pending',
@@ -460,7 +474,7 @@
   function changeApplicationStage(application, input = {}) {
     const toStage = String(input.toStage || '').trim();
     if (!APPLICATION_STAGES.includes(toStage)) throw new Error('无效推进阶段');
-    if (toStage === 'closed' && !input.reasonCode) throw new Error('终止阶段必须选择原因');
+    if (toStage === KEYS.CLOSED && !input.reasonCode) throw new Error('终止阶段必须选择原因');
     const occurredAt = input.occurredAt || nowIso();
     const event = {
       id: input.id || makeId('evt'),

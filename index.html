@@ -14,51 +14,12 @@
   <script src="./src/private-todos.js?v=20260714-private1"></script>
   <script src="./src/ai.js"></script>
   <script src="./src/search-filters.js"></script>
+  <script src="./src/constants/pipeline-stages.js?v=20260728-phase0"></script>
   <script src="./src/workbench-v2.js"></script>
   <script data-workbuddy-pipeline-core>
     window.WorkBuddyPipeline = (() => {
-      const STAGES = [
-        { key: 'discovered', label: '已发现', slaDays: 2 },
-        { key: 'contacted', label: '已触达', slaDays: 3 },
-        { key: 'responded', label: '已回复', slaDays: 2 },
-        { key: 'screening', label: '顾问预筛', slaDays: 2 },
-        { key: 'to_recommend', label: '待推荐', slaDays: 2 },
-        { key: 'recommended', label: '已推荐', slaDays: 3 },
-        { key: 'client_accepted', label: '客户接受', slaDays: 3 },
-        { key: 'interview_pending', label: '待面试', slaDays: 5 },
-        { key: 'interviewing', label: '面试中', slaDays: 5 },
-        { key: 'interview_passed', label: '面试通过', slaDays: 3 },
-        { key: 'offer', label: 'Offer 沟通', slaDays: 5 },
-        { key: 'offer_accepted', label: 'Offer 已接受', slaDays: 10 },
-        { key: 'preboarding', label: '待入职', slaDays: 7 },
-        { key: 'onboarded', label: '已入职', slaDays: 7 },
-        { key: 'probation', label: '试用期', slaDays: 30 },
-        { key: 'regularized', label: '已转正', slaDays: null },
-        { key: 'closed', label: '已终止', slaDays: null },
-      ];
-
-      const REASONS = [
-        ['qualified', '预筛通过', 'positive'],
-        ['submitted_to_client', '已推荐客户', 'positive'],
-        ['client_approved', '客户接受', 'positive'],
-        ['interview_passed', '面试通过', 'positive'],
-        ['offer_accepted', '接受录用', 'positive'],
-        ['started', '确认入职', 'positive'],
-        ['regularized', '成功转正', 'positive'],
-        ['no_response', '多次联系无回复', 'negative'],
-        ['not_interested', '候选人无意向', 'negative'],
-        ['compensation', '薪资不匹配', 'negative'],
-        ['location', '地点或通勤不匹配', 'negative'],
-        ['skill_gap', '能力或经验不足', 'negative'],
-        ['client_rejected', '客户拒绝', 'negative'],
-        ['interview_failed', '面试未通过', 'negative'],
-        ['counter_offer', '接受原公司挽留', 'negative'],
-        ['competing_offer', '接受其他录用', 'negative'],
-        ['no_show', '爽约或未入职', 'negative'],
-        ['probation_failed', '试用期未通过', 'negative'],
-        ['role_closed', '岗位关闭或暂停', 'negative'],
-        ['other', '其他', 'negative'],
-      ].map(([key, label, group]) => ({ key, label, group }));
+      /* 阶段 / 原因码统一来自 src/constants/pipeline-stages.js */
+      const { KEYS, STAGES, REASONS } = window.WorkBuddyStages;
 
       function toIso(value, reference = Date.now()) {
         const text = String(value || '').trim();
@@ -85,7 +46,7 @@
         const reasonNote = String(input.reasonNote || '').trim();
         if (!STAGES.some(stage => stage.key === toStage)) throw new Error('无效推进阶段');
         if (reasonCode && !REASONS.some(reason => reason.key === reasonCode)) throw new Error('无效结果原因');
-        if (toStage === 'closed' && !reasonCode) throw new Error('终止阶段必须选择原因');
+        if (toStage === KEYS.CLOSED && !reasonCode) throw new Error('终止阶段必须选择原因');
         if (reasonCode === 'other' && !reasonNote) throw new Error('其他原因必须填写说明');
         if (!Array.isArray(resume.pipelineEvents)) resume.pipelineEvents = [];
         const occurredAt = toIso(input.occurredAt);
@@ -117,7 +78,7 @@
           changed = true;
         }
         if (!resume.pipelineStage) {
-          resume.pipelineStage = 'discovered';
+          resume.pipelineStage = KEYS.DISCOVERED;
           changed = true;
         }
         if (resume.pipelineEvents.length === 0) {
@@ -184,7 +145,7 @@
         const keys = (Array.isArray(resume?.pipelineEvents) ? resume.pipelineEvents : [])
           .map(event => event?.toStage)
           .concat(resume?.pipelineStage || '')
-          .filter(key => key && key !== 'closed');
+          .filter(key => key && key !== KEYS.CLOSED);
         return keys.reduce((max, key) => Math.max(max, STAGES.findIndex(stage => stage.key === key)), -1);
       }
 
@@ -209,15 +170,15 @@
 
         const stages = STAGES.map((stage, index) => {
           const current = items.filter(resume => resume.pipelineStage === stage.key).length;
-          const reached = stage.key === 'closed'
-            ? items.filter(resume => resume.pipelineStage === 'closed'
-              || (resume.pipelineEvents || []).some(event => event.toStage === 'closed')).length
+          const reached = stage.key === KEYS.CLOSED
+            ? items.filter(resume => resume.pipelineStage === KEYS.CLOSED
+              || (resume.pipelineEvents || []).some(event => event.toStage === KEYS.CLOSED)).length
             : items.filter(resume => highestReachedIndex(resume) >= index).length;
           const nextStage = STAGES[index + 1];
           const nextReached = !nextStage ? reached
-            : nextStage.key === 'closed'
-              ? items.filter(resume => resume.pipelineStage === 'closed'
-                || (resume.pipelineEvents || []).some(event => event.toStage === 'closed')).length
+            : nextStage.key === KEYS.CLOSED
+              ? items.filter(resume => resume.pipelineStage === KEYS.CLOSED
+                || (resume.pipelineEvents || []).some(event => event.toStage === KEYS.CLOSED)).length
               : items.filter(resume => highestReachedIndex(resume) >= index + 1).length;
           return {
             key: stage.key,
@@ -231,12 +192,12 @@
         });
 
         const milestoneIndexes = {
-          recommended: STAGES.findIndex(stage => stage.key === 'recommended'),
-          clientAccepted: STAGES.findIndex(stage => stage.key === 'client_accepted'),
-          interview: STAGES.findIndex(stage => stage.key === 'interview_pending'),
-          offer: STAGES.findIndex(stage => stage.key === 'offer'),
-          onboarded: STAGES.findIndex(stage => stage.key === 'onboarded'),
-          regularized: STAGES.findIndex(stage => stage.key === 'regularized'),
+          recommended: STAGES.findIndex(stage => stage.key === KEYS.RECOMMENDED),
+          clientAccepted: STAGES.findIndex(stage => stage.key === KEYS.CLIENT_ACCEPTED),
+          interview: STAGES.findIndex(stage => stage.key === KEYS.INTERVIEW_PENDING),
+          offer: STAGES.findIndex(stage => stage.key === KEYS.OFFER),
+          onboarded: STAGES.findIndex(stage => stage.key === KEYS.ONBOARDED),
+          regularized: STAGES.findIndex(stage => stage.key === KEYS.REGULARIZED),
         };
         const sourceMap = new Map();
         items.forEach(resume => {
@@ -280,26 +241,26 @@
           actor: options.actor,
           source: options.source || 'evaluation',
         };
-        if (evaluation === 'match' && ['discovered', 'closed'].includes(resume.pipelineStage)) {
-          return appendStageEvent(resume, { ...common, toStage: 'to_recommend', reasonCode: 'qualified' });
+        if (evaluation === 'match' && [KEYS.DISCOVERED, KEYS.CLOSED].includes(resume.pipelineStage)) {
+          return appendStageEvent(resume, { ...common, toStage: KEYS.TO_RECOMMEND, reasonCode: 'qualified' });
         }
-        if (evaluation === 'unmatch' && resume.pipelineStage !== 'closed') {
+        if (evaluation === 'unmatch' && resume.pipelineStage !== KEYS.CLOSED) {
           const reasonNote = String(reason || '').trim() || '简历评判为不匹配，未填写具体原因';
           return appendStageEvent(resume, {
             ...common,
-            toStage: 'closed',
+            toStage: KEYS.CLOSED,
             reasonCode: evaluationReasonCode(reasonNote),
             reasonNote,
           });
         }
-        if (!evaluation && resume.pipelineStage !== 'discovered') {
-          return appendStageEvent(resume, { ...common, toStage: 'discovered' });
+        if (!evaluation && resume.pipelineStage !== KEYS.DISCOVERED) {
+          return appendStageEvent(resume, { ...common, toStage: KEYS.DISCOVERED });
         }
         return null;
       }
 
       return {
-        STAGES, REASONS, appendStageEvent, ensurePipelineData,
+        KEYS, STAGES, REASONS, appendStageEvent, ensurePipelineData,
         stageSlaStatus, buildFunnelMetrics, syncEvaluationStage,
       };
     })();
@@ -943,21 +904,22 @@
       color: #374151;
       box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
+    /* AI 输出列表四色轮转：靛蓝 → 翠绿 → 琥珀 → 粉红 */
     .ai-toolbox-output li:nth-child(4n+1) {
-      border-left-color: #6366f1;
-      background: #eef2ff;
+      border-left-color: var(--ai-li-indigo-border);
+      background: var(--ai-li-indigo-bg);
     }
     .ai-toolbox-output li:nth-child(4n+2) {
-      border-left-color: #059669;
-      background: #ecfdf5;
+      border-left-color: var(--ai-li-green-border);
+      background: var(--ai-li-green-bg);
     }
     .ai-toolbox-output li:nth-child(4n+3) {
-      border-left-color: #d97706;
-      background: #fffbeb;
+      border-left-color: var(--ai-li-amber-border);
+      background: var(--ai-li-amber-bg);
     }
     .ai-toolbox-output li:nth-child(4n) {
-      border-left-color: #db2777;
-      background: #fdf2f8;
+      border-left-color: var(--ai-li-pink-border);
+      background: var(--ai-li-pink-bg);
     }
     .ai-toolbox-output blockquote {
       margin: 12px 0;
@@ -1323,6 +1285,28 @@
       --wb-radius-modal: 34px;
       --wb-radius-input: 18px;
       --wb-radius-btn: 999px;
+      /* 卡片轮转色调（供 nth-child / 显式 class 共用） */
+      --card-tint-rose:      rgba(255, 238, 242, 0.85);
+      --card-tint-cream:     rgba(255, 248, 232, 0.88);
+      --card-tint-lavender:  rgba(245, 242, 255, 0.86);
+      --card-tint-mint:      rgba(232, 250, 240, 0.86);
+      --card-tint-blush:     rgba(255, 235, 235, 0.65);
+      --card-tint-warm:      rgba(255, 245, 225, 0.70);
+      --card-tint-aqua:      rgba(220, 248, 238, 0.60);
+      --card-tint-pale:      rgba(236, 253, 245, 0.55);
+      --card-tint-rose-soft: rgba(243, 154, 166, 0.22);
+      --card-tint-amber-soft:rgba(255, 225, 181, 0.30);
+      --card-tint-mint-soft: rgba(197, 241, 223, 0.30);
+      /* AI 工具箱列表四色轮转 */
+      --ai-li-indigo-border: #6366f1;  --ai-li-indigo-bg: #eef2ff;
+      --ai-li-green-border:  #059669;  --ai-li-green-bg:  #ecfdf5;
+      --ai-li-amber-border:  #d97706;  --ai-li-amber-bg:  #fffbeb;
+      --ai-li-pink-border:   #db2777;  --ai-li-pink-bg:   #fdf2f8;
+      /* 进度条段色 */
+      --bar-seg-lavender: rgba(201, 196, 251, 0.70);
+      --bar-seg-mint:     rgba(188, 239, 217, 0.70);
+      --bar-seg-peach:    rgba(255, 217, 159, 0.70);
+      --bar-seg-rose:     rgba(246, 184, 191, 0.70);
     }
 
     /* ============================================================
@@ -1730,10 +1714,11 @@
       background: rgba(246,241,234,0.86);
     }
     .wb-bar i { display: block; flex: 1; }
-    .wb-bar i:nth-child(1) { background: rgba(201,196,251,0.70); }
-    .wb-bar i:nth-child(2) { background: rgba(188,239,217,0.70); }
-    .wb-bar i:nth-child(3) { background: rgba(255,217,159,0.70); }
-    .wb-bar i:nth-child(4) { background: rgba(246,184,191,0.70); }
+    /* 进度条四段固定色：薰衣草 → 薄荷 → 蜜桃 → 玫瑰 */
+    .wb-bar i:nth-child(1) { background: var(--bar-seg-lavender); }
+    .wb-bar i:nth-child(2) { background: var(--bar-seg-mint); }
+    .wb-bar i:nth-child(3) { background: var(--bar-seg-peach); }
+    .wb-bar i:nth-child(4) { background: var(--bar-seg-rose); }
     .wb-task-card {
       display: block;
       width: 100%;
@@ -2246,17 +2231,18 @@
       background: #fff !important;
       color: #1a2e25 !important;
     }
+    /* 仪表盘 2×2 指标卡固定底色：腮红 → 暖黄 → 水绿 → 浅绿 */
     main > section:nth-of-type(2) .grid.grid-cols-1.md\:grid-cols-2 > div:nth-child(1) {
-      background: rgba(255, 235, 235, 0.65) !important;
+      background: var(--card-tint-blush) !important;
     }
     main > section:nth-of-type(2) .grid.grid-cols-1.md\:grid-cols-2 > div:nth-child(2) {
-      background: rgba(255, 245, 225, 0.70) !important;
+      background: var(--card-tint-warm) !important;
     }
     main > section:nth-of-type(2) .grid.grid-cols-1.md\:grid-cols-2 > div:nth-child(3) {
-      background: rgba(220, 248, 238, 0.60) !important;
+      background: var(--card-tint-aqua) !important;
     }
     main > section:nth-of-type(2) .grid.grid-cols-1.md\:grid-cols-2 > div:nth-child(4) {
-      background: rgba(236, 253, 245, 0.55) !important;
+      background: var(--card-tint-pale) !important;
     }
     main > section:nth-of-type(6) > div {
       background: rgba(255,255,255,0.88) !important;
@@ -2266,14 +2252,15 @@
       background: rgba(255,255,255,0.82) !important;
       box-shadow: 0 6px 20px rgba(107,86,58,0.04) !important;
     }
+    /* 第六栏卡片三色轮转：玫瑰 → 琥珀 → 薄荷 */
     main > section:nth-of-type(6) .rounded-xl.border:nth-child(3n+1) {
-      background: rgba(243,154,166,0.22) !important;
+      background: var(--card-tint-rose-soft) !important;
     }
     main > section:nth-of-type(6) .rounded-xl.border:nth-child(3n+2) {
-      background: rgba(255,225,181,0.30) !important;
+      background: var(--card-tint-amber-soft) !important;
     }
     main > section:nth-of-type(6) .rounded-xl.border:nth-child(3n) {
-      background: rgba(197,241,223,0.30) !important;
+      background: var(--card-tint-mint-soft) !important;
     }
     .advisor-fab {
       border: 0 !important;
@@ -2324,10 +2311,11 @@
       background: rgba(255,255,255,0.88) !important;
       box-shadow: 0 6px 20px rgba(107,86,58,0.05) !important;
     }
-    .group\/job:nth-child(4n+1).card-hover { background: rgba(255,238,242,0.85) !important; }
-    .group\/job:nth-child(4n+2).card-hover { background: rgba(255,248,232,0.88) !important; }
-    .group\/job:nth-child(4n+3).card-hover { background: rgba(245,242,255,0.86) !important; }
-    .group\/job:nth-child(4n).card-hover { background: rgba(232,250,240,0.86) !important; }
+    /* 岗位卡片四色轮转：玫瑰 → 奶油 → 薰衣草 → 薄荷 */
+    .group\/job:nth-child(4n+1).card-hover { background: var(--card-tint-rose) !important; }
+    .group\/job:nth-child(4n+2).card-hover { background: var(--card-tint-cream) !important; }
+    .group\/job:nth-child(4n+3).card-hover { background: var(--card-tint-lavender) !important; }
+    .group\/job:nth-child(4n).card-hover { background: var(--card-tint-mint) !important; }
     input,
     textarea,
     select {
@@ -4196,8 +4184,8 @@
               <span><b class="block text-slate-900">{{ company.name }}</b><small class="text-slate-400">{{ company.industry || company.city || '行业待补充' }}</small></span>
               <span class="text-sm">{{ company.owner || '未分配' }}</span><span class="text-sm">{{ company.status || '潜在客户' }}</span>
               <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.positions, item => item.status === 'open') }}</span>
-              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.applications, item => item.stage !== 'closed') }}</span>
-              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.applications, item => ['interview_pending','interviewing','interview_passed'].includes(item.stage)) }}</span>
+              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.applications, item => item.stage !== SK.CLOSED) }}</span>
+              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.applications, item => SG.INTERVIEW.includes(item.stage)) }}</span>
               <span class="text-xs text-slate-400">{{ company.updatedAt?.slice(0, 10) || '—' }}</span>
             </button>
             <div v-if="!filteredWorkbenchCompanies.length" class="py-14 text-center"><h3 class="font-semibold text-slate-700">暂无公司档案</h3><p class="text-sm text-slate-400 mt-1">完成迁移或新建公司后会显示在这里。</p><button @click="previewWorkbenchMigration" class="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm">迁移旧数据</button></div>
@@ -4222,8 +4210,8 @@
               </template>
             </nav>
           </div>
-          <div v-if="workbenchRoute.tab === 'overview'" class="grid lg:grid-cols-3 gap-4"><div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5"><h2 class="font-bold">公司介绍</h2><p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">{{ selectedCompany.profileText || '尚未补充公司介绍、主营业务和招聘特点。' }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="font-bold">业务摘要</h2><dl class="mt-3 text-sm space-y-3"><div class="flex justify-between"><dt>开放岗位</dt><dd class="font-bold">{{ companyPositions.filter(item => item.status === 'open').length }}</dd></div><div class="flex justify-between"><dt>推进候选人</dt><dd class="font-bold">{{ companyApplications.filter(item => item.stage !== 'closed').length }}</dd></div></dl></div></div>
-          <div v-else-if="workbenchRoute.tab === 'positions'" class="bg-white border border-slate-200 rounded-xl overflow-hidden"><button v-for="position in companyPositions" :key="position.id" @click="openPositionDetail(position.id)" class="w-full px-5 py-4 border-b border-slate-100 text-left hover:bg-slate-50 flex items-center"><span><b>{{ position.title }}</b><small class="block text-slate-400 mt-1">{{ position.city || '地点待补充' }} · {{ position.salary || '薪资待补充' }}</small></span><span class="ml-auto text-sm text-slate-500">{{ workbenchV2.applications.filter(item => item.positionId === position.id && item.stage !== 'closed').length }} 位候选人 →</span></button><p v-if="!companyPositions.length" class="p-10 text-center text-sm text-slate-400">暂无岗位</p></div>
+          <div v-if="workbenchRoute.tab === 'overview'" class="grid lg:grid-cols-3 gap-4"><div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5"><h2 class="font-bold">公司介绍</h2><p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">{{ selectedCompany.profileText || '尚未补充公司介绍、主营业务和招聘特点。' }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="font-bold">业务摘要</h2><dl class="mt-3 text-sm space-y-3"><div class="flex justify-between"><dt>开放岗位</dt><dd class="font-bold">{{ companyPositions.filter(item => item.status === 'open').length }}</dd></div><div class="flex justify-between"><dt>推进候选人</dt><dd class="font-bold">{{ companyApplications.filter(item => item.stage !== SK.CLOSED).length }}</dd></div></dl></div></div>
+          <div v-else-if="workbenchRoute.tab === 'positions'" class="bg-white border border-slate-200 rounded-xl overflow-hidden"><button v-for="position in companyPositions" :key="position.id" @click="openPositionDetail(position.id)" class="w-full px-5 py-4 border-b border-slate-100 text-left hover:bg-slate-50 flex items-center"><span><b>{{ position.title }}</b><small class="block text-slate-400 mt-1">{{ position.city || '地点待补充' }} · {{ position.salary || '薪资待补充' }}</small></span><span class="ml-auto text-sm text-slate-500">{{ workbenchV2.applications.filter(item => item.positionId === position.id && item.stage !== SK.CLOSED).length }} 位候选人 →</span></button><p v-if="!companyPositions.length" class="p-10 text-center text-sm text-slate-400">暂无岗位</p></div>
           <div v-else-if="workbenchRoute.tab === 'applications'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="font-bold">候选人推进</h2><p class="text-sm text-slate-500 mt-2">该公司共有 {{ companyApplications.length }} 条候选人与岗位推进记录。</p><div v-for="application in companyApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 w-full border border-slate-200 rounded-lg p-3 text-left hover:bg-slate-50 flex justify-between items-center cursor-pointer transition"><span class="min-w-0"><b>{{ workbenchV2.candidates.find(item => item.id === application.candidateId)?.name || '候选人已删除' }}</b><small class="block text-slate-400 mt-1">{{ workbenchV2.positions.find(item => item.id === application.positionId)?.title || '岗位已删除' }}</small></span><span class="flex items-center gap-3 flex-shrink-0"><button type="button" @click.stop="previewCandidateResume(application.candidateId)" class="px-3 py-1.5 rounded-lg bg-white text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-50">查看简历</button><span class="text-sm text-emerald-700">{{ candidatePipelineLabel(application.stage) }} →</span></span></div><p v-if="!companyApplications.length" class="text-sm text-slate-400 mt-4">暂无候选人推进记录</p></div>
           <div v-else-if="workbenchRoute.tab === 'ai'" class="space-y-4">
             <div class="bg-white border border-slate-200 rounded-xl p-5">
@@ -4433,9 +4421,9 @@
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="openTalentJobMatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">岗位匹配</button><button v-if="canConfigureAi" type="button" @click="openTalentCompanyResearch" class="px-4 py-2 rounded-lg border border-violet-200 text-violet-700 text-sm font-semibold hover:bg-violet-50">目标公司挖掘</button><button v-if="canWrite && canConfigureAi" type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button v-if="canWrite" @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== 'closed').map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== SK.CLOSED).map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-6 gap-2"><input v-model="candidateFilters.query" type="search" placeholder="搜索姓名、公司或技能" class="lg:col-span-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><select v-model="candidateFilters.category" aria-label="按分类筛选人才" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部分类</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select><select v-model="candidateFilters.direction" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部人才方向</option><option v-for="direction in candidateDirections" :key="direction" :value="direction">{{ direction }}</option></select><select v-model="candidateFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select v-model="candidateFilters.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select></div>
-          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== 'closed').length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button v-if="canWrite" @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== SK.CLOSED).length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button v-if="canWrite" @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'candidate' && selectedCandidate" class="wb-v2-candidate-detail mx-auto space-y-4">
@@ -4479,7 +4467,7 @@
             </section>
             <aside class="wb-v2-candidate-card cursor-pointer hover:border-emerald-300 hover:shadow-md transition" @click="workbenchRoute.tab = 'applications'">
               <h2 class="wb-v2-candidate-card-title font-bold flex items-center justify-between"><span class="flex items-center gap-2"><span class="wb-v2-candidate-card-icon flex items-center justify-center">▥</span>推进摘要</span><span class="text-xs font-normal text-emerald-700">查看详情 →</span></h2>
-              <p class="wb-v2-candidate-progress-number font-bold">{{ selectedCandidateApplications.filter(item => item.stage !== 'closed').length }}</p>
+              <p class="wb-v2-candidate-progress-number font-bold">{{ selectedCandidateApplications.filter(item => item.stage !== SK.CLOSED).length }}</p>
               <p class="mt-3 text-sm text-slate-500">总推进职位</p>
             </aside>
           </div>
@@ -8937,7 +8925,7 @@
             <label class="block text-xs font-semibold text-slate-600">结果原因
               <select v-model="pipelineTransitionDialog.reasonCode"
                 class="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400">
-                <option value="">{{ pipelineTransitionDialog.toStage === 'closed' ? '请选择终止原因' : '可选：记录本次结果原因' }}</option>
+                <option value="">{{ pipelineTransitionDialog.toStage === SK.CLOSED ? '请选择终止原因' : '可选：记录本次结果原因' }}</option>
                 <option v-for="reason in CANDIDATE_PIPELINE_REASONS" :key="reason.key" :value="reason.key">{{ reason.label }}</option>
               </select>
             </label>
@@ -10950,6 +10938,8 @@ async function uploadResumeTextFilesInBatches(gistId, resumeTextFiles) {
 
 const vueAppConfig = {
   setup() {
+    /* ── 流水线阶段常量（来自 src/constants/pipeline-stages.js） ── */
+    const { KEYS: SK, GROUPS: SG } = window.WorkBuddyStages;
     // -------- 承接方看板数据 --------
     const columns = reactive([
       { name: '承接方A', jobs: [], editing: false, tempName: '' },
@@ -11053,14 +11043,7 @@ const vueAppConfig = {
     const applicationViewMode = ref('table');
     const talentPoolPeriod = ref('30');
     const workbenchApplicationStages = WorkbenchV2.APPLICATION_STAGES;
-    const applicationStageGroups = [
-      { key: 'discover', label: '人才发现', stages: ['discovered', 'contacted', 'responded'] },
-      { key: 'screen', label: '顾问筛选', stages: ['screening', 'to_recommend'] },
-      { key: 'recommend', label: '客户推荐', stages: ['recommended', 'client_accepted'] },
-      { key: 'interview', label: '面试', stages: ['interview_pending', 'interviewing', 'interview_passed'] },
-      { key: 'offer', label: '录用与入职', stages: ['offer', 'offer_accepted', 'preboarding', 'onboarded', 'probation', 'regularized'] },
-      { key: 'closed', label: '结束', stages: ['closed'] },
-    ];
+    const applicationStageGroups = window.WorkBuddyStages.STAGE_GROUPS;
     const candidateUpload = reactive({
       open: false,
       step: 'form',
@@ -11225,7 +11208,7 @@ const vueAppConfig = {
     const companyPositions = computed(() => workbenchV2.positions.filter(item => item.companyId === selectedCompany.value?.id));
     const companyApplications = computed(() => workbenchV2.applications.filter(item => item.companyId === selectedCompany.value?.id));
     const positionApplications = computed(() => workbenchV2.applications.filter(item => item.positionId === selectedPosition.value?.id));
-    const filteredPositionApplications = computed(() => positionApplications.value.filter(item => item.stage !== 'closed'));
+    const filteredPositionApplications = computed(() => positionApplications.value.filter(item => item.stage !== SK.CLOSED));
     const filteredWorkbenchCompanies = computed(() => {
       const query = companyFilter.query.trim().toLowerCase();
       return workbenchV2.companies.filter(company => {
@@ -11566,9 +11549,9 @@ const vueAppConfig = {
       companies: workbenchV2.companies.filter(item => item.status !== 'paused').length,
       positions: workbenchV2.positions.filter(item => item.status === 'open').length,
       candidates: workbenchV2.candidates.length,
-      applications: workbenchV2.applications.filter(item => item.stage !== 'closed').length,
-      interviews: workbenchV2.applications.filter(item => ['interview_pending', 'interviewing', 'interview_passed'].includes(item.stage)).length,
-      offers: workbenchV2.applications.filter(item => ['offer', 'offer_accepted'].includes(item.stage)).length,
+      applications: workbenchV2.applications.filter(item => item.stage !== SK.CLOSED).length,
+      interviews: workbenchV2.applications.filter(item => SG.INTERVIEW.includes(item.stage)).length,
+      offers: workbenchV2.applications.filter(item => SG.OFFER.includes(item.stage)).length,
     }));
 
     // ── 仪表盘：指标日环比（较昨日）──
@@ -11682,7 +11665,7 @@ const vueAppConfig = {
         return { id: p.id, label: `${p.title || '未命名岗位'}${co ? ' · ' + co.name : ''}` };
       });
       if (type === 'company') return workbenchV2.companies.map(c => ({ id: c.id, label: c.name || '未命名公司' }));
-      if (type === 'application') return workbenchV2.applications.filter(a => a.stage !== 'closed').map(a => {
+      if (type === 'application') return workbenchV2.applications.filter(a => a.stage !== SK.CLOSED).map(a => {
         const c = workbenchV2.candidates.find(x => x.id === a.candidateId);
         const p = workbenchV2.positions.find(x => x.id === a.positionId);
         return { id: a.id, label: `${c?.name || '候选人'} - ${p?.title || '岗位'}` };
@@ -11826,16 +11809,17 @@ const vueAppConfig = {
         {label:'其他',value:0,color:'#d1d5db',dash:0,pct:'0%'},
       ]};
       const stageMap = {
-        discovered: 0, contacted: 0, responded: 0,   // 初步沟通
-        screening: 0, to_recommend: 0,               // 筛选中
-        interview_pending: 0, interviewing: 0, interview_passed: 0, // 面试中
-        offer: 0, offer_accepted: 0,                 // 录用
-        preboarding: 0, onboarded: 0, probation: 0, regularized: 0, // 已入职
+        [SK.DISCOVERED]: 0, [SK.CONTACTED]: 0, [SK.RESPONDED]: 0,       // 初步沟通
+        [SK.SCREENING]: 0, [SK.TO_RECOMMEND]: 0,                         // 筛选中
+        [SK.INTERVIEW_PENDING]: 0, [SK.INTERVIEWING]: 0, [SK.INTERVIEW_PASSED]: 0, // 面试中
+        [SK.OFFER]: 0, [SK.OFFER_ACCEPTED]: 0,                           // 录用
+        [SK.PREBOARDING]: 0, [SK.ONBOARDED]: 0, [SK.PROBATION]: 0, [SK.REGULARIZED]: 0, // 已入职
       };
       workbenchV2.applications.forEach(a => {
         if (stageMap.hasOwnProperty(a.stage)) stageMap[a.stage]++;
       });
       // 按候选人去重计数
+      const stagePriority = window.WorkBuddyStages.stagePriority;
       const candidateStages = {};
       candidates.forEach(c => { candidateStages[c.id] = null; });
       workbenchV2.applications.filter(a => candidateStages.hasOwnProperty(a.candidateId)).forEach(a => {
@@ -11843,14 +11827,6 @@ const vueAppConfig = {
           candidateStages[a.candidateId] = a.stage;
         }
       });
-      function stagePriority(s) {
-        if (['preboarding','onboarded','probation','regularized'].includes(s)) return 5;
-        if (['offer','offer_accepted'].includes(s)) return 4;
-        if (['interview_pending','interviewing','interview_passed'].includes(s)) return 3;
-        if (['screening','to_recommend'].includes(s)) return 2;
-        if (['discovered','contacted','responded'].includes(s)) return 1;
-        return 0;
-      }
       const buckets = [0, 0, 0, 0, 0, 0];
       Object.values(candidateStages).forEach(s => {
         if (!s) { buckets[5]++; return; } // 无推进记录 → 其他
@@ -11876,21 +11852,25 @@ const vueAppConfig = {
     // ── 仪表盘：业务进展条 ──
     const businessProgressItems = computed(() => {
       const allApps = workbenchV2.applications;
+      const SCREEN_RECOMMEND = [...SG.SCREEN, ...SG.RECOMMEND];
+      const countByGroup = (group) => allApps.filter(a => group.includes(a.stage)).length;
+      const cDiscover = countByGroup(SG.DISCOVER);
+      const cScreenRecommend = countByGroup(SCREEN_RECOMMEND);
+      const cInterview = countByGroup(SG.INTERVIEW);
+      const cOffer = countByGroup(SG.OFFER);
+      const cOnboard = countByGroup(SG.ONBOARD);
       const maxVal = Math.max(
-        allApps.length || 1,
-        allApps.filter(a => ['discovered','contacted','responded'].includes(a.stage)).length || 1,
-        allApps.filter(a => ['screening','to_recommend','recommended','client_accepted'].includes(a.stage)).length || 1,
-        allApps.filter(a => ['interview_pending','interviewing','interview_passed'].includes(a.stage)).length || 1,
-        allApps.filter(a => ['offer','offer_accepted'].includes(a.stage)).length || 1,
-        allApps.filter(a => ['onboarded','regularized','probation','preboarding'].includes(a.stage)).length || 1,
+        allApps.length || 1, cDiscover || 1, cScreenRecommend || 1,
+        cInterview || 1, cOffer || 1, cOnboard || 1,
       );
+      const openPositions = workbenchV2.positions.filter(p => p.status === 'open').length;
       return [
-        { label: '需求确认', count: workbenchV2.positions.filter(p => p.status === 'open').length, percent: Math.round((workbenchV2.positions.filter(p => p.status === 'open').length / maxVal) * 100) },
-        { label: '寻访中', count: allApps.filter(a => ['discovered','contacted','responded'].includes(a.stage)).length, percent: Math.round((allApps.filter(a => ['discovered','contacted','responded'].includes(a.stage)).length / maxVal) * 100) },
-        { label: '推荐中', count: allApps.filter(a => ['screening','to_recommend','recommended','client_accepted'].includes(a.stage)).length, percent: Math.round((allApps.filter(a => ['screening','to_recommend','recommended','client_accepted'].includes(a.stage)).length / maxVal) * 100) },
-        { label: '面试中', count: allApps.filter(a => ['interview_pending','interviewing','interview_passed'].includes(a.stage)).length, percent: Math.round((allApps.filter(a => ['interview_pending','interviewing','interview_passed'].includes(a.stage)).length / maxVal) * 100) },
-        { label: '录用', count: allApps.filter(a => ['offer','offer_accepted'].includes(a.stage)).length, percent: Math.round((allApps.filter(a => ['offer','offer_accepted'].includes(a.stage)).length / maxVal) * 100) },
-        { label: '已入职', count: allApps.filter(a => ['onboarded','regularized','probation','preboarding'].includes(a.stage)).length, percent: Math.round((allApps.filter(a => ['onboarded','regularized','probation','preboarding'].includes(a.stage)).length / maxVal) * 100) },
+        { label: '需求确认', count: openPositions, percent: Math.round((openPositions / maxVal) * 100) },
+        { label: '寻访中', count: cDiscover, percent: Math.round((cDiscover / maxVal) * 100) },
+        { label: '推荐中', count: cScreenRecommend, percent: Math.round((cScreenRecommend / maxVal) * 100) },
+        { label: '面试中', count: cInterview, percent: Math.round((cInterview / maxVal) * 100) },
+        { label: '录用', count: cOffer, percent: Math.round((cOffer / maxVal) * 100) },
+        { label: '已入职', count: cOnboard, percent: Math.round((cOnboard / maxVal) * 100) },
       ];
     });
 
@@ -12098,10 +12078,10 @@ const vueAppConfig = {
       // 删除后同步当前阶段：取剩余事件的最后一条 toStage，没有则回退到 discovered
       if (application.pipelineEvents.length > 0) {
         const last = application.pipelineEvents[application.pipelineEvents.length - 1];
-        application.stage = last.toStage || 'discovered';
+        application.stage = last.toStage || SK.DISCOVERED;
         application.stageEnteredAt = last.occurredAt || application.createdAt || new Date().toISOString();
       } else {
-        application.stage = 'discovered';
+        application.stage = SK.DISCOVERED;
         application.stageEnteredAt = application.createdAt || new Date().toISOString();
       }
       application.updatedAt = new Date().toISOString();
@@ -12690,8 +12670,8 @@ const vueAppConfig = {
       try {
         WorkbenchV2.changeApplicationStage(application, {
           toStage,
-          reasonCode: toStage === 'closed' ? 'other' : '',
-          reasonNote: toStage === 'closed' ? '从推进中心结束' : '',
+          reasonCode: toStage === SK.CLOSED ? 'other' : '',
+          reasonNote: toStage === SK.CLOSED ? '从推进中心结束' : '',
         });
         saveWorkbenchV2();
       } catch (error) {
@@ -15227,7 +15207,7 @@ ${ocrText}`
                         );
                         if (Array.isArray(lr.pipelineEvents) && lr.pipelineEvents.length > 0 && localPipelineStamp >= remotePipelineStamp) {
                           rr.pipelineEvents = JSON.parse(JSON.stringify(lr.pipelineEvents));
-                          rr.pipelineStage = lr.pipelineStage || rr.pipelineStage || 'discovered';
+                          rr.pipelineStage = lr.pipelineStage || rr.pipelineStage || SK.DISCOVERED;
                           rr.pipelineStageEnteredAt = lr.pipelineStageEnteredAt || rr.pipelineStageEnteredAt || '';
                           rr.latestOutcomeReasonCode = lr.latestOutcomeReasonCode || '';
                           rr.latestOutcomeReasonNote = lr.latestOutcomeReasonNote || '';
@@ -16673,11 +16653,11 @@ ${ocrText}`
           if (stageSla.overdue) {
             items.push({ ...base, id: `stage-sla-${resume.id}`, type: 'stage-sla-overdue', group: '需复查', title: `阶段超期：${resume.name || '未命名简历'}`, subtitle: `${candidatePipelineLabel(resume.pipelineStage)} 已停留 ${stageSla.elapsedDays} 天 · 超期 ${stageSla.overdueDays} 天` });
           }
-          if (resume.pipelineStage === 'onboarded' && !resume.probationReviewAt) {
+          if (resume.pipelineStage === SK.ONBOARDED && !resume.probationReviewAt) {
             items.push({ ...base, id: `probation-date-${resume.id}`, type: 'probation-date-missing', group: '待处理', title: `补充试用期评估日：${resume.name || '未命名简历'}`, subtitle: `${job.company || ''} · ${pos.name || ''}` });
           }
           const probationDue = Date.parse(String(resume.probationReviewAt || ''));
-          if (resume.pipelineStage === 'probation' && Number.isFinite(probationDue)
+          if (resume.pipelineStage === SK.PROBATION && Number.isFinite(probationDue)
             && probationDue < Date.now() && (!resume.probationResult || resume.probationResult === 'pending')) {
             items.push({ ...base, id: `probation-review-${resume.id}`, type: 'probation-review-overdue', group: '需复查', title: `转正评估逾期：${resume.name || '未命名简历'}`, subtitle: `原评估日 ${resume.probationReviewAt}` });
           }
@@ -23439,7 +23419,7 @@ ${clipped}`
       funnelDashboardData, sourceConversionStats,
       electronicResumeStats, electronicResumeIndexing, electronicResumeStatus, electronicResumeProgress, batchConvertElectronicResumes,
       aiStreamingStatus,
-      CANDIDATE_PIPELINE_STAGES, CANDIDATE_PIPELINE_REASONS, candidatePipelineLabel, pipelineReasonLabel, pipelineEventDateLabel,
+      CANDIDATE_PIPELINE_STAGES, CANDIDATE_PIPELINE_REASONS, SK, SG, candidatePipelineLabel, pipelineReasonLabel, pipelineEventDateLabel,
       pipelineTransitionDialog, requestCandidateStageChange, closeCandidateStageTransition, saveCandidateStageTransition,
       saveCandidateBusinessMeta, getCandidateStageSlaStatus, recordCandidateFollowup,
       saveCandidateFollowupMeta, startEditCandidateFollowup, cancelCandidateFollowupEdit,
