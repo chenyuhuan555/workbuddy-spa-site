@@ -7164,16 +7164,6 @@
               回收站 / 最近操作
             </button>
             <input ref="backupImportInput" type="file" accept=".json,application/json" class="hidden" @change="onBackupImportFile" />
-            <button @click="gistSettingsModalOpen = true" type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition"
-              title="Gist 云同步设置">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              Gist 云同步设置
-            </button>
           </div>
         </div>
       </div>
@@ -9838,45 +9828,6 @@
     </transition>
   </teleport>
 
-  <!-- ======== Gist 备份说明 ======== -->
-  <teleport to="body">
-    <transition name="modal-fade">
-      <div v-if="gistSettingsModalOpen"
-        class="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-        @click.self="gistSettingsModalOpen = false">
-        <transition name="modal-scale">
-          <div v-if="gistSettingsModalOpen"
-            class="kb-sync-modal w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
-            style="background: rgba(255,255,255,0.94) !important; border-radius: 34px !important; border: 0 !important; box-shadow: 0 28px 80px rgba(56,100,82,0.20) !important;"
-            @click.stop>
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 class="font-bold text-slate-800">Gist 备份</h3>
-                <p class="text-xs text-slate-400 mt-1">Gist 仅作为管理员备份通道，不再参与页面实时同步。</p>
-              </div>
-              <button @click="gistSettingsModalOpen = false" type="button"
-                class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition">×</button>
-            </div>
-            <div class="p-5 space-y-4">
-              <p class="text-sm text-slate-600 leading-relaxed">
-                GitHub Token 和 Gist ID 将迁移到受保护的服务端配置，浏览器不再保存或接收这些凭据。
-              </p>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                管理员登录与服务端备份功能完成后，可在这里创建和恢复备份。
-              </p>
-              <div class="flex items-center justify-end gap-2 pt-1">
-                <button @click="saveGistSettingsFromModal" type="button"
-                  class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold transition shadow-sm">
-                  知道了
-                </button>
-              </div>
-            </div>
-          </div>
-        </transition>
-      </div>
-    </transition>
-  </teleport>
-
   <!-- ======== 猎头顾问助手 ======== -->
   <teleport to="body">
     <div v-if="!advisorPanel.meetingArticle" class="fixed z-[90]" :style="advisorFloatingStyle">
@@ -10246,31 +10197,22 @@ if (window.pdfjsLib) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = './lib/pdf.worker.min.js';
 }
 
-// ============ GitHub Gist 旧配置清理 ============
+// ============ 存储键 & 旧版凭据清理 ============
 const STORAGE_KEY = 'headhunter_v2';
 const WORKBENCH_V2_KEY = STORAGE_KEY + '_workbench_v2';
 const WORKBENCH_V1_SNAPSHOT_KEY = STORAGE_KEY + '_workbench_v1_snapshot';
 const WORKBENCH_V2_MIGRATION_META_KEY = STORAGE_KEY + '_workbench_v2_migration_meta';
 const GIST_SETTINGS_KEY = STORAGE_KEY + '_gist_settings';
-const gistSettings = reactive({
-  gistId: '',
-});
 
 function initGistSettings() {
   localStorage.removeItem(GIST_SETTINGS_KEY);
 }
 const SYNC_DEBOUNCE = 1500; // 1.5 秒防抖
-const POLL_INTERVAL = 3000;  // 3 秒轮询
-const GIST_READ_TIMEOUT = 30000;
-const GIST_UPDATE_TIMEOUT = 120000;
-const RESUME_TEXT_UPLOAD_BATCH_SIZE = 20;
+const FETCH_TIMEOUT = 30000;
 const RESUME_TEXT_BUCKET_COUNT = 32;
 
 // ============ 简历内容懒加载 ============
-// Gist API 对大文件会截断 content，不批量拉取，改为按需单次 fetch
 const resumeUrlMap = {};   // { resumeId: raw_url } — 用于懒加载
-const kbUrlMap = {};       // { kbId: raw_url } — 知识库懒加载
-const validResumeIds = new Set(); // 所有在 Gist 中有文件的简历 ID（用于过滤幽灵条目）
 
 function applyResumeTextData(resume, textData = {}) {
   if (!resume || !textData || typeof textData !== 'object') return;
@@ -10321,18 +10263,8 @@ function applyResumeTextBucketData(jobs, content) {
 
 // 请求 gist.githubusercontent.com 原始文件时不能带自定义请求头，否则会触发
 // CORS 预检（OPTIONS），而 GitHub 的原始文件 CDN 不支持 OPTIONS 请求。
-function gistRawHeaders() {
+function rawFileHeaders() {
   return {}; // 原始文件 URL 是公开的，无需认证
-}
-
-async function readGistFileContent(file, label = '读取云端文件') {
-  if (!file) return '';
-  if ((!file.content || file.truncated) && file.raw_url) {
-    const rawRes = await fetchWithTimeout(file.raw_url + '?t=' + Date.now(), { cache: 'no-store', headers: gistRawHeaders() }, GIST_READ_TIMEOUT, label);
-    if (!rawRes.ok) throw new Error(`${label}失败: ${rawRes.status} ${await rawRes.text()}`);
-    return await rawRes.text();
-  }
-  return file.content || '';
 }
 
 function findResumeInJobs(jobs, resumeId) {
@@ -10680,14 +10612,9 @@ async function deleteCachedResumeData(resumeIds) {
   }
 }
 
-// ============ Gist API 帮助函数 ============
-function gistHeaders() {
-  return {
-    'Accept': 'application/vnd.github+json',
-  };
-}
+// ============ 网络请求工具 ============
 
-async function fetchWithTimeout(url, options = {}, timeout = GIST_READ_TIMEOUT, label = '网络请求') {
+async function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT, label = '网络请求') {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
@@ -10699,240 +10626,6 @@ async function fetchWithTimeout(url, options = {}, timeout = GIST_READ_TIMEOUT, 
     throw e;
   } finally {
     clearTimeout(timer);
-  }
-}
-
-async function gistRead(gistId) {
-  const res = await fetchWithTimeout(`https://api.github.com/gists/${gistId}`, {
-    headers: gistHeaders(),
-  }, GIST_READ_TIMEOUT, '读取云端数据');
-  if (!res.ok) throw new Error(`Read gist failed: ${res.status} ${await res.text()}`);
-  const json = await res.json();
-  const files = json.files;
-  // 读取元数据 JSON
-  const metaFile = files['headhunter-data.json'];
-  let metaContent = metaFile?.content;
-  if ((!metaContent || metaFile?.truncated) && metaFile?.raw_url) {
-    const rawRes = await fetchWithTimeout(metaFile.raw_url + '?t=' + Date.now(), { cache: 'no-store', headers: gistRawHeaders() }, GIST_READ_TIMEOUT, '读取云端原始数据');
-    if (!rawRes.ok) throw new Error(`Read gist raw data failed: ${rawRes.status} ${await rawRes.text()}`);
-    metaContent = await rawRes.text();
-  }
-  if (!metaContent) throw new Error('No headhunter-data.json in gist');
-  const meta = JSON.parse(metaContent);
-  if (!meta.kb) meta.kb = [];
-  const deletedKbIds = getDeletedKbIds();
-
-  // ★ 懒加载策略：不批量拉取截断的大文件（太慢，会卡"同步中"）。
-  //    只存储 raw_url 到全局 map，等用户点击简历/知识库时按需单次 fetch。
-  validResumeIds.clear();
-  for (const [filename, file] of Object.entries(files)) {
-    if (filename.startsWith('resume_text_bucket_')) {
-      try {
-        applyResumeTextBucketData(meta.jobs, await readGistFileContent(file, '读取电子简历文本桶'));
-      } catch (e) {
-        console.warn('电子简历文本桶恢复失败:', e.message);
-      }
-      continue;
-    }
-    if (filename.startsWith('resume_text_')) {
-      const resumeId = filename.replace('resume_text_', '').replace(/\.json$/, '');
-      const injectResumeText = async (content) => {
-        if (!content) return;
-        try {
-          const textData = JSON.parse(content);
-          applyResumeTextData(findResumeInJobs(meta.jobs, resumeId), textData);
-        } catch (e) {
-          console.warn('电子简历文本恢复失败:', e.message);
-        }
-      };
-      try {
-        await injectResumeText(await readGistFileContent(file, '读取电子简历文本'));
-      } catch (e) {
-        console.warn('电子简历文本拉取失败:', e.message);
-      }
-      continue;
-    }
-    if (filename.startsWith('resume_')) {
-      const rid = filename.replace('resume_', '');
-      validResumeIds.add(rid);
-    }
-    if (file.truncated || !file.content) {
-      // 截断文件：只存 URL，不做数据注入
-      if (filename.startsWith('resume_')) {
-        resumeUrlMap[filename.replace('resume_', '')] = file.raw_url;
-      } else if (filename.startsWith('kb_')) {
-        let kid = filename.replace('kb_', '');
-        if (kid.startsWith('kb_')) kid = kid.replace('kb_', '');
-        kbUrlMap[kid] = file.raw_url;
-        if (!deletedKbIds.has(kid) && file.raw_url) {
-          try {
-            const rawRes = await fetchWithTimeout(file.raw_url + '?t=' + Date.now(), { cache: 'no-store', headers: gistRawHeaders() }, GIST_READ_TIMEOUT, '读取知识库正文');
-            if (rawRes.ok) {
-              const rawContent = await rawRes.text();
-              const article = meta.kb.find(a => a.id === kid);
-              if (article) {
-                article.content = rawContent;
-              } else {
-                const firstLine = rawContent.split(/\r?\n/).map(s => s.trim()).filter(Boolean)[0] || '未命名会议记录';
-                meta.kb.push({
-                  id: kid,
-                  title: firstLine.replace(/^#+\s*/, '').replace(/^[^\w\u4e00-\u9fa5]+/, '').slice(0, 60) || '未命名会议记录',
-                  category: '会议记录',
-                  content: rawContent,
-                  createdAt: '',
-                  updatedAt: '',
-                });
-              }
-            }
-          } catch (e) {
-            console.warn('知识库正文恢复失败:', e.message);
-          }
-        }
-      }
-      continue;
-    }
-    // 未截断（小文件）：API 已返回完整 content，直接注入
-    if (!file.content) continue;
-    if (filename.startsWith('resume_')) {
-      const resumeId = filename.replace('resume_', '');
-      const resume = findResumeInJobs(meta.jobs, resumeId);
-      if (resume) {
-        resume.data = parseResumeFileData(file.content, resume);
-      }
-    }
-    if (filename.startsWith('kb_')) {
-      let kbId = filename.replace('kb_', '');
-      if (kbId.startsWith('kb_')) kbId = kbId.replace('kb_', '');
-      if (deletedKbIds.has(kbId)) continue;
-      const article = meta.kb.find(a => a.id === kbId);
-      if (article) {
-        article.content = file.content;
-      } else {
-        const firstLine = String(file.content || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)[0] || '未命名会议记录';
-        meta.kb.push({
-          id: kbId,
-          title: firstLine.replace(/^#+\s*/, '').replace(/^[^\w\u4e00-\u9fa5]+/, '').slice(0, 60) || '未命名会议记录',
-          category: '会议记录',
-          content: file.content,
-          createdAt: '',
-          updatedAt: '',
-        });
-      }
-    }
-  }
-  // 确保 kb 字段存在
-  if (!meta.kb) meta.kb = [];
-
-  // ★ 清理幽灵条目：移除 JSON 中存在但无对应文件的简历（防止合并逻辑累积）
-  //    但保护本地存在但尚未推送到 Gist 的简历（pushPending 或最近 30 秒内上传）
-  let localResumeIds = new Set();
-  try {
-    localResumeIds = new Set(JSON.parse(localStorage.getItem(LOCAL_RESUME_IDS_KEY) || '[]'));
-  } catch {}
-  const pendingIds = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY + '_pendingResumeIds') || '[]'));
-  const resumeFileIds = new Set(
-    Object.keys(files)
-      .filter(k => k.startsWith('resume_') && !k.startsWith('resume_text_'))
-      .map(k => k.replace('resume_', ''))
-  );
-  for (const col of (meta.jobs || [])) {
-    for (const job of col) {
-      for (const pos of (job.positions || [])) {
-        if (pos.resumes) {
-          const before = pos.resumes.length;
-          // 第一遍：删除幽灵（Gist 无文件 且 本地元数据无记录 且 不在待推送列表）
-          pos.resumes = pos.resumes.filter(r => resumeFileIds.has(r.id) || localResumeIds.has(r.id) || pendingIds.has(r.id));
-          // 第二遍：同名去重（同一份简历被多次上传导致多个文件），只保留第一个
-          const seenNames = new Set();
-          pos.resumes = pos.resumes.filter(r => {
-            if (seenNames.has(r.name)) return false;
-            seenNames.add(r.name);
-            return true;
-          });
-          const after = pos.resumes.length;
-          if (after < before) {
-            console.log(`[gistRead] ${pos.name}: ${before} → ${after} (去重+去幽灵)`);
-          }
-        }
-      }
-    }
-  }
-
-  return meta;
-}
-
-async function gistUpdate(gistId, data, resumeFiles, kbFiles, resumeTextFiles) {
-  // data: 元数据（不含 base64 和 kb 内容）
-  // resumeFiles: { resumeId: base64String, ... }
-  // kbFiles: { kbId: markdownContent, ... }
-  // resumeTextFiles: { filename: jsonString, ... } — 电子简历/导入文本 bucket 独立同步
-  const filesPayload = {};
-  if (data) {
-    filesPayload['headhunter-data.json'] = { content: JSON.stringify(data) };
-  }
-  if (resumeFiles) {
-    for (const [rid, b64] of Object.entries(resumeFiles)) {
-      filesPayload['resume_' + rid] = { content: b64 };
-    }
-  }
-  if (resumeTextFiles) {
-    for (const [filename, content] of Object.entries(resumeTextFiles)) {
-      filesPayload[filename.startsWith('resume_text_') ? filename : 'resume_text_' + filename + '.json'] = { content };
-    }
-  }
-  // packKbFiles() 的 key 已带 kb_ 前缀，直接使用
-  if (kbFiles) {
-    for (const [kid, content] of Object.entries(kbFiles)) {
-      filesPayload[kid] = { content };
-    }
-  }
-  const deletedKbIds = [...getDeletedKbIds()];
-  deletedKbIds.forEach(id => {
-    filesPayload['kb_' + id] = null;
-    filesPayload['kb_kb_' + id] = null;
-  });
-  const res = await fetchWithTimeout(`https://api.github.com/gists/${gistId}`, {
-    method: 'PATCH',
-    headers: { ...gistHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: filesPayload }),
-  }, GIST_UPDATE_TIMEOUT, '上传云端数据');
-  if (!res.ok) throw new Error(`Update gist failed: ${res.status} ${await res.text()}`);
-  clearDeletedKbIds(deletedKbIds);
-}
-
-async function mergeRemoteResumeTextBuckets(gistId, resumeTextFiles) {
-  const entries = Object.entries(resumeTextFiles || {});
-  if (!entries.length) return {};
-  const res = await fetchWithTimeout(`https://api.github.com/gists/${gistId}`, {
-    headers: gistHeaders(),
-  }, GIST_READ_TIMEOUT, '读取电子简历文本桶');
-  if (!res.ok) throw new Error(`Read gist for text buckets failed: ${res.status} ${await res.text()}`);
-  const gist = await res.json();
-  const files = gist.files || {};
-  const merged = {};
-  for (const [filename, localContent] of entries) {
-    if (!filename.startsWith('resume_text_bucket_')) {
-      merged[filename] = localContent;
-      continue;
-    }
-    let remoteItems = {};
-    try {
-      remoteItems = parseResumeTextBucket(await readGistFileContent(files[filename], `读取${filename}`));
-    } catch (e) {
-      console.warn('电子简历文本桶合并读取失败:', filename, e.message);
-    }
-    const localItems = parseResumeTextBucket(localContent);
-    merged[filename] = JSON.stringify({ v: 1, items: { ...remoteItems, ...localItems } });
-  }
-  return merged;
-}
-
-async function uploadResumeTextFilesInBatches(gistId, resumeTextFiles) {
-  const entries = Object.entries(resumeTextFiles || {});
-  if (!entries.length) return;
-  for (let i = 0; i < entries.length; i += RESUME_TEXT_UPLOAD_BATCH_SIZE) {
-    const batch = Object.fromEntries(entries.slice(i, i + RESUME_TEXT_UPLOAD_BATCH_SIZE));
-    await gistUpdate(gistId, null, null, null, await mergeRemoteResumeTextBuckets(gistId, batch));
   }
 }
 
@@ -12591,7 +12284,7 @@ const vueAppConfig = {
             return;
           }
         }
-        // 旧版兼容：fileData（base64 快照）或 Gist 同步原件
+        // 旧版兼容：fileData（base64 快照）或云端同步原件
         let fd = version.fileData || '';
         if (!fd && (version.sourceResumeId || version.id)) {
           const resume = { id: version.id, sourceResumeId: version.sourceResumeId || version.id, name: version.fileName || '简历', data: '' };
@@ -14303,7 +13996,6 @@ ${ocrText}`
     }
 
     // -------- 云同步状态 --------
-    const gistSettingsModalOpen = ref(false);
     const syncStatus = ref('synced'); // synced | syncing | error
     const syncError = ref('');
     const syncLabel = computed(() => {
@@ -14316,11 +14008,6 @@ ${ocrText}`
       if (syncStatus.value === 'syncing') return '正在同步…';
       return '同步失败' + (syncError.value ? '：' + syncError.value : '，点击重试');
     });
-
-    function saveGistSettingsFromModal() {
-      gistSettingsModalOpen.value = false;
-      showToast('Gist 将仅通过管理员服务端备份使用');
-    }
 
     // -------- 今天日期 --------
     const today = computed(() => {
@@ -14901,45 +14588,12 @@ ${ocrText}`
     }
 
     // -------- 云端推送 (防抖) --------
-    let pushTimer = null;
-    let pushPending = false;
-    let resumeTextUploadRunning = false;
-    let resumeTextUploadQueue = {};
 
-    function queueResumeTextUpload(resumeTextFiles) {
-      const count = Object.keys(resumeTextFiles || {}).length;
-      if (!count) return;
-      resumeTextUploadQueue = { ...resumeTextUploadQueue, ...resumeTextFiles };
-      if (resumeTextUploadRunning) return;
-      resumeTextUploadRunning = true;
-      const batch = resumeTextUploadQueue;
-      resumeTextUploadQueue = {};
-      uploadResumeTextFilesInBatches(gistSettings.gistId, batch)
-        .then(() => {
-          console.log(`[sync] 电子简历文本后台同步完成：${Object.keys(batch).length} 份`);
-        })
-        .catch(e => {
-          console.warn('电子简历文本后台同步失败:', e.message);
-          resumeTextUploadQueue = { ...batch, ...resumeTextUploadQueue };
-          pushPending = true;
-          clearTimeout(pushTimer);
-          pushTimer = setTimeout(doPush, 5000);
-        })
-        .finally(() => {
-          resumeTextUploadRunning = false;
-          if (Object.keys(resumeTextUploadQueue).length) {
-            queueResumeTextUpload(resumeTextUploadQueue);
-          }
-        });
-    }
-
-    // 删除墓碑：删除岗位时立即记录，防止 applyRemote 从 Gist 缓存把它加回来
-    // TTL 120 秒：覆盖 GitHub Gist CDN 最坏缓存场景，推送成功后不主动清除
+    // 删除墓碑：删除岗位时立即记录，防止远端合并把已删除条目加回来
     const TOMBSTONE_KEY = STORAGE_KEY + '_tombstone';
     const TOMBSTONE_EXP_KEY = STORAGE_KEY + '_tombstone_exp';
     const DELETED_RECORDS_KEY = STORAGE_KEY + '_deletedRecords';
-    const TOMBSTONE_TTL = 600000; // 10 分钟，覆盖 Gist CDN 缓存窗口
-    const CLEANUP_GRACE = 60000;  // 推送后 60 秒内不清理本地岗位，等 CDN 更新
+    const TOMBSTONE_TTL = 600000; // 10 分钟
     function getTombstone() {
       try {
         const exp = Number(localStorage.getItem(TOMBSTONE_EXP_KEY) || '0');
@@ -15146,268 +14800,6 @@ ${ocrText}`
         const timestamp = Date.parse(value || '');
         return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
       }, 0);
-    }
-
-    function applyRemote(remote) {
-      if (!remote) return;
-      const deletedRecords = mergeDeletedRecords(remote.deletedRecords || {});
-      const deletedJobs = deletedIdSet(deletedRecords, 'jobs');
-      const deletedPositions = deletedIdSet(deletedRecords, 'positions');
-      const deletedResumes = deletedIdSet(deletedRecords, 'resumes');
-      applyDeletedRecordsToLocal(deletedRecords);
-      // ---- 防缓存残留：读取最近推送快照，独立于 recentPush 判断 ----
-      const lastPushTs = Number(localStorage.getItem(STORAGE_KEY + '_pushTs') || '0');
-      const pushAge = Date.now() - lastPushTs;
-      // pushedJobIds 快照有效期 = TOMBSTONE_TTL，与墓碑同步
-      const snapshotValid = pushAge < TOMBSTONE_TTL;
-      let pushedJobIds = new Set();
-      if (snapshotValid) {
-        try { pushedJobIds = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY + '_pushedIds') || '[]')); } catch {}
-      }
-      // base64 已由 gistRead 注入，这里只做元数据合并
-      const mergeApply = () => {
-        if (remote.names) remote.names.forEach((n, i) => {
-          if (columns[i]) { columns[i].name = n; }
-          else { columns.push({ name: n, jobs: [], editing: false, tempName: '' }); }
-        });
-        if (!Array.isArray(remote.jobs)) return;
-        remote.jobs.forEach((remoteCol, colIdx) => {
-          if (!columns[colIdx]) { columns.push({ name: remote.names?.[colIdx] || `承接方${colIdx+1}`, jobs: [], editing: false, tempName: '' }); }
-          if (!columns[colIdx] || !Array.isArray(remoteCol)) return;
-          remoteCol.forEach(remoteJob => {
-            if (deletedJobs.has(remoteJob.id)) return;
-            if (remoteJob.positions) {
-              remoteJob.positions = remoteJob.positions
-                .filter(pos => !deletedPositions.has(pos.id))
-                .map(pos => ({
-                  ...pos,
-                  resumes: (pos.resumes || []).filter(resume => !deletedResumes.has(resume.id)),
-                }));
-            }
-            const localJob = columns[colIdx].jobs.find(j => j.id === remoteJob.id);
-            if (localJob) {
-              if (remoteJob.positions && localJob.positions) {
-                const remotePosIds = new Set(remoteJob.positions.map(p => p.id));
-                const localOnlyPos = localJob.positions.filter(p => !remotePosIds.has(p.id));
-                remoteJob.positions.forEach(rp => {
-                  if (!rp.resumes) rp.resumes = [];
-                  const lp = localJob.positions.find(p => p.id === rp.id);
-                  if (lp && lp.resumes) {
-                    if (String(lp.updatedAt || '') > String(rp.updatedAt || '')) {
-                      const remoteResumes = rp.resumes || [];
-                      Object.assign(rp, JSON.parse(JSON.stringify(lp)));
-                      rp.resumes = remoteResumes;
-                    }
-                    const remoteResIds = new Set(rp.resumes.map(r => r.id));
-                    // ★ 本地独有简历不要求 r.data（刷新后 r.data 已被 localLoad 清空）
-                    //   Gist 上已有的靠 resumeFileIds/validResumeIds 懒加载，本地独有的靠此行保留
-                    const localOnlyRes = lp.resumes.filter(r => !remoteResIds.has(r.id));
-                    rp.resumes.push(...localOnlyRes);
-                    // ★ 保留本地简历的备注和评判（远程覆盖时防止丢失用户刚填的 note/evaluation）
-                    rp.resumes.forEach(rr => {
-                      const lr = lp.resumes.find(r => r.id === rr.id);
-                      if (lr) {
-                        // ★ 单用户场景：本地用户输入/处理状态永远优先于远程旧数据
-                        if (lr.note !== undefined) rr.note = lr.note;
-                        const localHasEvaluationStamp = !!lr.evaluationUpdatedAt;
-                        const localHasEvaluationState = localHasEvaluationStamp
-                          || isRealEvaluation(lr.evaluation)
-                          || !!lr.evaluationReason;
-                        const localEvalTime = syncTimeValue(lr.evaluationUpdatedAt || (localHasEvaluationState ? (lr.updatedAt || lr.uploadedAt) : ''));
-                        const remoteEvalTime = syncTimeValue(rr.evaluationUpdatedAt || ((isRealEvaluation(rr.evaluation) || rr.evaluationReason) ? (rr.updatedAt || rr.uploadedAt) : ''));
-                        if (localHasEvaluationState && localEvalTime >= remoteEvalTime) {
-                          if (lr.evaluation !== undefined) rr.evaluation = lr.evaluation;
-                          if (lr.evaluationReason !== undefined) rr.evaluationReason = lr.evaluationReason;
-                          if (lr.evaluationUpdatedAt !== undefined) rr.evaluationUpdatedAt = lr.evaluationUpdatedAt;
-                        }
-                        const localPipelineStamp = Math.max(
-                          syncTimeValue(lr.pipelineStageEnteredAt),
-                          ...(Array.isArray(lr.pipelineEvents) ? lr.pipelineEvents.map(event => syncTimeValue(event.occurredAt)) : [0])
-                        );
-                        const remotePipelineStamp = Math.max(
-                          syncTimeValue(rr.pipelineStageEnteredAt),
-                          ...(Array.isArray(rr.pipelineEvents) ? rr.pipelineEvents.map(event => syncTimeValue(event.occurredAt)) : [0])
-                        );
-                        if (Array.isArray(lr.pipelineEvents) && lr.pipelineEvents.length > 0 && localPipelineStamp >= remotePipelineStamp) {
-                          rr.pipelineEvents = JSON.parse(JSON.stringify(lr.pipelineEvents));
-                          rr.pipelineStage = lr.pipelineStage || rr.pipelineStage || SK.DISCOVERED;
-                          rr.pipelineStageEnteredAt = lr.pipelineStageEnteredAt || rr.pipelineStageEnteredAt || '';
-                          rr.latestOutcomeReasonCode = lr.latestOutcomeReasonCode || '';
-                          rr.latestOutcomeReasonNote = lr.latestOutcomeReasonNote || '';
-                          rr.sourceType = lr.sourceType || '';
-                          rr.sourceSite = lr.sourceSite || '';
-                          rr.sourceCampaign = lr.sourceCampaign || '';
-                          rr.startDate = lr.startDate || '';
-                          rr.probationReviewAt = lr.probationReviewAt || '';
-                          rr.probationResult = lr.probationResult || 'pending';
-                        }
-                        if (lr.candidateSummary !== undefined) rr.candidateSummary = lr.candidateSummary;
-                        if (Array.isArray(lr.candidateKeywords)) rr.candidateKeywords = lr.candidateKeywords;
-                        if (lr.candidateProfileText !== undefined) rr.candidateProfileText = lr.candidateProfileText;
-                        if (Array.isArray(lr.trajectory) && lr.trajectory.length > 0) {
-                          rr.trajectory = lr.trajectory;
-                        }
-                        if (lr.profileIndexedAt !== undefined) rr.profileIndexedAt = lr.profileIndexedAt;
-                        if (lr.profileIndexStatus !== undefined) rr.profileIndexStatus = lr.profileIndexStatus;
-                        if (lr.profileIndexError !== undefined) rr.profileIndexError = lr.profileIndexError;
-                        if (lr.qrUrl !== undefined) rr.qrUrl = lr.qrUrl;
-                        if (lr.bossImportedText) {
-                          rr.bossImportedText = lr.bossImportedText;
-                          rr.bossImportedAt = lr.bossImportedAt || rr.bossImportedAt || '';
-                        }
-                        if (lr.electronicResumeText) {
-                          rr.electronicResumeText = lr.electronicResumeText;
-                          rr.electronicResumeGeneratedAt = lr.electronicResumeGeneratedAt || rr.electronicResumeGeneratedAt || '';
-                          rr.electronicResumeError = lr.electronicResumeError || '';
-                        } else if (lr.electronicResumeError && !rr.electronicResumeText) {
-                          rr.electronicResumeError = lr.electronicResumeError;
-                        }
-                        if (Array.isArray(lr.duplicateMatches)) rr.duplicateMatches = lr.duplicateMatches;
-                      }
-                    });
-                    // ★ 保留本地 position 级别匹配字段，防止远程旧数据覆盖
-                    if (lp.systemMatches && lp.systemMatches.length > 0) {
-                      rp.systemMatches = lp.systemMatches;
-                      rp.systemMatchesGeneratedAt = lp.systemMatchesGeneratedAt || '';
-                      rp.systemMatchVersion = lp.systemMatchVersion || 0;
-                    }
-                    if (lp.searchStrategies && lp.searchStrategies.length > 0) rp.searchStrategies = lp.searchStrategies;
-                    if (lp.searchFeedbacks && lp.searchFeedbacks.length > 0) rp.searchFeedbacks = lp.searchFeedbacks;
-                    if (lp.searchStrategyVersion) rp.searchStrategyVersion = lp.searchStrategyVersion;
-                    if (lp.searchStrategiesGeneratedAt) rp.searchStrategiesGeneratedAt = lp.searchStrategiesGeneratedAt;
-                    if (lp.searchStrategiesUpdatedAt) rp.searchStrategiesUpdatedAt = lp.searchStrategiesUpdatedAt;
-                    if (lp.dismissedCandidateKeys && lp.dismissedCandidateKeys.length > 0) rp.dismissedCandidateKeys = lp.dismissedCandidateKeys;
-                    if (lp.addedCandidateKeys && lp.addedCandidateKeys.length > 0) rp.addedCandidateKeys = lp.addedCandidateKeys;
-                    if (lp.matchJobKeywords && lp.matchJobKeywords.length > 0) rp.matchJobKeywords = lp.matchJobKeywords;
-                    rp.matchVersion = lp.matchVersion || rp.matchVersion || 1;
-                  }
-                });
-                remoteJob.positions.push(...localOnlyPos);
-              }
-              // ★ 保留本地新增字段（priority），防止远程旧数据覆盖
-              if (localJob && localJob.priority && !remoteJob.priority) {
-                remoteJob.priority = localJob.priority;
-              }
-              if (localJob && localJob.companyProfileText && (!remoteJob.companyProfileText || String(localJob.companyProfileUpdatedAt || '') >= String(remoteJob.companyProfileUpdatedAt || ''))) {
-                remoteJob.companyProfileText = localJob.companyProfileText;
-                remoteJob.companyProfileUpdatedAt = localJob.companyProfileUpdatedAt || '';
-              }
-              if (String(localJob.updatedAt || '') > String(remoteJob.updatedAt || '')) {
-                remoteJob.company = localJob.company;
-                remoteJob.priority = localJob.priority || remoteJob.priority;
-                remoteJob.companyProfileText = localJob.companyProfileText || remoteJob.companyProfileText;
-                remoteJob.companyProfileUpdatedAt = localJob.companyProfileUpdatedAt || remoteJob.companyProfileUpdatedAt;
-                remoteJob.updatedAt = localJob.updatedAt;
-              }
-              const jIdx = columns[colIdx].jobs.findIndex(j => j.id === remoteJob.id);
-              if (jIdx > -1) columns[colIdx].jobs.splice(jIdx, 1, remoteJob);
-            } else {
-              // ★ 墓碑拦截优先：本地刚删的岗位，无论什么情况都不加回来
-              if (getTombstone().has(remoteJob.id)) {
-                console.log(`[applyRemote] 墓碑拦截，跳过已删岗位: ${remoteJob.company}`);
-                return;
-              }
-              // 防缓存残留：推送快照有效且该岗位不在快照中 → Gist CDN 旧缓存，跳过
-              if (snapshotValid && pushedJobIds.size > 0 && !pushedJobIds.has(remoteJob.id)) {
-                console.log(`[applyRemote] 跳过远程残留岗位: ${remoteJob.company}`);
-                return;
-              }
-              columns[colIdx].jobs.push(remoteJob);
-            }
-          });
-        });
-      };
-      if (Array.isArray(remote.resumeReasonTags)) {
-        mergeResumeReasonTags(remote.resumeReasonTags);
-      }
-      const localCount = columns.reduce((s, c) => s + c.jobs.length, 0);
-      const remoteCount = Array.isArray(remote.jobs)
-        ? remote.jobs.reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0)
-        : 0;
-
-      if (remoteCount > 0) {
-        try { mergeApply(); } catch (e) { console.warn('applyRemote 合并失败:', e); }
-        // 合并后去重（防止 applyRemote 引入同名重复）
-        dedupeColumnsResumes();
-        // 清理本地独有但远程已删除的岗位
-        // ★ 必须等待 CDN 冷却期（60s），否则刚推送的新岗位可能因 CDN 缓存未更新而被误删
-        const cleanupSafe = pushAge > CLEANUP_GRACE;
-        if (snapshotValid && pushedJobIds.size > 0 && cleanupSafe) {
-          columns.forEach((col, colIdx) => {
-            const remoteJobIds = new Set((remote.jobs[colIdx] || []).map(j => j.id));
-            const before = col.jobs.length;
-            col.jobs = col.jobs.filter(localJob => {
-              if (remoteJobIds.has(localJob.id)) return true;         // 远程有 → 保留
-              if (!pushedJobIds.has(localJob.id)) return true;       // 本地新增未推送 → 保留
-              return false; // 已推送但远程已删除 → 清理
-            });
-            if (col.jobs.length < before) {
-              console.log(`[applyRemote] 列"${col.name}"清理过期岗位: ${before} → ${col.jobs.length}`);
-            }
-          });
-        }
-      } else if (localCount === 0) {
-        try { mergeApply(); } catch (e) { console.warn('applyRemote 合并失败:', e); }
-      }
-      // 合并知识库
-      if (remote.kb && Array.isArray(remote.kb)) {
-        remote.kb.forEach(ra => {
-          const la = kbArticles.find(a => a.id === ra.id);
-          if (!la) {
-            kbArticles.push(ra);
-          } else {
-            // 保留本地更新的时间
-            if (ra.updatedAt && (!la.updatedAt || ra.updatedAt > la.updatedAt)) {
-              la.title = ra.title;
-              la.category = ra.category;
-              la.updatedAt = ra.updatedAt;
-            }
-            // 始终从云端恢复正文内容（localStorage 不存 content）
-            if (ra.content) {
-              la.content = ra.content;
-            }
-          }
-        });
-      }
-      // 同步云端 API Key（远程优先）
-      if (remote.kbApiKey && remote.kbApiKey.trim() && remote.kbApiKey.startsWith('sk-')) {
-        aiConfig.apiKey = remote.kbApiKey;
-        saveAiConfig();
-      }
-      const remoteWorkbenchV2 = remote.workbenchV2;
-      if (hasWorkbenchV2Data(remoteWorkbenchV2)) {
-        const localHasWorkbenchV2 = hasWorkbenchV2Data(workbenchV2);
-        if (!localHasWorkbenchV2 || workbenchV2UpdatedAt(remoteWorkbenchV2) > workbenchV2UpdatedAt(workbenchV2)) {
-          replaceWorkbenchV2(remoteWorkbenchV2);
-          saveWorkbenchV2();
-        }
-      }
-      migrateCandidatePipelineData();
-      refreshModalJobReference();
-    }
-
-    // 清理本地数据中的幽灵 + 重复条目
-    function cleanLocalGhostResumes() {
-      // ★ 幽灵清理已在 gistRead() 中完成（靠 validResumeIds + pendingResumeIds 保护）
-      //    此处只做同名去重，不再按 validResumeIds 过滤（刷新后 r.data 为空，会误删本地独有简历）
-      columns.forEach(col => {
-        (col.jobs || []).forEach(job => {
-          (job.positions || []).forEach(pos => {
-            if (pos.resumes && pos.resumes.length > 1) {
-              const before = pos.resumes.length;
-              const seenNames = new Set();
-              pos.resumes = pos.resumes.filter(r => {
-                if (seenNames.has(r.name)) return false;
-                seenNames.add(r.name);
-                return true;
-              });
-              if (pos.resumes.length < before) {
-                console.log(`[cleanLocal] ${pos.name}: ${before} → ${pos.resumes.length} (去重)`);
-              }
-            }
-          });
-        });
-      });
     }
 
     /* ── 多端同步：时间戳追踪 + 记录级合并 ── */
@@ -16395,7 +15787,7 @@ ${ocrText}`
           updatedAt: currentTimeFullLabel(),
         };
         pos.resumes.push(newResume);
-        // ★ 记录待推送简历 ID，防止 Gist 幽灵清理误删
+        // ★ 记录待推送简历 ID，防止同步合并时误删
         try {
           const pending = JSON.parse(localStorage.getItem(STORAGE_KEY + '_pendingResumeIds') || '[]');
           if (!pending.includes(newId)) pending.push(newId);
@@ -20263,7 +19655,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       if (!item.resume.data && resumeUrlMap[item.resume.id]) {
         swipeResumeLoading.value = true;
         try {
-          const r = await fetch(resumeUrlMap[item.resume.id], { headers: gistRawHeaders() });
+          const r = await fetch(resumeUrlMap[item.resume.id], { headers: rawFileHeaders() });
           if (r.ok) {
             item.resume.data = parseResumeFileData(await r.text(), item.resume);
             await cacheResumeData(item.resume.id, item.resume.data, {
@@ -21493,7 +20885,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       }
       const rawUrl = resumeIds.map(resumeId => resumeUrlMap[resumeId]).find(Boolean);
       if (!rawUrl) throw new Error('原简历未同步，请在旧版重新同步或重新上传');
-      const r = await fetchWithTimeout(rawUrl, { headers: gistRawHeaders() }, GIST_READ_TIMEOUT, '加载简历文件');
+      const r = await fetchWithTimeout(rawUrl, { headers: rawFileHeaders() }, FETCH_TIMEOUT, '加载简历文件');
       if (!r.ok) throw new Error('简历加载失败');
       resume.data = parseResumeFileData(await r.text(), resume);
       await cacheResumeData(resume.id, resume.data, {
@@ -22793,7 +22185,7 @@ ${clipped}`
     // -------- 简历下载（无 data 时自动从云端懒加载后下载）--------
     async function downloadResume(resume) {
       focusAdvisorResume(resume);
-      // 懒加载：如果本地没有 data，从 Gist raw_url 按需拉取
+      // 懒加载：如果本地没有 data，从云端 raw_url 按需拉取
       if (!resume.data) {
         const cached = await getCachedResumeData(resume.id);
         if (cached) {
@@ -22808,7 +22200,7 @@ ${clipped}`
         }
         try {
           showToast('正在从云端加载简历…');
-          const r = await fetchWithTimeout(rawUrl, { headers: gistRawHeaders() }, GIST_READ_TIMEOUT, '下载简历文件');
+          const r = await fetchWithTimeout(rawUrl, { headers: rawFileHeaders() }, FETCH_TIMEOUT, '下载简历文件');
           if (!r.ok) { showToast('简历加载失败', 'error'); return; }
           resume.data = parseResumeFileData(await r.text(), resume);
           await cacheResumeData(resume.id, resume.data, {
@@ -23502,7 +22894,6 @@ ${clipped}`
       batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, openTalentIntake, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
-      gistSettings, gistSettingsModalOpen, saveGistSettingsFromModal,
       operationHistory, recycleBin, historyPanel, undoLastOperation, restoreRecycleItem,
       backupImportInput, exportFullBackup, triggerBackupImport, onBackupImportFile,
       exportJobsBackup, exportSinglePositionBackup, exportCandidatesBackup, exportKbBackup,
