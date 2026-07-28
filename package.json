@@ -1,0 +1,16 @@
+{
+  "name": "workbuddy-spa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build.js",
+    "build:vite": "vite build",
+    "preview": "vite preview",
+    "test": "node --test src/workbench-v2.test.mjs"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0"
+  }
+}
