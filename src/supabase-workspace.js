@@ -43,11 +43,11 @@
       requireReader();
       const { data, error } = await supabase.from('workspace_state').select('workspace_id, version, data, updated_at').eq('workspace_id', 'main').single();
       if (error?.code === 'PGRST116') {
-        retained = { version: 0, data: {} };
+        retained = { version: 0, data: {}, updatedAt: null };
         return retained;
       }
       if (error) throw mapError(error);
-      retained = data ? { version: data.version, data: data.data } : { version: 0, data: {} };
+      retained = data ? { version: data.version, data: data.data, updatedAt: data.updated_at || null } : { version: 0, data: {}, updatedAt: null };
       return retained;
     }
 

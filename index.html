@@ -12798,6 +12798,7 @@ const vueAppConfig = {
             console.warn('[workbenchV2] 迁移标记备份失败:', e.message);
           }
         }
+        markLocalSnapshotSaved();
         return true;
       } catch (error) {
         console.error('V2 工作台数据保存失败:', error.message);
@@ -15034,13 +15035,35 @@ ${ocrText}`
         const workspaceClient = getWorkspaceStateClient();
         const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: packWorkspaceState() });
         cloudWorkspaceVersion = saved.version;
+        markLocalPushed();
         syncStatus.value = 'synced';
         syncError.value = '';
       } catch (error) {
-        syncStatus.value = 'error';
-        syncError.value = error?.code === 'WORKSPACE_VERSION_CONFLICT'
-          ? '云端数据已被其他成员更新，请刷新页面后再保存'
-          : '云端保存失败，请稍后重试';
+        if (error?.code === 'WORKSPACE_VERSION_CONFLICT') {
+          // 版本冲突：其他成员已推送新数据。尝试合并后重试一次。
+          try {
+            const workspaceClient = getWorkspaceStateClient();
+            const remote = await workspaceClient.loadWorkspace();
+            cloudWorkspaceVersion = remote.version;
+            const localPacked = packWorkspaceState();
+            const merged = mergeWorkspaceStates(localPacked, remote.data);
+            const stats = merged._mergeStats || {};
+            delete merged._mergeStats;
+            const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: merged });
+            cloudWorkspaceVersion = saved.version;
+            markLocalPushed();
+            await applyWorkspaceState(merged);
+            syncStatus.value = 'synced';
+            syncError.value = '';
+            if (stats.fromCloud) showToast(`已自动合并其他成员的 ${stats.fromCloud} 条更新`, 'info');
+          } catch (retryError) {
+            syncStatus.value = 'error';
+            syncError.value = '云端合并失败，请刷新页面后重试';
+          }
+        } else {
+          syncStatus.value = 'error';
+          syncError.value = '云端保存失败，请稍后重试';
+        }
       }
     }
 
@@ -15387,6 +15410,83 @@ ${ocrText}`
       });
     }
 
+    /* ── 多端同步：时间戳追踪 + 记录级合并 ── */
+    const SYNC_SNAPSHOT_KEY = STORAGE_KEY + '_snapshot_saved_at';
+    const SYNC_PUSH_KEY = STORAGE_KEY + '_last_push_at';
+
+    function markLocalSnapshotSaved() {
+      try { localStorage.setItem(SYNC_SNAPSHOT_KEY, new Date().toISOString()); } catch {}
+    }
+    function markLocalPushed() {
+      try { localStorage.setItem(SYNC_PUSH_KEY, new Date().toISOString()); } catch {}
+    }
+    function getLocalSyncTimestamps() {
+      return {
+        snapshotSavedAt: localStorage.getItem(SYNC_SNAPSHOT_KEY) || null,
+        lastPushedAt: localStorage.getItem(SYNC_PUSH_KEY) || null,
+      };
+    }
+
+    /** 按 id 合并两个集合：双方独有记录保留，共有记录取 updatedAt 较新者 */
+    function mergeCollectionById(localArr, remoteArr) {
+      const map = new Map();
+      let fromCloud = 0;
+      (Array.isArray(remoteArr) ? remoteArr : []).forEach(item => {
+        if (item?.id) map.set(item.id, { item, source: 'remote' });
+      });
+      (Array.isArray(localArr) ? localArr : []).forEach(item => {
+        if (!item?.id) return;
+        const existing = map.get(item.id);
+        if (!existing) {
+          map.set(item.id, { item, source: 'local' });
+        } else if (String(item.updatedAt || '') >= String(existing.item.updatedAt || '')) {
+          map.set(item.id, { item, source: 'local' });
+        }
+      });
+      const result = [];
+      map.forEach(({ item, source }) => {
+        if (source === 'remote') fromCloud++;
+        result.push(item);
+      });
+      return { result, fromCloud };
+    }
+
+    /** 合并本地与远端的完整工作区状态（记录级） */
+    function mergeWorkspaceStates(local, remote) {
+      const merged = JSON.parse(JSON.stringify(local));
+      let totalFromCloud = 0;
+      // 合并 workbenchV2 四大集合
+      if (merged.workbenchV2 && remote?.workbenchV2) {
+        ['companies', 'positions', 'candidates', 'applications'].forEach(key => {
+          const { result, fromCloud } = mergeCollectionById(merged.workbenchV2[key], remote.workbenchV2[key]);
+          merged.workbenchV2[key] = result;
+          totalFromCloud += fromCloud;
+        });
+      } else if (!merged.workbenchV2 && remote?.workbenchV2) {
+        merged.workbenchV2 = remote.workbenchV2;
+        totalFromCloud += 1;
+      }
+      // 合并知识库（按 id）
+      if (Array.isArray(remote?.kb) && remote.kb.length) {
+        const { result, fromCloud } = mergeCollectionById(merged.kb, remote.kb);
+        merged.kb = result;
+        totalFromCloud += fromCloud;
+      }
+      // 合并删除墓碑
+      if (remote?.deletedRecords) {
+        merged.deletedRecords = remote.deletedRecords; // mergeDeletedRecords 在 applyWorkspaceState 中处理
+      }
+      // 看板列：取远端（看板整体覆盖风险低，后续可细化）
+      if (Array.isArray(remote?.jobs) && remote.jobs.some(col => Array.isArray(col) && col.length)) {
+        if (!Array.isArray(merged.jobs) || !merged.jobs.some(col => Array.isArray(col) && col.length)) {
+          merged.jobs = remote.jobs;
+          merged.names = remote.names;
+        }
+      }
+      merged._mergeStats = { fromCloud: totalFromCloud };
+      return merged;
+    }
+
     async function initCloud() {
       syncStatus.value = 'syncing';
       try {
@@ -15396,14 +15496,48 @@ ${ocrText}`
         const localPacked = packWorkspaceState();
         const remoteHasData = hasWorkspaceBusinessData(remote.data);
         const localHasData = hasWorkspaceBusinessData(localPacked);
+
         if (remoteHasData && !localHasData) {
+          // 云端有、本地无：直接采用云端
           await applyWorkspaceState(remote.data);
         } else if (!remoteHasData && localHasData && window.WorkBuddyAccess?.canWrite) {
+          // 云端无、本地有：首次播种
           const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: localPacked });
           cloudWorkspaceVersion = saved.version;
+          markLocalPushed();
         } else if (remoteHasData && localHasData && window.WorkBuddyAccess?.canWrite) {
-          const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: localPacked });
-          cloudWorkspaceVersion = saved.version;
+          // 双方都有数据：比较时间戳决定策略
+          const { snapshotSavedAt, lastPushedAt } = getLocalSyncTimestamps();
+          const remoteUpdatedAt = remote.updatedAt || null;
+          // 本地是否有未推送的编辑（本地快照比上次推送更新）
+          const hasUnpushedEdits = snapshotSavedAt && (!lastPushedAt || snapshotSavedAt > lastPushedAt);
+          // 云端是否在本机上次推送后被他人更新
+          const cloudChangedSinceLastPush = remoteUpdatedAt && (!lastPushedAt || remoteUpdatedAt > lastPushedAt);
+
+          if (!hasUnpushedEdits && !cloudChangedSinceLastPush) {
+            // 情况 1：双方同步，无需操作
+          } else if (!hasUnpushedEdits && cloudChangedSinceLastPush) {
+            // 情况 2：云端有他人更新，本地无未推送编辑 → 云端优先
+            await applyWorkspaceState(remote.data);
+            showToast('已同步其他成员的最新数据', 'info');
+          } else if (hasUnpushedEdits && !cloudChangedSinceLastPush) {
+            // 情况 3：本地有未推送编辑，云端无变化 → 推送本地
+            const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: localPacked });
+            cloudWorkspaceVersion = saved.version;
+            markLocalPushed();
+          } else {
+            // 情况 4：双方都有新变更 → 记录级合并
+            const merged = mergeWorkspaceStates(localPacked, remote.data);
+            const stats = merged._mergeStats || {};
+            delete merged._mergeStats;
+            const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: merged });
+            cloudWorkspaceVersion = saved.version;
+            markLocalPushed();
+            await applyWorkspaceState(merged);
+            if (stats.fromCloud) {
+              showToast(`已合并云端更新（${stats.fromCloud} 条来自其他成员）`, 'info');
+            }
+          }
         }
         syncStatus.value = 'synced';
         syncError.value = '';

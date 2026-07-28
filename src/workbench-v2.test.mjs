@@ -75,7 +75,15 @@ test('旧版岗位编辑会立即保存并安排云端同步，避免薪资刷�
 
 test('云端初始化不会用旧快照覆盖已有本地岗位资料', () => {
   assert.match(INDEX_HTML, /const localPacked = packWorkspaceState\(\);\s*const remoteHasData = hasWorkspaceBusinessData\(remote\.data\);\s*const localHasData = hasWorkspaceBusinessData\(localPacked\);/);
-  assert.match(INDEX_HTML, /if \(remoteHasData && !localHasData\) \{\s*await applyWorkspaceState\(remote\.data\);/);
+  // 云端有、本地无时采用云端
+  assert.match(INDEX_HTML, /if \(remoteHasData && !localHasData\)/);
+  assert.match(INDEX_HTML, /await applyWorkspaceState\(remote\.data\);/);
+  // 双方都有数据时通过时间戳比较决定策略，不再无条件用本地覆盖云端
+  assert.match(INDEX_HTML, /hasUnpushedEdits/, '应追踪本地未推送编辑');
+  assert.match(INDEX_HTML, /cloudChangedSinceLastPush/, '应检测云端是否被他人更新');
+  assert.match(INDEX_HTML, /mergeWorkspaceStates\(localPacked, remote\.data\)/, '双方都有新变更时应执行记录级合并');
+  // 云端被他人更新且本地无未推送编辑时，云端优先
+  assert.match(INDEX_HTML, /!hasUnpushedEdits && cloudChangedSinceLastPush/, '应存在云端优先分支');
 });
 
 test('岗位详情提供基础信息编辑与 AI 匹配关键词提取入口', () => {
@@ -577,3 +585,62 @@ test('新的目标公司挖掘会取消进行中的 BD 方案生成', () => {
   assert.match(INDEX_HTML, /\+\+talentCompanyResearch\.bdRequestGeneration;\s*\n\s*talentCompanyResearch\.bdLoadingCompanyName = '';/, '重新挖掘时必须取消并清除 BD 加载状态');
   assert.match(INDEX_HTML, /bdRequestGeneration !== talentCompanyResearch\.bdRequestGeneration/, 'BD 返回前必须确认仍是最新 BD 请求');
 });
+
+// ---------------------------------------------------------------------------
+// (7) 多端同步安全：云端权威 + 记录级合并
+// ---------------------------------------------------------------------------
+
+test('initCloud 双方都有数据时不再无条件用本地覆盖云端', () => {
+  // 旧代码特征（无条件 saveWorkspace 推送本地）不应存在
+  const oldPattern = /remoteHasData && localHasData[\s\S]{0,80}saveWorkspace\(\{ expectedVersion: cloudWorkspaceVersion, data: localPacked \}\)/;
+  assert.ok(!oldPattern.test(INDEX_HTML), '不应存在无条件用 localPacked 覆盖云端的旧逻辑');
+});
+
+test('同步系统追踪本地快照时间和推送时间', () => {
+  assert.match(INDEX_HTML, /SYNC_SNAPSHOT_KEY/, '应定义快照时间戳 key');
+  assert.match(INDEX_HTML, /SYNC_PUSH_KEY/, '应定义推送时间戳 key');
+  assert.match(INDEX_HTML, /markLocalSnapshotSaved\(\)/, 'saveWorkbenchV2 成功后应记录快照时间');
+  assert.match(INDEX_HTML, /markLocalPushed\(\)/, 'doPush 成功后应记录推送时间');
+});
+
+test('doPush 版本冲突时自动合并重试而非仅报错', () => {
+  assert.match(INDEX_HTML, /WORKSPACE_VERSION_CONFLICT[\s\S]{0,600}mergeWorkspaceStates/, '冲突后应执行合并');
+  assert.match(INDEX_HTML, /已自动合并其他成员的/, '合并成功应通知用户');
+});
+
+test('mergeCollectionById 按 id 合并且 updatedAt 较新者胜出', () => {
+  // 从 index.html 提取 mergeCollectionById 函数并执行
+  const fnMatch = INDEX_HTML.match(/function mergeCollectionById\(localArr, remoteArr\) \{[\s\S]*?\n    \}/);
+  assert.ok(fnMatch, 'index.html 应包含 mergeCollectionById 函数');
+  const fn = new Function('localArr', 'remoteArr', fnMatch[0].replace(/^function mergeCollectionById\(localArr, remoteArr\) \{/, '').replace(/\}$/, ''));
+
+  const local = [
+    { id: 'a', name: '公司A-本地新', updatedAt: '2026-07-28T10:00:00Z' },
+    { id: 'b', name: '公司B-本地旧', updatedAt: '2026-07-20T08:00:00Z' },
+    { id: 'c', name: '公司C-仅本地', updatedAt: '2026-07-25T09:00:00Z' },
+  ];
+  const remote = [
+    { id: 'a', name: '公司A-云端旧', updatedAt: '2026-07-27T09:00:00Z' },
+    { id: 'b', name: '公司B-云端新', updatedAt: '2026-07-26T12:00:00Z' },
+    { id: 'd', name: '公司D-仅云端', updatedAt: '2026-07-26T10:00:00Z' },
+  ];
+  const { result, fromCloud } = fn(local, remote);
+
+  assert.equal(result.length, 4, '合并后应有 4 条记录（a/b/c/d）');
+  const a = result.find(r => r.id === 'a');
+  assert.equal(a.name, '公司A-本地新', 'id=a 本地更新，应取本地');
+  const b = result.find(r => r.id === 'b');
+  assert.equal(b.name, '公司B-云端新', 'id=b 云端更新，应取云端');
+  assert.ok(result.find(r => r.id === 'c'), '仅本地记录应保留');
+  assert.ok(result.find(r => r.id === 'd'), '仅云端记录应保留');
+  assert.equal(fromCloud, 2, 'fromCloud 应统计云端胜出 + 仅云端的记录数');
+});
+
+test('旧电脑首次登录（无推送记录）不能覆盖云端新数据', () => {
+  // 当 lastPushedAt 为 null 时，cloudChangedSinceLastPush 应为 true（只要 remoteUpdatedAt 存在）
+  // 验证逻辑模式：!lastPushedAt || remoteUpdatedAt > lastPushedAt
+  assert.match(INDEX_HTML, /!lastPushedAt \|\| remoteUpdatedAt > lastPushedAt/, '无推送记录时应视为云端已变化');
+  // 且此时 hasUnpushedEdits 为 false（因为 snapshotSavedAt 也为 null 或 <= lastPushedAt）
+  assert.match(INDEX_HTML, /snapshotSavedAt && \(!lastPushedAt \|\| snapshotSavedAt > lastPushedAt\)/, '无快照记录时不应视为有未推送编辑');
+});
+
