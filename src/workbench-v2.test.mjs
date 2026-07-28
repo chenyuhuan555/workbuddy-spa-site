@@ -608,11 +608,11 @@ test('doPush 版本冲突时自动合并重试而非仅报错', () => {
   assert.match(INDEX_HTML, /已自动合并其他成员的/, '合并成功应通知用户');
 });
 
-test('mergeCollectionById 按 id 合并且 updatedAt 较新者胜出', () => {
-  // 从 index.html 提取 mergeCollectionById 函数并执行
-  const fnMatch = INDEX_HTML.match(/function mergeCollectionById\(localArr, remoteArr\) \{[\s\S]*?\n    \}/);
-  assert.ok(fnMatch, 'index.html 应包含 mergeCollectionById 函数');
-  const fn = new Function('localArr', 'remoteArr', fnMatch[0].replace(/^function mergeCollectionById\(localArr, remoteArr\) \{/, '').replace(/\}$/, ''));
+test('mergeCollectionById 按 id 合并且 updatedAt 较新者胜出', async () => {
+  // 从独立模块导入（IIFE 挂载到 globalThis.WorkBuddySyncMerge）
+  await import('./services/sync-merge.js');
+  const { mergeCollectionById } = globalThis.WorkBuddySyncMerge;
+  assert.ok(mergeCollectionById, 'sync-merge.js 应导出 mergeCollectionById');
 
   const local = [
     { id: 'a', name: '公司A-本地新', updatedAt: '2026-07-28T10:00:00Z' },
@@ -624,7 +624,7 @@ test('mergeCollectionById 按 id 合并且 updatedAt 较新者胜出', () => {
     { id: 'b', name: '公司B-云端新', updatedAt: '2026-07-26T12:00:00Z' },
     { id: 'd', name: '公司D-仅云端', updatedAt: '2026-07-26T10:00:00Z' },
   ];
-  const { result, fromCloud } = fn(local, remote);
+  const { result, fromCloud } = mergeCollectionById(local, remote);
 
   assert.equal(result.length, 4, '合并后应有 4 条记录（a/b/c/d）');
   const a = result.find(r => r.id === 'a');
@@ -634,6 +634,55 @@ test('mergeCollectionById 按 id 合并且 updatedAt 较新者胜出', () => {
   assert.ok(result.find(r => r.id === 'c'), '仅本地记录应保留');
   assert.ok(result.find(r => r.id === 'd'), '仅云端记录应保留');
   assert.equal(fromCloud, 2, 'fromCloud 应统计云端胜出 + 仅云端的记录数');
+});
+
+test('mergeWorkspaceStates 合并完整工作区（workbenchV2 + kb + 看板）', async () => {
+  await import('./services/sync-merge.js');
+  const { mergeWorkspaceStates } = globalThis.WorkBuddySyncMerge;
+  assert.ok(mergeWorkspaceStates, 'sync-merge.js 应导出 mergeWorkspaceStates');
+
+  const local = {
+    workbenchV2: {
+      companies: [{ id: 'c1', name: '本地公司', updatedAt: '2026-07-28T10:00:00Z' }],
+      positions: [{ id: 'p1', name: '本地岗位', updatedAt: '2026-07-28T09:00:00Z' }],
+      candidates: [],
+      applications: [],
+    },
+    kb: [{ id: 'kb1', title: '本地笔记', updatedAt: '2026-07-28T08:00:00Z' }],
+    jobs: [[{ id: 'j1', name: '本地看板岗位' }]],
+  };
+  const remote = {
+    workbenchV2: {
+      companies: [{ id: 'c1', name: '云端公司', updatedAt: '2026-07-27T10:00:00Z' }, { id: 'c2', name: '云端新公司', updatedAt: '2026-07-28T11:00:00Z' }],
+      positions: [{ id: 'p1', name: '云端岗位-新', updatedAt: '2026-07-28T12:00:00Z' }],
+      candidates: [{ id: 't1', name: '云端人才', updatedAt: '2026-07-28T07:00:00Z' }],
+      applications: [],
+    },
+    kb: [{ id: 'kb1', title: '云端笔记-新', updatedAt: '2026-07-28T09:00:00Z' }, { id: 'kb2', title: '云端新笔记', updatedAt: '2026-07-28T10:00:00Z' }],
+    deletedRecords: { jobs: [{ id: 'j9' }] },
+  };
+
+  const merged = mergeWorkspaceStates(local, remote);
+
+  // companies: c1 本地更新胜出, c2 仅云端保留
+  assert.equal(merged.workbenchV2.companies.length, 2);
+  assert.equal(merged.workbenchV2.companies.find(c => c.id === 'c1').name, '本地公司');
+  assert.ok(merged.workbenchV2.companies.find(c => c.id === 'c2'));
+  // positions: p1 云端更新胜出
+  assert.equal(merged.workbenchV2.positions.find(p => p.id === 'p1').name, '云端岗位-新');
+  // candidates: 仅云端
+  assert.equal(merged.workbenchV2.candidates.length, 1);
+  // kb: kb1 云端更新, kb2 仅云端
+  assert.equal(merged.kb.length, 2);
+  assert.equal(merged.kb.find(k => k.id === 'kb1').title, '云端笔记-新');
+  // deletedRecords 取远端
+  assert.deepEqual(merged.deletedRecords, { jobs: [{ id: 'j9' }] });
+  // 看板：本地有数据，不被远端覆盖
+  assert.equal(merged.jobs[0][0].name, '本地看板岗位');
+  // 不修改入参
+  assert.equal(local.workbenchV2.companies.length, 1, '入参 local 不应被修改');
+  // _mergeStats 存在
+  assert.ok(merged._mergeStats.fromCloud >= 0);
 });
 
 test('旧电脑首次登录（无推送记录）不能覆盖云端新数据', () => {
