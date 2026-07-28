@@ -1279,91 +1279,58 @@
     .kb-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
     .kb-content th, .kb-content td { border: 1px solid var(--wb-line); padding: 0.5rem 0.75rem; text-align: left; font-size: 0.875rem; }
     .kb-content th { background: #f8fafc; font-weight: 600; color: #475569; }
+
+    /* ============================================================
+       设计令牌 —— 唯一 :root（玻璃办公室主题）
+       取值为此前三代主题级联后的最终生效值，确保视觉零变化。
+       ============================================================ */
     :root {
-      --wb-ink: #17151f;
-      --wb-muted: #756f7f;
-      --wb-soft-muted: #8a8496;
-      --wb-panel: rgba(255, 255, 255, 0.78);
-      --wb-line: rgba(55, 45, 35, 0.05);
-      --wb-shadow: 0 24px 60px rgba(70, 58, 42, 0.11);
-      --wb-card-shadow: 0 14px 32px rgba(70, 58, 42, 0.08);
-      --wb-shell-shadow: 0 20px 52px rgba(70, 58, 42, 0.10);
-      --wb-dark: #17121f;
-      --wb-button-hover: #2a2138;
-      --wb-ring: rgba(0, 0, 0, 0.035);
+      /* 品牌绿 */
       --wb-green: #2f6f52;
       --wb-green-light: rgba(226, 249, 238, 0.80);
+      --office-green: #2f6f52;
+      --office-green-dark: #24583f;
+      /* 墨色与灰阶 */
+      --wb-ink: #1a2e25;
+      --wb-muted: #6e8b7c;
+      --wb-soft-muted: #8aa899;
+      --office-ink: #102d24;
+      --office-muted: #63766d;
+      /* 玻璃表面 */
+      --glass-bg: rgba(255, 255, 255, 0.48);
+      --glass-border: rgba(255, 255, 255, 0.62);
+      --glass-line: rgba(26, 61, 48, 0.08);
+      --wb-panel: rgba(255, 255, 255, 0.78);
+      --wb-line: rgba(55, 45, 35, 0.05);
+      --wb-white: rgba(255, 255, 255, 0.72);
+      --wb-cream: rgba(250, 247, 242, 0.78);
+      --wb-cream-strong: rgba(244, 239, 232, 0.82);
+      --wb-mint-bg: #efe8dc;
+      --wb-mint-panel: rgba(226, 249, 238, 0.58);
+      /* 阴影 */
+      --glass-shadow: 0 28px 80px rgba(46, 58, 46, 0.18), inset 0 1px 0 rgba(255,255,255,0.62);
+      --glass-shadow-soft: 0 14px 46px rgba(46, 58, 46, 0.11), inset 0 1px 0 rgba(255,255,255,0.58);
+      --wb-shadow: 0 24px 60px rgba(70, 58, 42, 0.11);
+      --wb-card-shadow: 0 16px 42px rgba(107, 86, 58, 0.09);
+      --wb-shell-shadow: 0 20px 52px rgba(107, 86, 58, 0.10);
+      /* 按钮 */
+      --wb-dark: #2f6f52;
+      --wb-button-hover: #265b43;
+      --wb-ring: rgba(0, 0, 0, 0.035);
+      /* 圆角 */
+      --office-radius-xl: 34px;
       --wb-radius-card: 28px;
       --wb-radius-modal: 34px;
       --wb-radius-input: 18px;
       --wb-radius-btn: 999px;
     }
-    html {
-      background:
-        radial-gradient(circle at 14% 10%, rgba(255, 240, 220, 0.38), transparent 28%),
-        radial-gradient(circle at 86% 8%, rgba(215, 242, 230, 0.38), transparent 30%),
-        linear-gradient(135deg, #eef9f4 0%, #fbfaf8 46%, #f4f2fc 100%);
-    }
-    body {
-      min-height: 100vh;
-      color: var(--wb-ink);
-      background:
-        linear-gradient(90deg, rgba(255,255,255,0.48) 0 1px, transparent 1px 100%),
-        linear-gradient(180deg, rgba(255,255,255,0.38) 0 1px, transparent 1px 100%);
-      background-size: 42px 42px;
-      letter-spacing: 0;
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 26px 4.5vw;
-      z-index: -1;
-      border-radius: 36px;
-      background: rgba(255, 255, 255, 0.58);
-      box-shadow: 0 36px 110px rgba(58, 77, 62, 0.16);
-      backdrop-filter: blur(16px);
-      pointer-events: none;
-    }
-    #app { min-height: 100vh; }
-    header.sticky {
-      top: 22px;
-      width: min(1180px, calc(100% - 44px));
-      margin: 0 auto;
-      border: 0 !important;
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.82) !important;
-      box-shadow: 0 18px 45px rgba(75, 67, 54, 0.09);
-      backdrop-filter: blur(22px);
-    }
-    header.sticky > div {
-      max-width: none !important;
-      padding: 14px 18px !important;
-    }
-    header h1 {
-      color: var(--wb-ink) !important;
-      font-size: 18px !important;
-      font-weight: 800 !important;
-    }
-    header .bg-blue-600 {
-      background: var(--wb-dark) !important;
-      border-radius: 16px !important;
-      box-shadow: 0 10px 22px rgba(15, 11, 22, 0.18);
-    }
-    header a,
-    header button,
-    header [title] {
-      border: 0 !important;
-      border-radius: 999px !important;
-      background: rgba(255, 255, 255, 0.72) !important;
-      color: #4d4558 !important;
-      box-shadow: inset 0 0 0 1px rgba(43, 35, 26, 0.05);
-    }
-    main {
-      max-width: min(1180px, calc(100% - 44px)) !important;
-      padding: 34px 0 56px !important;
-      margin-top: 16px !important;
-      gap: 24px;
-    }
+
+    /* ============================================================
+       全局通用组件覆盖
+       面板 / 输入框 / 按钮 / 卡片 / 标签 / 滚动条等的基础样式，
+       全部引用顶部 :root 变量，渲染为玻璃办公室风格。
+       （三代主题合并后保留的有效规则，非冗余覆盖）
+       ============================================================ */
     main > section > div,
     .job-detail-modal,
     .search-instruction-modal,
@@ -1380,9 +1347,6 @@
     .search-instruction-modal > [class*="bg-gradient-to-r"]:first-child {
       position: relative;
       border: 0 !important;
-      background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.22)),
-        linear-gradient(120deg, rgba(202, 196, 255, 0.78), rgba(188, 235, 214, 0.72) 48%, rgba(255, 220, 181, 0.75)) !important;
       color: var(--wb-ink) !important;
     }
     main > section > div > [class*="bg-gradient-to-r"]:first-child h2,
@@ -1394,42 +1358,9 @@
       color: var(--wb-ink) !important;
       text-shadow: none !important;
     }
-    main > section > div > [class*="bg-gradient-to-r"]:first-child::after,
-    .job-detail-modal > [class*="bg-gradient-to-r"]:first-child::after {
-      content: "";
-      position: absolute;
-      right: 24px;
-      top: 50%;
-      width: 92px;
-      height: 92px;
-      border-radius: 28px;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.82), rgba(255,255,255,0.16)),
-        radial-gradient(circle at 70% 25%, rgba(15,11,22,0.12), transparent 32%);
-      transform: translateY(-50%) rotate(8deg);
-      opacity: 0.42;
-      pointer-events: none;
-    }
-    main > section:first-of-type > div > [class*="bg-gradient-to-r"]:first-child {
-      min-height: 150px;
-      align-items: flex-end !important;
-      padding: 28px !important;
-    }
-    main > section:first-of-type h2 {
-      max-width: 420px;
-      font-size: clamp(30px, 5vw, 58px) !important;
-      line-height: 0.98 !important;
-      font-weight: 800 !important;
-      letter-spacing: 0 !important;
-    }
     main > section:first-of-type > div > [class*="bg-gradient-to-r"]:first-child > * {
       position: relative;
       z-index: 1;
-    }
-    main > section:first-of-type > div > [class*="bg-gradient-to-r"]:first-child button {
-      background: #17121f !important;
-      color: #fff !important;
-      box-shadow: 0 18px 34px rgba(23, 18, 31, 0.18) !important;
     }
     .text-slate-800,
     .text-slate-700 { color: var(--wb-ink) !important; }
@@ -1510,25 +1441,6 @@
     }
     .group\/job.card-hover {
       border: 0 !important;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38)),
-        linear-gradient(135deg, rgba(246, 184, 194, 0.42), rgba(255, 220, 181, 0.36) 46%, rgba(188, 235, 214, 0.42)) !important;
-      box-shadow: 0 14px 28px rgba(70, 58, 42, 0.08) !important;
-    }
-    .group\/job:nth-child(4n+2).card-hover {
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38)),
-        linear-gradient(135deg, rgba(255, 220, 181, 0.5), rgba(202, 196, 255, 0.35)) !important;
-    }
-    .group\/job:nth-child(4n+3).card-hover {
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38)),
-        linear-gradient(135deg, rgba(202, 196, 255, 0.48), rgba(188, 235, 214, 0.32)) !important;
-    }
-    .group\/job:nth-child(4n).card-hover {
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38)),
-        linear-gradient(135deg, rgba(188, 235, 214, 0.5), rgba(246, 184, 194, 0.3)) !important;
     }
     .group\/job > div:first-child,
     .group\/job .border-t { border-color: rgba(55, 45, 35, 0.06) !important; }
@@ -1538,7 +1450,6 @@
       color: #0f766e !important;
     }
     .fixed.inset-0 { backdrop-filter: blur(10px); }
-    .job-detail-modal { background: rgba(255, 255, 255, 0.9) !important; }
     .job-detail-modal .detail-body,
     .job-detail-modal .detail-toolbar,
     .job-detail-modal .detail-card {
@@ -1583,44 +1494,15 @@
       main > section:first-of-type h2 { max-width: 100%; }
     }
 
-    /* AI Bridge inspired shell: calmer, product-like workspace frame. */
-    :root {
-      --wb-ink: #1a2e25;
-      --wb-muted: #6e8b7c;
-      --wb-soft-muted: #8aa899;
-      --wb-mint-bg: #efe8dc;
-      --wb-mint-panel: rgba(226, 249, 238, 0.58);
-      --wb-cream: rgba(250, 247, 242, 0.78);
-      --wb-cream-strong: rgba(244, 239, 232, 0.82);
-      --wb-white: rgba(255, 255, 255, 0.72);
-      --wb-dark: #2f6f52;
-      --wb-button-hover: #265b43;
-      --wb-ring: rgba(0, 0, 0, 0.035);
-      --wb-shell-shadow: 0 20px 52px rgba(107, 86, 58, 0.10);
-      --wb-card-shadow: 0 16px 42px rgba(107, 86, 58, 0.09);
-    }
-    html {
-      background:
-        radial-gradient(circle at 8% 8%, rgba(255,255,255,0.65), transparent 28%),
-        radial-gradient(circle at 88% 12%, rgba(230,248,238,0.35), transparent 32%),
-        radial-gradient(circle at 46% 88%, rgba(255,245,228,0.25), transparent 38%),
-        linear-gradient(135deg, #fafcf9 0%, #f8faf8 34%, #f4f9f5 68%, #f0f7f2 100%);
-    }
+    /* ============================================================
+       工作台布局结构层（原 AI Bridge shell）
+       只负责骨架布局：侧栏 / 右栏 / Hero / 主区 / 各 section。
+       视觉样式统一由下方"玻璃办公室主题层"提供，变量见顶部 :root。
+       ============================================================ */
     body {
       overflow-x: hidden;
-      color: var(--wb-ink);
-      background: transparent !important;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-    }
-    body::before {
-      inset: 0 !important;
-      border-radius: 0 !important;
-      background:
-        radial-gradient(circle at 10% 8%, rgba(255,255,255,0.35), transparent 28%),
-        radial-gradient(circle at 80% 16%, rgba(210,240,225,0.20), transparent 30%) !important;
-      box-shadow: none !important;
-      backdrop-filter: none !important;
     }
     header.sticky {
       display: none !important;
@@ -2918,19 +2800,11 @@
       transform: translateZ(0);
     }
 
-    /* ======== Glass office theme override (visual only) ======== */
-    :root {
-      --glass-bg: rgba(255, 255, 255, 0.48);
-      --glass-border: rgba(255, 255, 255, 0.62);
-      --glass-line: rgba(26, 61, 48, 0.08);
-      --glass-shadow: 0 28px 80px rgba(46, 58, 46, 0.18), inset 0 1px 0 rgba(255,255,255,0.62);
-      --glass-shadow-soft: 0 14px 46px rgba(46, 58, 46, 0.11), inset 0 1px 0 rgba(255,255,255,0.58);
-      --office-green: #2f6f52;
-      --office-green-dark: #24583f;
-      --office-ink: #102d24;
-      --office-muted: #63766d;
-      --office-radius-xl: 34px;
-    }
+    /* ============================================================
+       玻璃办公室主题层（Glass office）—— 当前唯一视觉主题
+       提供磨砂玻璃质感、办公绿主色与全部视觉样式。
+       变量见顶部唯一 :root。
+       ============================================================ */
     html {
       background:
         linear-gradient(90deg, rgba(244,248,244,0.32), rgba(244,248,244,0.16)),
