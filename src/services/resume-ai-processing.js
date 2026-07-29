@@ -158,8 +158,8 @@
       const versionId = key.slice(separator + 1);
       let context;
       try { context = findVersion(bundle, candidateId, versionId); } catch { return; }
-      if (context.version.formatStatus !== 'processing') return;
-      context.version.formatStatus = 'queued';
+      if (!['processing', 'queued'].includes(context.version.formatStatus)) return;
+      if (context.version.formatStatus === 'processing') context.version.formatStatus = 'queued';
       if (context.candidate.profileProcessStatus === 'processing') context.candidate.profileProcessStatus = 'queued';
       recovered.push({ candidateId, versionId });
     });

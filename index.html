@@ -11100,6 +11100,34 @@ const vueAppConfig = {
       return versions[0];
     });
     const resumeAiQueue = ResumeAiProcessing.createQueue();
+    const RESUME_AI_PENDING_KEY = STORAGE_KEY + '_resume_ai_pending_v1';
+    function readResumeAiPendingKeys() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(RESUME_AI_PENDING_KEY) || '[]');
+        return Array.from(new Set((Array.isArray(parsed) ? parsed : [])
+          .map(value => String(value || '').trim())
+          .filter(value => value.includes(':')))).slice(0, 50);
+      } catch {
+        return [];
+      }
+    }
+    function writeResumeAiPendingKeys(keys) {
+      const clean = Array.from(new Set(keys.filter(Boolean))).slice(0, 50);
+      try {
+        if (clean.length) localStorage.setItem(RESUME_AI_PENDING_KEY, JSON.stringify(clean));
+        else localStorage.removeItem(RESUME_AI_PENDING_KEY);
+      } catch (error) {
+        console.warn('无法记录简历 AI 待处理任务，刷新恢复将不可用：', error);
+      }
+    }
+    function markResumeAiPending(candidateId, versionId) {
+      const key = `${candidateId}:${versionId}`;
+      writeResumeAiPendingKeys(readResumeAiPendingKeys().concat(key));
+      return key;
+    }
+    function clearResumeAiPending(key) {
+      writeResumeAiPendingKeys(readResumeAiPendingKeys().filter(item => item !== key));
+    }
     async function resumeBlobToDataUrl(blob) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -11151,11 +11179,47 @@ const vueAppConfig = {
       });
     }
     function enqueueResumeAiProcessing(candidateId, versionId) {
-      return ResumeAiProcessing.enqueue(
+      const pendingKey = markResumeAiPending(candidateId, versionId);
+      const run = ResumeAiProcessing.enqueue(
         resumeAiQueue,
         { candidateId, versionId },
         processResumeAiVersion,
       );
+      void run.finally(() => clearResumeAiPending(pendingKey)).catch(() => {});
+      return run;
+    }
+    async function recoverResumeAiProcessing() {
+      const pendingKeys = readResumeAiPendingKeys();
+      if (!pendingKeys.length) return;
+      const recovered = ResumeAiProcessing.recoverInterrupted(workbenchV2, pendingKeys);
+      const validKeys = recovered.map(item => `${item.candidateId}:${item.versionId}`);
+      writeResumeAiPendingKeys(validKeys);
+      if (!validKeys.length) return;
+
+      const aiConfigured = canConfigureAi && String(aiConfig.apiKey || '').trim().startsWith('sk-');
+      if (!aiConfigured) {
+        const reason = canConfigureAi
+          ? 'DeepSeek API Key 未配置或无效'
+          : '当前账号没有 AI 功能权限';
+        recovered.forEach(({ candidateId, versionId }) => {
+          try {
+            const { candidate, version } = ResumeAiProcessing.findVersion(workbenchV2, candidateId, versionId);
+            version.formatStatus = 'failed';
+            version.formatError = reason;
+            if (candidate.profileProcessStatus !== 'done') {
+              candidate.profileProcessStatus = 'failed';
+              candidate.profileProcessError = reason;
+            }
+          } catch {}
+        });
+        await saveWorkbenchV2();
+        writeResumeAiPendingKeys([]);
+        return;
+      }
+
+      recovered.forEach(({ candidateId, versionId }) => {
+        void enqueueResumeAiProcessing(candidateId, versionId).catch(() => {});
+      });
     }
     async function reprocessCandidateResumeVersion() {
       if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
@@ -14893,6 +14957,7 @@ ${ocrText}`
       await reconcileMigratedPositionDescriptions();
       const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
+      await recoverResumeAiProcessing();
       if (localPipelineMigrated || cloudPipelineMigrated) markDirty('legacy');
       updateActiveNavFromScroll();
       window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });

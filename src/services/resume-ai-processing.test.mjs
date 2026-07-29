@@ -237,10 +237,31 @@ test('刷新恢复只重置明确记录的 processing 版本', () => {
   assert.equal(bundle.candidates[0].profileProcessStatus, 'queued');
 });
 
+test('数据校验已转为 queued 的显式任务仍可在刷新后恢复', () => {
+  const bundle = makeBundle();
+  bundle.candidates[0].resumeVersions[0].formatStatus = 'queued';
+  bundle.candidates[0].profileProcessStatus = 'queued';
+
+  const recovered = Processor.recoverInterrupted(bundle, ['candidate_lei:resume_lei']);
+
+  assert.deepEqual(recovered, [{ candidateId: 'candidate_lei', versionId: 'resume_lei' }]);
+  assert.equal(bundle.candidates[0].resumeVersions[0].formatStatus, 'queued');
+  assert.equal(bundle.candidates[0].profileProcessStatus, 'queued');
+});
+
 test('页面加载处理器并为单份和批量入库提供统一后台入口', () => {
   assert.match(INDEX_HTML, /src\/services\/resume-ai-processing\.js\?v=20260729-resumeai1/);
   assert.match(INDEX_HTML, /const ResumeAiProcessing = window\.WorkBuddyResumeAiProcessing/);
   assert.match(INDEX_HTML, /function enqueueResumeAiProcessing\(candidateId, versionId\)/);
   assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => enqueueResumeAiProcessing\(candidateId, versionId\)/);
   assert.match(INDEX_HTML, /enqueueResumeAiProcessing\(candidate\.id, version\.id\)/);
+});
+
+test('页面只恢复显式记录的中断任务，不扫描全部历史简历', () => {
+  assert.match(INDEX_HTML, /const RESUME_AI_PENDING_KEY = STORAGE_KEY \+ '_resume_ai_pending_v1'/);
+  assert.match(INDEX_HTML, /function recoverResumeAiProcessing\(\)/);
+  assert.match(INDEX_HTML, /ResumeAiProcessing\.recoverInterrupted\(workbenchV2, pendingKeys\)/);
+  assert.match(INDEX_HTML, /await recoverResumeAiProcessing\(\);/);
+  const recoveryBody = INDEX_HTML.match(/async function recoverResumeAiProcessing\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.doesNotMatch(recoveryBody, /flatMap|resumeVersions\.forEach|candidates\.forEach/);
 });
