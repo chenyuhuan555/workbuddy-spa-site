@@ -17,10 +17,11 @@
 ;(function (root) {
   'use strict';
 
-  // STORAGE_KEY 由 index.html 内联脚本以顶层 const 定义（全局词法环境共享）。
-  // 此处延迟到调用时读取，避免模块加载期访问尚未初始化的 STORAGE_KEY（TDZ）。
+  // 必须与 index.html 的 STORAGE_KEY ('headhunter_v2') 保持同一数据库名称。
+  // 不直接读取该变量：它位于 Vue 应用内部作用域，外部脚本运行时不可见。
+  const RESUME_CACHE_DB_NAME = 'headhunter_v2_resume_cache';
   function resumeCacheDbName() {
-    return STORAGE_KEY + '_resume_cache';
+    return RESUME_CACHE_DB_NAME;
   }
 const RESUME_CACHE_STORE = 'files';
 const APP_SNAPSHOT_STORE = 'appSnapshots';

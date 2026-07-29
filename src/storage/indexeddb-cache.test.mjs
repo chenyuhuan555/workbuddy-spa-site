@@ -113,13 +113,15 @@ test('parseResumeFileData：非法 JSON 退化为旧格式', () => {
   assert.equal(Cache.parseResumeFileData(raw, {}), raw);
 });
 
-function withMockIndexedDb(open, run) {
+function withMockIndexedDb(open, run, options = {}) {
+  const storageKey = Object.hasOwn(options, 'storageKey') ? options.storageKey : 'workbuddy_test';
   const previousWindow = globalThis.window;
   const previousIndexedDb = globalThis.indexedDB;
   const previousStorageKey = globalThis.STORAGE_KEY;
   globalThis.window = globalThis;
   globalThis.indexedDB = { open };
-  globalThis.STORAGE_KEY = 'workbuddy_test';
+  if (storageKey === undefined) delete globalThis.STORAGE_KEY;
+  else globalThis.STORAGE_KEY = storageKey;
   return Promise.resolve()
     .then(run)
     .finally(() => {
@@ -137,6 +139,22 @@ function successfulOpenRequest(db) {
   queueMicrotask(() => request.onsuccess?.());
   return request;
 }
+
+test('openResumeCacheDb：不依赖页面内部 STORAGE_KEY，并继续打开原数据库', async () => {
+  const db = {
+    objectStoreNames: { contains: name => name === 'files' || name === 'appSnapshots' },
+    close() {},
+  };
+  let openedName = '';
+  await withMockIndexedDb(name => {
+    openedName = name;
+    return successfulOpenRequest(db);
+  }, async () => {
+    const opened = await Cache.openResumeCacheDb();
+    assert.equal(opened, db);
+  }, { storageKey: undefined });
+  assert.equal(openedName, 'headhunter_v2_resume_cache');
+});
 
 test('openResumeCacheDb：数据库缺少 files 时必须拒绝，不能把损坏结构当成可用', async () => {
   const db = {
@@ -238,4 +256,8 @@ test('启动补齐岗位描述：必须通过串行保存协调器', () => {
 test('存储恢复不得通过删除整个 IndexedDB 数据库实现', () => {
   const storageSource = readFileSync(new URL('./indexeddb-cache.js', import.meta.url), 'utf8');
   assert.doesNotMatch(storageSource, /deleteDatabase\s*\(/);
+});
+
+test('页面入口更新存储模块缓存版本，确保线上浏览器获取修复', () => {
+  assert.match(INDEX_HTML, /indexeddb-cache\.js\?v=20260729-idb3/);
 });
