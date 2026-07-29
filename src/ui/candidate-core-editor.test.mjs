@@ -159,5 +159,31 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
   assert.equal(persistCalls, 2, '失败后必须尽力持久化回滚状态，避免备用快照保留未保存值');
 });
 
-// Task 2 会继续在本文件中使用线上入口源码做静态 UI 契约测试。
-assert.ok(INDEX_HTML.includes('核心信息'));
+test('核心信息卡提供卡片级编辑动作和有标签的字段', () => {
+  assert.match(INDEX_HTML, /candidate-core-editor\.js\?v=20260729-core1/);
+  assert.match(INDEX_HTML, /@click="startCandidateCoreEdit"/);
+  assert.match(INDEX_HTML, /@click="saveCandidateCoreEdit"/);
+  assert.match(INDEX_HTML, /@click="cancelCandidateCoreEdit"/);
+  assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.owner"/);
+  assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.phone"/);
+  assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.email"/);
+  assert.match(INDEX_HTML, /list="candidate-core-owner-options"/);
+  assert.match(INDEX_HTML, /id="candidate-core-owner-options"/);
+});
+
+test('核心信息卡同时展示手机号和邮箱，并保留独立人才分类流程', () => {
+  assert.match(INDEX_HTML, /v-if="selectedCandidate\.phone"[^>]*>手机号：/);
+  assert.match(INDEX_HTML, /v-if="selectedCandidate\.email"[^>]*>邮箱：/);
+  assert.doesNotMatch(INDEX_HTML, /selectedCandidate\.phone \|\| selectedCandidate\.email/);
+  assert.match(INDEX_HTML, /updateSelectedCandidateCategories\(category\.id/);
+  assert.doesNotMatch(INDEX_HTML, /Object\.assign\(selectedCandidate[^,]*,\s*candidateCoreEdit\.draft/);
+});
+
+test('核心信息编辑器提供可访问的标签和保存控件', () => {
+  assert.match(INDEX_HTML, /aria-label="添加技术栈"/);
+  assert.match(INDEX_HTML, /aria-label="添加人才方向"/);
+  assert.match(INDEX_HTML, /:aria-label="'删除技术栈 '/);
+  assert.match(INDEX_HTML, /:aria-label="'删除人才方向 '/);
+  assert.match(INDEX_HTML, /role="alert"/);
+  assert.match(INDEX_HTML, /candidateCoreEdit\.saving \? '保存中…' : '保存'/);
+});
