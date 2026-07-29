@@ -75,6 +75,9 @@ test('人才详情优先展示排版文本并提供可见失败与重新处理�
   assert.match(INDEX_HTML, /type="button"[^>]*@click="reprocessCandidateResumeVersion"/);
   assert.match(INDEX_HTML, /重新提取并排版/);
   assert.match(INDEX_HTML, /async function reprocessCandidateResumeVersion\(\)/);
+  assert.match(INDEX_HTML, /v-if="activeCandidateResumeVersion\?\.formattedText && activeCandidateResumeVersion\?\.formatStatus !== 'failed'"[^>]*v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
+  assert.match(INDEX_HTML, /<section v-if="activeCandidateResumeVersion\?\.formatStatus === 'failed' && activeCandidateResumeVersion\?\.rawText"[\s\S]*?<h3[^>]*>原始提取文本</);
+  assert.match(INDEX_HTML, /refreshRawText:\s*true/);
 });
 
 test('迁移旧岗位时保留 detail 岗位职责，并只为既有空职责安全回填', () => {

@@ -4535,8 +4535,8 @@
               <div v-if="activeCandidateResumeVersion?.formatStatus === 'processing'" role="status" aria-live="polite" class="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">正在执行基础信息提取、候选人画像提取和电子简历排版，请稍候。</div>
               <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'queued'" role="status" class="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">尚未完成 AI 排版。可以点击“重新提取并排版”开始处理。</div>
               <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'failed'" role="alert" class="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{{ activeCandidateResumeVersion.formatError || 'AI 排版失败，请重试' }}</div>
-              <div v-if="activeCandidateResumeVersion?.formattedText" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion.formattedText)"></div>
-              <section v-if="activeCandidateResumeVersion?.rawText && (activeCandidateResumeVersion?.formatStatus === 'failed' || !activeCandidateResumeVersion?.formattedText)" class="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
+              <div v-if="activeCandidateResumeVersion?.formattedText && activeCandidateResumeVersion?.formatStatus !== 'failed'" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion.formattedText)"></div>
+              <section v-if="activeCandidateResumeVersion?.formatStatus === 'failed' && activeCandidateResumeVersion?.rawText" class="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
                 <h3 class="text-sm font-bold text-slate-700">原始提取文本</h3>
                 <p class="mt-1 text-xs text-slate-400">以下内容未经 AI 排版，仅用于核对原始解析结果。</p>
                 <pre class="mt-3 max-h-[50vh] overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-600">{{ activeCandidateResumeVersion.rawText }}</pre>
@@ -11106,13 +11106,15 @@ const vueAppConfig = {
         const parsed = JSON.parse(localStorage.getItem(RESUME_AI_PENDING_KEY) || '[]');
         return Array.from(new Set((Array.isArray(parsed) ? parsed : [])
           .map(value => String(value || '').trim())
-          .filter(value => value.includes(':')))).slice(0, 50);
+          .filter(value => value.length <= 200 && value.includes(':'))));
       } catch {
         return [];
       }
     }
     function writeResumeAiPendingKeys(keys) {
-      const clean = Array.from(new Set(keys.filter(Boolean))).slice(0, 50);
+      const clean = Array.from(new Set(keys
+        .map(value => String(value || '').trim())
+        .filter(value => value.length <= 200 && value.includes(':'))));
       try {
         if (clean.length) localStorage.setItem(RESUME_AI_PENDING_KEY, JSON.stringify(clean));
         else localStorage.removeItem(RESUME_AI_PENDING_KEY);
@@ -11136,8 +11138,8 @@ const vueAppConfig = {
         reader.readAsDataURL(blob);
       });
     }
-    async function loadCandidateResumeRawText(version) {
-      if (String(version?.rawText || '').trim()) return String(version.rawText).trim();
+    async function loadCandidateResumeRawText(version, candidate, options = {}) {
+      if (!options.refresh && String(version?.rawText || '').trim()) return String(version.rawText).trim();
       let fileData = String(version?.fileData || '');
       let fileType = String(version?.fileType || '');
       if (!fileData && version?.fileId) {
@@ -11160,13 +11162,14 @@ const vueAppConfig = {
       if (!fileData) throw new Error('原始简历文件不存在且原始文本为空');
       return extractResumeText({ name: version.fileName || '简历', type: fileType, data: fileData });
     }
-    async function processResumeAiVersion({ candidateId, versionId }) {
+    async function processResumeAiVersion({ candidateId, versionId, refreshRawText = false }) {
       return ResumeAiProcessing.process({
         bundle: workbenchV2,
         candidateId,
         versionId,
         canWrite,
         canUseAi: canConfigureAi,
+        refreshRawText,
         deps: {
           assertConfigured: requireDeepSeekApiKey,
           extractBasic: extractCandidateBasicInfoWithDeepSeek,
@@ -11178,11 +11181,11 @@ const vueAppConfig = {
         },
       });
     }
-    function enqueueResumeAiProcessing(candidateId, versionId) {
+    function enqueueResumeAiProcessing(candidateId, versionId, options = {}) {
       const pendingKey = markResumeAiPending(candidateId, versionId);
       const run = ResumeAiProcessing.enqueue(
         resumeAiQueue,
-        { candidateId, versionId },
+        { candidateId, versionId, refreshRawText: options.refreshRawText === true },
         processResumeAiVersion,
       );
       void run.finally(() => clearResumeAiPending(pendingKey)).catch(() => {});
@@ -11230,7 +11233,7 @@ const vueAppConfig = {
         return;
       }
       try {
-        await enqueueResumeAiProcessing(candidate.id, version.id);
+        await enqueueResumeAiProcessing(candidate.id, version.id, { refreshRawText: true });
         showToast('基础信息、候选人画像和电子简历排版已更新');
       } catch (error) {
         showToast(error.message || '简历重新处理失败，请重试', 'error');

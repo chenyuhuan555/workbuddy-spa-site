@@ -67,7 +67,7 @@
   }
 
   async function process(options = {}) {
-    const { bundle, candidateId, versionId, canWrite, canUseAi, deps = {} } = options;
+    const { bundle, candidateId, versionId, canWrite, canUseAi, refreshRawText = false, deps = {} } = options;
     if (!canWrite) throw new Error('当前账号无权修改人才信息');
     const context = findVersion(bundle, candidateId, versionId);
     const { candidate, version } = context;
@@ -84,11 +84,12 @@
       await persistOrThrow(deps, context);
 
       let rawText = String(version.rawText || '').trim();
-      if (!rawText) {
+      if (refreshRawText || !rawText) {
         if (typeof deps.loadRawText !== 'function') throw new Error('原始简历文件不存在且原始文本为空');
-        rawText = String(await deps.loadRawText(version, candidate) || '').trim();
-        if (rawText) {
-          version.rawText = rawText;
+        const extractedText = String(await deps.loadRawText(version, candidate, { refresh: refreshRawText }) || '').trim();
+        if (extractedText) {
+          rawText = extractedText;
+          version.rawText = extractedText;
           candidate.updatedAt = nowIso(deps);
           await persistOrThrow(deps, context);
         }

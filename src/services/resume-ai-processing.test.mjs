@@ -135,6 +135,34 @@ test('rawText 为空时只回填一次原始文本再继续处理', async () => 
   assert.equal(calls.filter(item => item.startsWith('persist:')).length, 5);
 });
 
+test('手动重新提取时从原始文件刷新 rawText，而不是复用旧解析文本', async () => {
+  const bundle = makeBundle();
+  const version = bundle.candidates[0].resumeVersions[0];
+  const calls = [];
+  const deps = successfulDeps(calls);
+  deps.loadRawText = async (current, candidate, options) => {
+    assert.equal(current.fileId, 'file_lei');
+    assert.equal(candidate.id, 'candidate_lei');
+    assert.equal(options.refresh, true);
+    calls.push('loadRaw');
+    return '从保留的原始 PDF 重新提取的正确文本'.repeat(8);
+  };
+
+  await Processor.process({
+    bundle,
+    candidateId: 'candidate_lei',
+    versionId: 'resume_lei',
+    canWrite: true,
+    canUseAi: true,
+    refreshRawText: true,
+    deps,
+  });
+
+  assert.match(version.rawText, /正确文本/);
+  assert.equal(calls.filter(item => item === 'loadRaw').length, 1);
+  assert.ok(calls.indexOf('loadRaw') < calls.indexOf('basic'));
+});
+
 test('只读调用在任何修改前拒绝', async () => {
   const bundle = makeBundle();
   const before = structuredClone(bundle);
@@ -252,7 +280,7 @@ test('数据校验已转为 queued 的显式任务仍可在刷新后恢复', () 
 test('页面加载处理器并为单份和批量入库提供统一后台入口', () => {
   assert.match(INDEX_HTML, /src\/services\/resume-ai-processing\.js\?v=20260729-resumeai1/);
   assert.match(INDEX_HTML, /const ResumeAiProcessing = window\.WorkBuddyResumeAiProcessing/);
-  assert.match(INDEX_HTML, /function enqueueResumeAiProcessing\(candidateId, versionId\)/);
+  assert.match(INDEX_HTML, /function enqueueResumeAiProcessing\(candidateId, versionId, options = \{\}\)/);
   assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => enqueueResumeAiProcessing\(candidateId, versionId\)/);
   assert.match(INDEX_HTML, /enqueueResumeAiProcessing\(candidate\.id, version\.id\)/);
 });
@@ -264,4 +292,7 @@ test('页面只恢复显式记录的中断任务，不扫描全部历史简历',
   assert.match(INDEX_HTML, /await recoverResumeAiProcessing\(\);/);
   const recoveryBody = INDEX_HTML.match(/async function recoverResumeAiProcessing\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
   assert.doesNotMatch(recoveryBody, /flatMap|resumeVersions\.forEach|candidates\.forEach/);
+  const readBody = INDEX_HTML.match(/function readResumeAiPendingKeys\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  const writeBody = INDEX_HTML.match(/function writeResumeAiPendingKeys\(keys\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.doesNotMatch(`${readBody}\n${writeBody}`, /slice\(0,\s*50\)/);
 });
