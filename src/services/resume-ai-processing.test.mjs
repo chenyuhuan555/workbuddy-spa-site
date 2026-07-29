@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 await import('./resume-ai-processing.js');
 const Processor = globalThis.WorkBuddyResumeAiProcessing;
+const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
 function makeBundle() {
   return {
@@ -233,4 +235,12 @@ test('刷新恢复只重置明确记录的 processing 版本', () => {
   assert.equal(bundle.candidates[0].resumeVersions[0].formatStatus, 'queued');
   assert.equal(bundle.candidates[0].resumeVersions[1].formatStatus, 'processing');
   assert.equal(bundle.candidates[0].profileProcessStatus, 'queued');
+});
+
+test('页面加载处理器并为单份和批量入库提供统一后台入口', () => {
+  assert.match(INDEX_HTML, /src\/services\/resume-ai-processing\.js\?v=20260729-resumeai1/);
+  assert.match(INDEX_HTML, /const ResumeAiProcessing = window\.WorkBuddyResumeAiProcessing/);
+  assert.match(INDEX_HTML, /function enqueueResumeAiProcessing\(candidateId, versionId\)/);
+  assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => enqueueResumeAiProcessing\(candidateId, versionId\)/);
+  assert.match(INDEX_HTML, /enqueueResumeAiProcessing\(candidate\.id, version\.id\)/);
 });

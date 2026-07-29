@@ -878,6 +878,13 @@
     task.filePersisted = true;
   }
 
+  function batchNotifyTalentSaved(deps, candidateId, version) {
+    if (!candidateId || !version?.id || typeof deps.afterTalentSaved !== 'function') return;
+    try {
+      void Promise.resolve(deps.afterTalentSaved({ candidateId, versionId: version.id })).catch(() => {});
+    } catch {}
+  }
+
   // 单任务处理：读取 → 解析（并发受限，由 batchPump 控制） → 写入门禁（串行）
   async function batchProcessTask(state, task, deps) {
     if (task.cancelled) { task.status = 'cancelled'; return; }
@@ -941,6 +948,7 @@
     task.createdId = candidate.id;
     await deps.persist();
     task.status = 'success';
+    batchNotifyTalentSaved(deps, candidate.id, version);
   }
 
   // 四选一处理：merge / newVersion / forceCreate / skip（复用 reconcileParsedFields / updateTalent / createTalent / appendTalentResumeVersion）
@@ -959,9 +967,10 @@
       currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
       owner: form.owner.trim(), status: form.status, source: '批量上传',
     };
+    let savedVersion = null;
     const applyVersionAndFinish = (candidateId) => {
       const version = buildResumeVersionFromForm(form);
-      if (version && candidateId) appendTalentResumeVersion(bundle, candidateId, version);
+      if (version && candidateId) savedVersion = appendTalentResumeVersion(bundle, candidateId, version);
       task.createdId = candidateId || '';
     };
     if (action === 'skip') { task.status = 'skipped'; return; }
@@ -972,6 +981,7 @@
       applyVersionAndFinish(candidate.id);
       await deps.persist();
       task.status = 'success';
+      batchNotifyTalentSaved(deps, task.createdId, savedVersion);
       return;
     }
     if (action === 'merge') {
@@ -993,6 +1003,7 @@
       }
       await deps.persist();
       task.status = 'success';
+      batchNotifyTalentSaved(deps, task.createdId, savedVersion);
       return;
     }
     if (action === 'newVersion') {
@@ -1011,6 +1022,7 @@
       }
       await deps.persist();
       task.status = 'success';
+      batchNotifyTalentSaved(deps, task.createdId, savedVersion);
       return;
     }
     } catch (e) {

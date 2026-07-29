@@ -517,3 +517,49 @@ test('批量查重代理按任务真实状态收口，不强制标记成功', ()
     '引擎返回 error/duplicate 时不能被UI强制覆盖成 success',
   );
 });
+
+test('人才可靠入库后才触发后台 AI，后台失败不改变上传成功', async () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  const state = makeState(1);
+  const deps = makeDeps(bundle, { parseImpl: task => formFromName(task.fileName) });
+  const notifications = [];
+  deps.afterTalentSaved = async payload => {
+    notifications.push(payload);
+    throw new Error('AI offline');
+  };
+
+  WorkbenchV2.batchAddFiles(state, [fakeFile('雷艺旋.pdf')]);
+  WorkbenchV2.batchPump(state, deps);
+  await drain(state);
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const task = state.tasks[0];
+  const candidate = bundle.candidates[0];
+  const version = candidate.resumeVersions[0];
+  assert.equal(task.status, 'success');
+  assert.equal(bundle.candidates.length, 1);
+  assert.equal(candidate.resumeVersions.length, 1);
+  assert.deepEqual(notifications, [{ candidateId: candidate.id, versionId: version.id }]);
+});
+
+test('重复简历保存为新版本后触发该版本的后台 AI', async () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  const existing = WorkbenchV2.createTalent(bundle, { name: '雷艺旋', currentCompany: '百度' });
+  const state = makeState(1);
+  const deps = makeDeps(bundle, { parseImpl: task => formFromName(task.fileName, { company: '百度' }) });
+  const notifications = [];
+  deps.afterTalentSaved = payload => { notifications.push(payload); };
+
+  WorkbenchV2.batchAddFiles(state, [fakeFile('雷艺旋.pdf')]);
+  WorkbenchV2.batchPump(state, deps);
+  await drain(state);
+  const task = state.tasks[0];
+  assert.equal(task.status, 'duplicate');
+
+  await WorkbenchV2.batchResolveDuplicate(state, task.id, 'newVersion', deps);
+  await Promise.resolve();
+
+  assert.equal(task.status, 'success');
+  assert.equal(existing.resumeVersions.length, 1);
+  assert.deepEqual(notifications, [{ candidateId: existing.id, versionId: existing.resumeVersions[0].id }]);
+});
