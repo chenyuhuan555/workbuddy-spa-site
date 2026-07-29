@@ -23,3 +23,18 @@ test('生产构建使用本地静态 Tailwind CSS', () => {
     assert.ok(css.includes(selector), `生产 CSS 缺少 ${selector}`);
   }
 });
+
+test('依赖和许可证清单覆盖所有生产与构建依赖', () => {
+  const dependencyFile = new URL('../docs/dependencies.md', import.meta.url);
+  const noticesFile = new URL('../THIRD_PARTY_NOTICES.md', import.meta.url);
+  assert.equal(fs.existsSync(dependencyFile), true, '应存在 docs/dependencies.md');
+  assert.equal(fs.existsSync(noticesFile), true, '应存在 THIRD_PARTY_NOTICES.md');
+  const content = `${fs.readFileSync(dependencyFile, 'utf8')}\n${fs.readFileSync(noticesFile, 'utf8')}`;
+  const dependencies = ['Vue', 'Supabase JS', 'Tailwind', 'Vite', 'parse5', 'PDF.js', 'JSZip', 'SheetJS', 'jsQR', 'Tesseract.js', 'ECharts', 'Mermaid'];
+  for (const dependency of dependencies) {
+    assert.match(content, new RegExp(`\\b${dependency.replace('.', '\\.')}`, 'i'), `清单缺少 ${dependency}`);
+  }
+  for (const field of ['用途', '版本', '来源', '许可证']) {
+    assert.match(content, new RegExp(field), `清单缺少${field}字段`);
+  }
+});
