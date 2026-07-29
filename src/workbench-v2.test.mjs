@@ -710,3 +710,18 @@ test('工作台三个主列表使用分页结果和预构建索引', () => {
   assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
 });
 
+test('深度监听只标记脏域并展示本地保存状态', () => {
+  const watcherStart = INDEX_HTML.indexOf('watch(columns');
+  const watcherEnd = INDEX_HTML.indexOf('// 切换候选人时重置简历内联查看状态', watcherStart);
+  const watchers = INDEX_HTML.slice(watcherStart, watcherEnd);
+
+  assert.match(INDEX_HTML, /<script src="\.\/src\/services\/save-coordinator\.js"><\/script>/);
+  assert.match(watchers, /markDirty\('legacy'\)/);
+  assert.match(watchers, /markDirty\('workbench'\)/);
+  assert.doesNotMatch(watchers, /\blocalSave\(\)|\bsaveWorkbenchV2\(\)|\bschedulePush\(/);
+  assert.match(INDEX_HTML, /role="status"[^>]*aria-live="polite"/);
+  assert.match(INDEX_HTML, /正在保存…/);
+  assert.match(INDEX_HTML, /已保存/);
+  assert.match(INDEX_HTML, /保存失败，点击重试/);
+});
+

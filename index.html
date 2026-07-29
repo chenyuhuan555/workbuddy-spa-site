@@ -17,6 +17,7 @@
   <script src="./src/constants/pipeline-stages.js?v=20260728-phase0"></script>
   <script src="./src/workbench-v2.js"></script>
   <script src="./src/services/sync-merge.js"></script>
+  <script src="./src/services/save-coordinator.js"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260728-idb1"></script>
   <script src="./src/ui/list-performance.js"></script>
   <script data-workbuddy-pipeline-core>
@@ -3965,13 +3966,17 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           </button>
         </div>
-        <div class="relative ml-auto">
-          <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="color:#fff!important">＋ 新建</button>
-          <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
-            <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建公司</button>
-            <button @click="selectWorkbenchNav('companies')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建岗位</button>
-            <button @click="selectWorkbenchNav('candidates')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建人才</button>
-            <button @click="selectWorkbenchNav('applications')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建推进记录</button>
+        <div class="ml-auto flex items-center gap-3">
+          <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
+          <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : '已保存' }}</span>
+          <div class="relative">
+            <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="color:#fff!important">＋ 新建</button>
+            <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
+              <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建公司</button>
+              <button @click="selectWorkbenchNav('companies')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建岗位</button>
+              <button @click="selectWorkbenchNav('candidates')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建人才</button>
+              <button @click="selectWorkbenchNav('applications')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">新建推进记录</button>
+            </div>
           </div>
         </div>
       </header>
@@ -14204,7 +14209,7 @@ ${ocrText}`
     }
 
     // -------- localStorage 本地缓存 --------
-    function localSave() {
+    async function localSave() {
       if (window.WorkBuddyAccess && !window.WorkBuddyAccess.canWrite) return false;
       // 主数据与知识库快照写入 IndexedDB；V2 工作台由 saveWorkbenchV2 独立保存。
       const data = packData({ stripLargeText: true, includeWorkbenchV2: false, includeKb: false });
@@ -14218,17 +14223,19 @@ ${ocrText}`
           }));
         }
       });
-      Promise.all([
-        saveAppSnapshot(APP_SNAPSHOT_KEYS.main, data),
-        saveAppSnapshot(APP_SNAPSHOT_KEYS.knowledgeBase, kbArticles),
-        ...cacheTasks,
-      ]).then(() => {
+      try {
+        await Promise.all([
+          saveAppSnapshot(APP_SNAPSHOT_KEYS.main, data),
+          saveAppSnapshot(APP_SNAPSHOT_KEYS.knowledgeBase, kbArticles),
+          ...cacheTasks,
+        ]);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(STORAGE_KEY + '_kb');
-      }).catch(e => {
+      } catch (e) {
         console.error('IndexedDB 保存失败:', e.message);
         showToast(e.name === 'QuotaExceededError' ? '本地存储空间已满，请先导出完整备份' : '本地存储异常', 'error');
-      });
+        return false;
+      }
       try {
         const localResumeIds = [];
         forEachResume(resume => { if (resume.id) localResumeIds.push(resume.id); });
@@ -14236,6 +14243,7 @@ ${ocrText}`
       } catch (e) {
         console.warn('本地简历索引保存失败:', e.message);
       }
+      return true;
     }
 
     async function localLoad() {
@@ -14493,6 +14501,18 @@ ${ocrText}`
     let cloudWorkspaceVersion = 0;
     let workspaceStateClient = null;
     let appHydrating = true;
+    const saveState = reactive({ status: 'idle', error: '', savedAt: '' });
+    const saveCoordinator = window.WorkBuddySaveCoordinator.createSaveCoordinator({
+      delay: 500,
+      save: async domains => {
+        if (domains.has('legacy') && !await localSave()) throw new Error('旧版工作区保存失败');
+        if (domains.has('workbench') && !await saveWorkbenchV2()) throw new Error('工作台保存失败');
+        if (cloudReady) schedulePush();
+      },
+    });
+    const stopSaveStateSubscription = saveCoordinator.subscribe(state => Object.assign(saveState, state));
+    const markDirty = domain => saveCoordinator.markDirty(domain);
+    const retryLocalSave = () => saveCoordinator.retry().catch(() => {});
 
     function getWorkspaceStateClient() {
       if (!workspaceStateClient) {
@@ -14682,6 +14702,8 @@ ${ocrText}`
 
     onBeforeUnmount(() => {
       window.removeEventListener('scroll', updateActiveNavFromScroll);
+      stopSaveStateSubscription();
+      saveCoordinator.dispose();
     });
 
     watch(companyFilter, () => { companyPage.value = 1; }, { deep: true });
@@ -14694,13 +14716,11 @@ ${ocrText}`
     // 数据变更 → 本地存 + 云端推
     watch(columns, () => {
       if (appHydrating) return;
-      localSave();
-      if (cloudReady) schedulePush();
+      markDirty('legacy');
     }, { deep: true });
     watch(workbenchV2, () => {
       if (appHydrating) return;
-      saveWorkbenchV2();
-      if (cloudReady) schedulePush();
+      markDirty('workbench');
     }, { deep: true });
     // 切换候选人时重置简历内联查看状态
     watch(() => selectedCandidate.value?.id, () => {
@@ -22615,7 +22635,7 @@ ${clipped}`
       ocrImage, ocrDragging, ocrStatus, ocrError, ocrInput,
       triggerOcrInput, clearOcr, onOcrPaste, onOcrDrop, onOcrFileChange,
       textParseRaw, textParseStatus, textParseError, parseJobText,
-      syncStatus, syncLabel, syncTooltip, initCloud,
+      syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       today, totalJobs, totalCompanies,
       activeNav, scrollToSection, scrollToBackupSection, navigateWorkbench,
       dispatch, addPositionRow, removePositionRow,
