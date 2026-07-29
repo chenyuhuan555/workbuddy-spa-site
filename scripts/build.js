@@ -11,12 +11,17 @@
  *   - 保持相对路径不变（GitHub Pages 以 /workbuddy-spa-site/ 为根）
  *   - 清理 dist/ 中的测试文件和 node_modules
  */
-import { cpSync, rmSync, mkdirSync, existsSync } from 'node:fs';
+import { cpSync, rmSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'dist');
+const productionCss = resolve(root, 'public', 'assets', 'workbuddy.css');
+
+if (!existsSync(productionCss) || statSync(productionCss).size === 0) {
+  throw new Error('缺少生产 CSS：请先运行 npm run build:css');
+}
 
 // 清空 dist
 if (existsSync(dist)) rmSync(dist, { recursive: true });
@@ -44,5 +49,8 @@ const docsDir = resolve(root, 'docs');
 if (existsSync(docsDir)) {
   cpSync(docsDir, resolve(dist, 'docs'), { recursive: true });
 }
+
+// 5. 随发布包提供第三方许可证通知
+cpSync(resolve(root, 'THIRD_PARTY_NOTICES.md'), resolve(dist, 'THIRD_PARTY_NOTICES.md'));
 
 console.log('✓ 构建完成 → dist/');

@@ -693,3 +693,43 @@ test('旧电脑首次登录（无推送记录）不能覆盖云端新数据', ()
   assert.match(INDEX_HTML, /snapshotSavedAt && \(!lastPushedAt \|\| snapshotSavedAt > lastPushedAt\)/, '无快照记录时不应视为有未推送编辑');
 });
 
+test('工作台三个主列表使用分页结果和预构建索引', () => {
+  const section = (start, end) => INDEX_HTML.slice(INDEX_HTML.indexOf(start), INDEX_HTML.indexOf(end));
+  const mainLists = [
+    section("workbenchNav === 'companies' && workbenchRoute.type === 'list'", "workbenchNav === 'companies' && workbenchRoute.type === 'company'"),
+    section("workbenchNav === 'candidates' && workbenchRoute.type === 'list'", "workbenchNav === 'candidates' && workbenchRoute.type === 'candidate'"),
+    section("workbenchNav === 'applications' && workbenchRoute.type === 'list'", "workbenchNav === 'ai' && workbenchRoute.type === 'list'"),
+  ].join('\n');
+
+  assert.match(INDEX_HTML, /<script src="\.\/src\/ui\/list-performance\.js"><\/script>/);
+  assert.match(INDEX_HTML, /v-for="company in pagedWorkbenchCompanies\.items"/);
+  assert.match(INDEX_HTML, /v-for="candidate in pagedWorkbenchCandidates\.items"/);
+  assert.match(INDEX_HTML, /v-for="application in pagedApplications\.items"/);
+  assert.match(INDEX_HTML, /v-for="group in pagedApplicationStageGroups"/);
+  assert.doesNotMatch(mainLists, /workbenchV2\.(candidates|companies|positions|applications)\.(find|filter)\(/);
+  assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
+});
+
+test('深度监听只标记脏域并展示本地保存状态', () => {
+  const watcherStart = INDEX_HTML.indexOf('watch(columns');
+  const watcherEnd = INDEX_HTML.indexOf('// 切换候选人时重置简历内联查看状态', watcherStart);
+  const watchers = INDEX_HTML.slice(watcherStart, watcherEnd);
+
+  assert.match(INDEX_HTML, /<script src="\.\/src\/services\/save-coordinator\.js"><\/script>/);
+  assert.match(watchers, /markDirty\('legacy'\)/);
+  assert.match(watchers, /markDirty\('workbench'\)/);
+  assert.doesNotMatch(watchers, /\blocalSave\(\)|\bsaveWorkbenchV2\(\)|\bschedulePush\(/);
+  assert.match(INDEX_HTML, /role="status"[^>]*aria-live="polite"/);
+  assert.match(INDEX_HTML, /正在保存…/);
+  assert.match(INDEX_HTML, /已保存/);
+  assert.match(INDEX_HTML, /保存失败，点击重试/);
+});
+
+test('时间线分析结果通过串行保存队列持久化', () => {
+  const match = INDEX_HTML.match(/function persistTimelineResult\(field, data\) \{([\s\S]*?)\n    \}/);
+  assert.ok(match, '应保留时间线分析结果持久化入口');
+  assert.match(match[1], /markDirty\('legacy'\)/, '时间线结果应标记旧版工作区为脏数据');
+  assert.doesNotMatch(match[1], /\bsaveState\s*\(/, '不得把保存状态对象当作函数调用');
+  assert.doesNotMatch(match[1], /\bschedulePush\s*\(/, '云端推送应由串行保存队列统一调度');
+});
+
