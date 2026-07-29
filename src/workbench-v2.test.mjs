@@ -725,3 +725,11 @@ test('深度监听只标记脏域并展示本地保存状态', () => {
   assert.match(INDEX_HTML, /保存失败，点击重试/);
 });
 
+test('时间线分析结果通过串行保存队列持久化', () => {
+  const match = INDEX_HTML.match(/function persistTimelineResult\(field, data\) \{([\s\S]*?)\n    \}/);
+  assert.ok(match, '应保留时间线分析结果持久化入口');
+  assert.match(match[1], /markDirty\('legacy'\)/, '时间线结果应标记旧版工作区为脏数据');
+  assert.doesNotMatch(match[1], /\bsaveState\s*\(/, '不得把保存状态对象当作函数调用');
+  assert.doesNotMatch(match[1], /\bschedulePush\s*\(/, '云端推送应由串行保存队列统一调度');
+});
+

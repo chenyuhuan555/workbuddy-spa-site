@@ -20168,8 +20168,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       if (!resume) return;
       if (!resume.destinyAnalysis) resume.destinyAnalysis = {};
       resume.destinyAnalysis[field] = data;
-      saveState();
-      schedulePush();
+      markDirty('legacy');
     }
 
 
