@@ -9,10 +9,12 @@
  */
 import assert from 'node:assert/strict';
 import { test, before } from 'node:test';
+import { readFileSync } from 'node:fs';
 
 // 加载经典 IIFE 模块（挂载到 globalThis.WorkBuddyResumeCache）
 await import('../storage/indexeddb-cache.js');
 const Cache = globalThis.WorkBuddyResumeCache;
+const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
 const EXPECTED_FNS = [
   'openResumeCacheDb',
@@ -109,4 +111,131 @@ test('parseResumeFileData：过渡格式（JSON 含文本）提取 base64 并回
 test('parseResumeFileData：非法 JSON 退化为旧格式', () => {
   const raw = '{not valid json';
   assert.equal(Cache.parseResumeFileData(raw, {}), raw);
+});
+
+function withMockIndexedDb(open, run) {
+  const previousWindow = globalThis.window;
+  const previousIndexedDb = globalThis.indexedDB;
+  const previousStorageKey = globalThis.STORAGE_KEY;
+  globalThis.window = globalThis;
+  globalThis.indexedDB = { open };
+  globalThis.STORAGE_KEY = 'workbuddy_test';
+  return Promise.resolve()
+    .then(run)
+    .finally(() => {
+      if (previousWindow === undefined) delete globalThis.window;
+      else globalThis.window = previousWindow;
+      if (previousIndexedDb === undefined) delete globalThis.indexedDB;
+      else globalThis.indexedDB = previousIndexedDb;
+      if (previousStorageKey === undefined) delete globalThis.STORAGE_KEY;
+      else globalThis.STORAGE_KEY = previousStorageKey;
+    });
+}
+
+function successfulOpenRequest(db) {
+  const request = { result: db, error: null };
+  queueMicrotask(() => request.onsuccess?.());
+  return request;
+}
+
+test('openResumeCacheDb：数据库缺少 files 时必须拒绝，不能把损坏结构当成可用', async () => {
+  const db = {
+    objectStoreNames: { contains: name => name === 'appSnapshots' },
+    close() {},
+  };
+  await withMockIndexedDb(() => successfulOpenRequest(db), async () => {
+    await assert.rejects(Cache.openResumeCacheDb(), /简历文件存储不可用/);
+  });
+});
+
+test('openResumeCacheDb：以 v6 无损补齐缺失的 files store', async () => {
+  const stores = new Set(['appSnapshots']);
+  const indexes = new Set();
+  const fileStore = {
+    indexNames: { contains: name => indexes.has(name) },
+    createIndex(name) { indexes.add(name); },
+  };
+  const db = {
+    objectStoreNames: { contains: name => stores.has(name) },
+    createObjectStore(name) {
+      stores.add(name);
+      return fileStore;
+    },
+    close() {},
+  };
+  let openedVersion = 0;
+  await withMockIndexedDb((_name, version) => {
+    openedVersion = version;
+    const request = { result: db, transaction: { objectStore: () => fileStore } };
+    queueMicrotask(() => {
+      request.onupgradeneeded?.();
+      request.onsuccess?.();
+    });
+    return request;
+  }, async () => {
+    const opened = await Cache.openResumeCacheDb();
+    assert.equal(opened, db);
+  });
+  assert.equal(openedVersion, 6);
+  assert.equal(stores.has('files'), true, '升级只补建 files store');
+  assert.equal(stores.has('appSnapshots'), true, '原 appSnapshots store 必须保留');
+  assert.equal(indexes.has('hash'), true, '补建简历哈希索引');
+});
+
+test('saveResumeBlob：底层 IndexedDB 错误必须向上传播，供界面显示真实原因', async () => {
+  const storageError = new DOMException('浏览器拒绝打开数据库', 'InvalidStateError');
+  await withMockIndexedDb(() => {
+    const request = { error: storageError };
+    queueMicrotask(() => request.onerror?.());
+    return request;
+  }, async () => {
+    await assert.rejects(
+      Cache.saveResumeBlob('file-1', new Blob(['resume']), { fileName: 'resume.pdf' }),
+      error => error?.name === 'InvalidStateError' && /浏览器拒绝打开数据库/.test(error.message),
+    );
+  });
+});
+
+test('localLoad：读取异常或结构异常时不得自动删除主快照', () => {
+  const start = INDEX_HTML.indexOf('async function localLoad()');
+  const end = INDEX_HTML.indexOf('async function localLoadKbApiKey()', start);
+  assert.ok(start >= 0 && end > start, '应找到 localLoad 函数');
+  const source = INDEX_HTML.slice(start, end);
+  assert.doesNotMatch(source, /removeAppSnapshot\(APP_SNAPSHOT_KEYS\.main\)/);
+});
+
+test('启动迁移：不得在 hydration 期间直接调用 localSave', () => {
+  const start = INDEX_HTML.indexOf('onMounted(async () =>');
+  const end = INDEX_HTML.indexOf('onBeforeUnmount(', start);
+  assert.ok(start >= 0 && end > start, '应找到 onMounted 生命周期');
+  const source = INDEX_HTML.slice(start, end);
+  assert.doesNotMatch(source, /migrateCandidatePipelineData\(\)\)\s*localSave\(\)/);
+  assert.match(source, /markDirty\('legacy'\)/, '迁移结果应交给串行保存协调器');
+});
+
+test('启动应用云端快照：完整备份恢复必须通过串行保存协调器', () => {
+  const start = INDEX_HTML.indexOf('async function applyFullBackup(');
+  const end = INDEX_HTML.indexOf('async function onBackupImportFile(', start);
+  assert.ok(start >= 0 && end > start, '应找到 applyFullBackup 函数');
+  const source = INDEX_HTML.slice(start, end);
+  assert.doesNotMatch(source, /\blocalSave\(\)/);
+  assert.doesNotMatch(source, /\bsaveWorkbenchV2\(\)/);
+  assert.match(source, /markDirty\('legacy'\)/);
+  assert.match(source, /markDirty\('workbench'\)/);
+  assert.match(source, /await saveCoordinator\.flush\(\)/);
+});
+
+test('启动补齐岗位描述：必须通过串行保存协调器', () => {
+  const start = INDEX_HTML.indexOf('async function reconcileMigratedPositionDescriptions(');
+  const end = INDEX_HTML.indexOf('function previewWorkbenchMigration(', start);
+  assert.ok(start >= 0 && end > start, '应找到 reconcileMigratedPositionDescriptions 函数');
+  const source = INDEX_HTML.slice(start, end);
+  assert.doesNotMatch(source, /\bsaveWorkbenchV2\(\)/);
+  assert.match(source, /markDirty\('workbench'\)/);
+  assert.match(source, /await saveCoordinator\.flush\(\)/);
+});
+
+test('存储恢复不得通过删除整个 IndexedDB 数据库实现', () => {
+  const storageSource = readFileSync(new URL('./indexeddb-cache.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(storageSource, /deleteDatabase\s*\(/);
 });

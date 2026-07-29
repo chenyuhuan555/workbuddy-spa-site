@@ -29,11 +29,34 @@ const APP_SNAPSHOT_KEYS = {
   workbenchV2: 'workbenchV2',
   knowledgeBase: 'knowledgeBase',
 };
+const RESUME_CACHE_DB_VERSION = 6;
+
+function storageOperationError(action, error) {
+  const original = error instanceof Error ? error : new Error(String(error || '未知错误'));
+  let guidance = original.message || '未知错误';
+  if (original.name === 'QuotaExceededError') {
+    guidance = '浏览器本地存储空间已满，请先导出完整备份';
+  } else if (original.name === 'NotFoundError') {
+    guidance = '本地数据库结构异常，请刷新页面后重试';
+  } else if (original.name === 'AbortError') {
+    guidance = '浏览器中止了本地存储操作，请关闭其他 WorkBuddy 页面后重试';
+  }
+  const wrapped = new Error(`${action}失败：${guidance}`);
+  wrapped.name = original.name || 'StorageError';
+  wrapped.cause = original;
+  return wrapped;
+}
 
 function openResumeCacheDb() {
   if (!window.indexedDB) return Promise.reject(new Error('IndexedDB 不可用'));
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(resumeCacheDbName(), 5);
+    const req = indexedDB.open(resumeCacheDbName(), RESUME_CACHE_DB_VERSION);
+    let settled = false;
+    const fail = error => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
     req.onupgradeneeded = () => {
       const db = req.result;
       let store;
@@ -51,14 +74,26 @@ function openResumeCacheDb() {
     };
     req.onsuccess = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(APP_SNAPSHOT_STORE)) {
+      if (settled) {
         db.close();
-        reject(new Error('应用快照存储不可用'));
         return;
       }
+      if (!db.objectStoreNames.contains(RESUME_CACHE_STORE)) {
+        db.close();
+        fail(new Error('简历文件存储不可用'));
+        return;
+      }
+      if (!db.objectStoreNames.contains(APP_SNAPSHOT_STORE)) {
+        db.close();
+        fail(new Error('应用快照存储不可用'));
+        return;
+      }
+      db.onversionchange = () => db.close();
+      settled = true;
       resolve(db);
     };
-    req.onerror = () => reject(req.error || new Error('打开简历缓存失败'));
+    req.onerror = () => fail(req.error || new Error('打开简历缓存失败'));
+    req.onblocked = () => fail(new Error('数据库升级被其他 WorkBuddy 页面阻塞，请关闭其他页面后重试'));
   });
 }
 
@@ -189,9 +224,10 @@ async function cacheResumeData(resumeId, data, extraFields) {
 }
 
 // 阶段 3：原始简历二进制存外部 IndexedDB，复用现有 RESUME_CACHE_STORE（'files'），
-// 不新建 store、不改 schema 版本、不把 base64 写进人才快照；快照只存 fileId/fileType/fileSize/fileHash 等元数据。
+// 不把 base64 写进人才快照；快照只存 fileId/fileType/fileSize/fileHash 等元数据。
 async function saveResumeBlob(fileId, blob, meta = {}) {
-  if (!fileId || !blob) return false;
+  const action = meta.fileName ? `保存原始简历“${meta.fileName}”` : '保存原始简历';
+  if (!fileId || !blob) throw new TypeError(`${action}失败：文件标识或文件内容为空`);
   try {
     await withResumeCacheStore('readwrite', (store) => {
       store.put({
@@ -207,7 +243,7 @@ async function saveResumeBlob(fileId, blob, meta = {}) {
     return true;
   } catch (e) {
     console.warn('原始简历文件保存失败:', e.message);
-    return false;
+    throw storageOperationError(action, e);
   }
 }
 

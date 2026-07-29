@@ -10494,13 +10494,12 @@ const vueAppConfig = {
       bundle: workbenchV2,
       parseFile: async (task) => readAndParseResumeFile(task.file, { persistBlob: false }),
       persistFile: async (task) => {
-        const saved = await saveResumeBlob(task.fileId, task.file, {
+        await saveResumeBlob(task.fileId, task.file, {
           fileName: task.fileName,
           fileType: task.fileType,
           fileSize: task.fileSize,
           fileHash: task.fileHash,
         });
-        if (!saved) throw new Error(`原始简历保存失败：${task.fileName || '未知文件'}`);
       },
       persist: saveWorkbenchV2,
     };
@@ -11586,8 +11585,7 @@ const vueAppConfig = {
       const fileId = (crypto.randomUUID && crypto.randomUUID()) || `fid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
       const fileHash = await hashResumeData(fileData);
       if (options.persistBlob !== false) {
-        const saved = await saveResumeBlob(fileId, file, { fileName: file.name, fileType: file.type || '', fileSize: file.size, fileHash });
-        if (!saved) throw new Error(`原始简历保存失败：${file.name}`);
+        await saveResumeBlob(fileId, file, { fileName: file.name, fileType: file.type || '', fileSize: file.size, fileHash });
       }
       const rawText = await extractResumeText({ name: file.name, type: file.type, data: fileData });
       const form = {
@@ -12281,9 +12279,8 @@ const vueAppConfig = {
         columns: JSON.parse(JSON.stringify(columns)),
       });
       if (!updatedIds.length) return false;
-      const saved = await saveWorkbenchV2();
-      if (!saved) return false;
-      if (cloudReady) schedulePush();
+      markDirty('workbench');
+      await saveCoordinator.flush();
       console.info('[workbenchV2] 已从旧岗位数据补齐职责:', updatedIds.length);
       return true;
     }
@@ -13984,7 +13981,6 @@ ${ocrText}`
       const importedWorkbenchV2 = backup?.data?.workbenchV2 || backup?.workbenchV2;
       if (importedWorkbenchV2?.schemaVersion === 2) {
         replaceWorkbenchV2(importedWorkbenchV2);
-        saveWorkbenchV2();
       }
       const nextKb = Array.isArray(backup?.data?.kbArticles) ? backup.data.kbArticles
         : Array.isArray(backup?.kbArticles) ? backup.kbArticles
@@ -14003,7 +13999,6 @@ ${ocrText}`
       if (deletedKbIds.length) localStorage.setItem(DELETED_KB_KEY, JSON.stringify(deletedKbIds.map(normalizeKbId).filter(Boolean)));
       else localStorage.removeItem(DELETED_KB_KEY);
       migrateCandidatePipelineData();
-      localSave();
       const cacheTasks = [];
       const pendingImportedResumeIds = new Set();
       columns.forEach(col => (col.jobs || []).forEach(job => (job.positions || []).forEach(pos => {
@@ -14026,8 +14021,10 @@ ${ocrText}`
         } catch {}
       }
       await Promise.allSettled(cacheTasks);
+      markDirty('legacy');
+      if (importedWorkbenchV2?.schemaVersion === 2) markDirty('workbench');
+      await saveCoordinator.flush();
       clearSelectedResumes();
-      if (cloudReady) schedulePush();
     }
 
     async function onBackupImportFile(event) {
@@ -14231,7 +14228,10 @@ ${ocrText}`
         localStorage.removeItem(STORAGE_KEY + '_kb');
       } catch (e) {
         console.error('IndexedDB 保存失败:', e.message);
-        showToast(e.name === 'QuotaExceededError' ? '本地存储空间已满，请先导出完整备份' : '本地存储异常', 'error');
+        const detail = [e.name, e.message].filter(Boolean).join(': ');
+        showToast(e.name === 'QuotaExceededError'
+          ? '本地存储空间已满，请先导出完整备份'
+          : `本地存储异常：${detail || '未知错误'}`, 'error');
         return false;
       }
       try {
@@ -14247,22 +14247,25 @@ ${ocrText}`
     async function localLoad() {
       try {
         let data = await loadAppSnapshot(APP_SNAPSHOT_KEYS.main);
+        let loadedFromLegacyStorage = false;
         if (!data) {
           const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('headhunter_data_v1');
           if (!raw) return null;
           data = JSON.parse(raw);
+          loadedFromLegacyStorage = true;
         }
         // 基本结构校验
         if (!data.names || !Array.isArray(data.jobs)) {
-          console.warn('本地快照数据格式异常，已清除');
-          await removeAppSnapshot(APP_SNAPSHOT_KEYS.main);
+          console.warn('本地快照数据格式异常，已保留原数据并跳过本次恢复');
           return null;
         }
         const legacyWorkbenchV2 = data.workbenchV2;
         const legacyKb = data.kb;
         delete data.workbenchV2;
         delete data.kb;
-        await saveAppSnapshot(APP_SNAPSHOT_KEYS.main, data);
+        if (loadedFromLegacyStorage || legacyWorkbenchV2 || legacyKb) {
+          await saveAppSnapshot(APP_SNAPSHOT_KEYS.main, data);
+        }
         if (legacyWorkbenchV2) {
           // 防止旧版 main 快照里残留的 workbenchV2 覆盖已迁移的 V2 快照：
           // 仅当 V2 快照不存在，或既无迁移标记又不是 V2 schema 时才写入
@@ -14278,8 +14281,10 @@ ${ocrText}`
           await saveAppSnapshot(APP_SNAPSHOT_KEYS.knowledgeBase, legacyKb);
           localStorage.removeItem(STORAGE_KEY + '_kb');
         }
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem('headhunter_data_v1');
+        if (loadedFromLegacyStorage) {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem('headhunter_data_v1');
+        }
         if (data.names) data.names.forEach((n, i) => {
           if (columns[i]) { columns[i].name = n; }
           else { columns.push({ name: n, jobs: [], editing: false, tempName: '' }); }
@@ -14315,9 +14320,7 @@ ${ocrText}`
         }
         return data.binId;
       } catch (e) {
-        console.warn('本地快照读取异常，已清除:', e.message);
-        await removeAppSnapshot(APP_SNAPSHOT_KEYS.main).catch(() => {});
-        localStorage.removeItem(STORAGE_KEY);
+        console.warn('本地快照读取异常，已保留原数据:', e.message);
         return null;
       }
     }
@@ -14673,7 +14676,7 @@ ${ocrText}`
       checkFirstTime(); // 检查是否首次使用，显示引导
       initGistSettings(); // 清除旧版浏览器 Gist 凭据
       await localLoad(); // 第一优先级：立即展示本地缓存
-      if (migrateCandidatePipelineData()) localSave();
+      const localPipelineMigrated = migrateCandidatePipelineData();
       await loadWorkbenchV2(); // 加载独立公司、候选人和推进记录
       await reconcileMigratedPositionDescriptions();
       await initializePrivateTodos(); // 加载当前账号私有待办，并由管理员认领旧共享待办
@@ -14693,7 +14696,9 @@ ${ocrText}`
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
       await initCloud(); // 登录后以 workspace_state 作为共享业务数据源
       await reconcileMigratedPositionDescriptions();
+      const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
+      if (localPipelineMigrated || cloudPipelineMigrated) markDirty('legacy');
       updateActiveNavFromScroll();
       window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });
     });
