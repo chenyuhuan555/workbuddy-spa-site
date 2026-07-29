@@ -38,6 +38,31 @@ test('validateBundle 拒绝错误版本且补全 resumeVersions', () => {
   assert.equal(bundle.candidates[0].resumeVersions[0].rawText, '十年后端经验');
 });
 
+test('validateBundle 分离原始文本和排版文本，并恢复中断状态', () => {
+  const bundle = WorkbenchV2.validateBundle({
+    schemaVersion: 2,
+    candidates: [{
+      id: 'c_resume_ai',
+      resumeVersions: [
+        { id: 'raw_only', rawText: '原始文本' },
+        { id: 'formatted', rawText: '保留原文', formattedText: '### 电子简历' },
+        { id: 'interrupted', rawText: '处理中原文', formatStatus: 'processing', formatError: '旧错误' },
+      ],
+    }],
+  });
+  const [rawOnly, formatted, interrupted] = bundle.candidates[0].resumeVersions;
+
+  assert.deepEqual(
+    { rawText: rawOnly.rawText, formattedText: rawOnly.formattedText, formatStatus: rawOnly.formatStatus, formatError: rawOnly.formatError, formattedAt: rawOnly.formattedAt },
+    { rawText: '原始文本', formattedText: '', formatStatus: 'queued', formatError: '', formattedAt: '' },
+  );
+  assert.equal(formatted.rawText, '保留原文');
+  assert.equal(formatted.formattedText, '### 电子简历');
+  assert.equal(formatted.formatStatus, 'done');
+  assert.equal(interrupted.formatStatus, 'queued');
+  assert.equal(interrupted.formatError, '旧错误');
+});
+
 test('迁移旧岗位时保留 detail 岗位职责，并只为既有空职责安全回填', () => {
   const legacy = {
     columns: [{

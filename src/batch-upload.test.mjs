@@ -327,6 +327,16 @@ test('buildResumeVersionFromForm：只存 fileId 元数据，不含 base64', () 
   assert.equal(none, null, '无内容返回 null');
 });
 
+test('buildResumeVersionFromForm：新版本分别保存 rawText 和 formattedText 状态', () => {
+  const version = WorkbenchV2.buildResumeVersionFromForm({
+    fileName: '雷艺旋.pdf', fileId: 'fid_lei', rawText: 'PDF 原始文本', formattedText: '不应沿用表单排版',
+  });
+  assert.deepEqual(
+    { rawText: version.rawText, formattedText: version.formattedText, formatStatus: version.formatStatus, formatError: version.formatError, formattedAt: version.formattedAt },
+    { rawText: 'PDF 原始文本', formattedText: '', formatStatus: 'queued', formatError: '', formattedAt: '' },
+  );
+});
+
 // ===========================================================================
 // 14) 人才数量与成功创建数量一致
 // ===========================================================================

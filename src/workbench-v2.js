@@ -353,6 +353,25 @@
     return copy(snapshot);
   }
 
+  function normalizeResumeVersion(version = {}) {
+    const source = copy(version || {});
+    const formattedText = String(source.formattedText || '');
+    const priorStatus = String(source.formatStatus || '');
+    const formatStatus = priorStatus === 'processing'
+      ? 'queued'
+      : ['queued', 'done', 'failed'].includes(priorStatus)
+        ? priorStatus
+        : formattedText.trim() ? 'done' : 'queued';
+    return {
+      ...source,
+      rawText: String(source.rawText || ''),
+      formattedText,
+      formatStatus,
+      formatError: String(source.formatError || ''),
+      formattedAt: String(source.formattedAt || ''),
+    };
+  }
+
   function validateBundle(input) {
     if (!input || input.schemaVersion !== VERSION) throw new Error('不支持的数据版本');
     const clean = createEmptyBundle();
@@ -373,8 +392,10 @@
       } else if (candidate.resumeVersions[0] && !candidate.resumeVersions[0].rawText && electronicText) {
         candidate.resumeVersions[0].rawText = electronicText;
       }
-      candidate.resumeVersions.forEach(version => {
-        if (version && !version.sourceResumeId) version.sourceResumeId = version.id || '';
+      candidate.resumeVersions = candidate.resumeVersions.map(version => {
+        const normalized = normalizeResumeVersion(version);
+        if (!normalized.sourceResumeId) normalized.sourceResumeId = normalized.id || '';
+        return normalized;
       });
     });
     return clean;
@@ -702,7 +723,7 @@
     const candidate = getTalentById(bundle, talentId);
     if (!candidate) throw new Error('人才不存在');
     const list = Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions.slice() : [];
-    const entry = {
+    const entry = normalizeResumeVersion({
       id: version.id || makeId('resume'),
       sourceResumeId: version.sourceResumeId || version.id || '',
       fileName: version.fileName || '',
@@ -712,7 +733,11 @@
       fileHash: version.fileHash || '',
       uploadedAt: version.uploadedAt || nowIso(),
       rawText: version.rawText || '',
-    };
+      formattedText: version.formattedText || '',
+      formatStatus: version.formatStatus || '',
+      formatError: version.formatError || '',
+      formattedAt: version.formattedAt || '',
+    });
     list.push(entry);
     updateTalent(bundle, talentId, { resumeVersions: list });
     return entry;
@@ -792,7 +817,7 @@
   // 把简历版本落成元数据（只存 fileId/哈希，不写 base64）。被单份 buildStandaloneResumeVersion 复用。
   function buildResumeVersionFromForm(form) {
     if (!form.fileName && !form.rawText) return null;
-    return {
+    return normalizeResumeVersion({
       id: `resume_${Date.now().toString(36)}`,
       fileName: form.fileName,
       fileId: form.fileId,
@@ -800,8 +825,12 @@
       fileSize: form.fileSize,
       fileHash: form.fileHash,
       rawText: form.rawText,
+      formattedText: '',
+      formatStatus: 'queued',
+      formatError: '',
+      formattedAt: '',
       uploadedAt: nowIso(),
-    };
+    });
   }
 
   // 同批次内相同文件哈希的第一份任务（用于互相查重，避免同一文件被保存两次）
@@ -1049,6 +1078,7 @@
     executeMigration,
     rollbackMigration,
     reconcilePositionDescriptions,
+    normalizeResumeVersion,
     validateBundle,
     filterCandidates,
     findDuplicateCandidates,
