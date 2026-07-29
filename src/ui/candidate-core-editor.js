@@ -13,7 +13,7 @@
 
   function createDraft(candidate = {}) {
     return {
-      skills: copyTags(candidate.skills),
+      skills: copyTags(Array.isArray(candidate.skills) ? candidate.skills : candidate.keywords),
       directions: copyTags(candidate.directions),
       owner: String(candidate.owner || ''),
       phone: String(candidate.phone || ''),

@@ -34,6 +34,11 @@ test('createDraft 只复制允许编辑的核心字段', () => {
   assert.equal('resumeVersions' in draft, false);
 });
 
+test('createDraft 兼容只有 keywords 的旧人才，但不恢复已明确清空的 skills', () => {
+  assert.deepEqual(Editor.createDraft({ keywords: ['Java', 'Vue'] }).skills, ['Java', 'Vue']);
+  assert.deepEqual(Editor.createDraft({ skills: [], keywords: ['旧标签'] }).skills, []);
+});
+
 test('normalizeTags 支持数组和逗号分隔的待提交输入', () => {
   assert.deepEqual(
     Editor.normalizeTags([' Java ', '企业文化', 'Java', ''], '人才发展，HRBP, 企业文化'),
