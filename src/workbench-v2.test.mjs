@@ -693,3 +693,20 @@ test('旧电脑首次登录（无推送记录）不能覆盖云端新数据', ()
   assert.match(INDEX_HTML, /snapshotSavedAt && \(!lastPushedAt \|\| snapshotSavedAt > lastPushedAt\)/, '无快照记录时不应视为有未推送编辑');
 });
 
+test('工作台三个主列表使用分页结果和预构建索引', () => {
+  const section = (start, end) => INDEX_HTML.slice(INDEX_HTML.indexOf(start), INDEX_HTML.indexOf(end));
+  const mainLists = [
+    section("workbenchNav === 'companies' && workbenchRoute.type === 'list'", "workbenchNav === 'companies' && workbenchRoute.type === 'company'"),
+    section("workbenchNav === 'candidates' && workbenchRoute.type === 'list'", "workbenchNav === 'candidates' && workbenchRoute.type === 'candidate'"),
+    section("workbenchNav === 'applications' && workbenchRoute.type === 'list'", "workbenchNav === 'ai' && workbenchRoute.type === 'list'"),
+  ].join('\n');
+
+  assert.match(INDEX_HTML, /<script src="\.\/src\/ui\/list-performance\.js"><\/script>/);
+  assert.match(INDEX_HTML, /v-for="company in pagedWorkbenchCompanies\.items"/);
+  assert.match(INDEX_HTML, /v-for="candidate in pagedWorkbenchCandidates\.items"/);
+  assert.match(INDEX_HTML, /v-for="application in pagedApplications\.items"/);
+  assert.match(INDEX_HTML, /v-for="group in pagedApplicationStageGroups"/);
+  assert.doesNotMatch(mainLists, /workbenchV2\.(candidates|companies|positions|applications)\.(find|filter)\(/);
+  assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
+});
+

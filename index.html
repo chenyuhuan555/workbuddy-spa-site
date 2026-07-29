@@ -18,6 +18,7 @@
   <script src="./src/workbench-v2.js"></script>
   <script src="./src/services/sync-merge.js"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260728-idb1"></script>
+  <script src="./src/ui/list-performance.js"></script>
   <script data-workbuddy-pipeline-core>
     window.WorkBuddyPipeline = (() => {
       /* 阶段 / 原因码统一来自 src/constants/pipeline-stages.js */
@@ -4182,15 +4183,19 @@
           </div>
           <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div class="hidden lg:grid grid-cols-[1.6fr_.8fr_.8fr_.7fr_.7fr_.7fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>公司</span><span>负责人</span><span>状态</span><span>开放岗位</span><span>推进中</span><span>面试</span><span>最近更新</span></div>
-            <button v-for="company in filteredWorkbenchCompanies" :key="company.id" @click="openCompanyDetail(company.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1.6fr_.8fr_.8fr_.7fr_.7fr_.7fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 transition items-center">
+            <button v-for="company in pagedWorkbenchCompanies.items" :key="company.id" @click="openCompanyDetail(company.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1.6fr_.8fr_.8fr_.7fr_.7fr_.7fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 transition items-center">
               <span><b class="block text-slate-900">{{ company.name }}</b><small class="text-slate-400">{{ company.industry || company.city || '行业待补充' }}</small></span>
               <span class="text-sm">{{ company.owner || '未分配' }}</span><span class="text-sm">{{ company.status || '潜在客户' }}</span>
-              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.positions, item => item.status === 'open') }}</span>
-              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.applications, item => item.stage !== SK.CLOSED) }}</span>
-              <span class="font-semibold">{{ workbenchCompanyCount(company.id, workbenchV2.applications, item => SG.INTERVIEW.includes(item.stage)) }}</span>
+              <span class="font-semibold">{{ openPositionCountByCompanyId.get(company.id) || 0 }}</span>
+              <span class="font-semibold">{{ activeApplicationCountByCompanyId.get(company.id) || 0 }}</span>
+              <span class="font-semibold">{{ interviewApplicationCountByCompanyId.get(company.id) || 0 }}</span>
               <span class="text-xs text-slate-400">{{ company.updatedAt?.slice(0, 10) || '—' }}</span>
             </button>
             <div v-if="!filteredWorkbenchCompanies.length" class="py-14 text-center"><h3 class="font-semibold text-slate-700">暂无公司档案</h3><p class="text-sm text-slate-400 mt-1">完成迁移或新建公司后会显示在这里。</p><button @click="previewWorkbenchMigration" class="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm">迁移旧数据</button></div>
+            <nav v-if="pagedWorkbenchCompanies.total" aria-label="公司列表分页" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-sm text-slate-600">
+              <span>第 {{ pagedWorkbenchCompanies.start }}–{{ pagedWorkbenchCompanies.end }} 条，共 {{ pagedWorkbenchCompanies.total }} 条</span>
+              <div class="flex flex-wrap items-center gap-2"><button type="button" :disabled="pagedWorkbenchCompanies.page === 1" @click="companyPage = 1" class="px-2 py-1 rounded border disabled:opacity-40">首页</button><button type="button" :disabled="pagedWorkbenchCompanies.page === 1" @click="companyPage -= 1" class="px-2 py-1 rounded border disabled:opacity-40">上一页</button><span aria-live="polite">第 {{ pagedWorkbenchCompanies.page }} / {{ pagedWorkbenchCompanies.totalPages }} 页</span><button type="button" :disabled="pagedWorkbenchCompanies.page === pagedWorkbenchCompanies.totalPages" @click="companyPage += 1" class="px-2 py-1 rounded border disabled:opacity-40">下一页</button><button type="button" :disabled="pagedWorkbenchCompanies.page === pagedWorkbenchCompanies.totalPages" @click="companyPage = pagedWorkbenchCompanies.totalPages" class="px-2 py-1 rounded border disabled:opacity-40">末页</button></div>
+            </nav>
           </div>
         </div>
 
@@ -4423,9 +4428,9 @@
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="openTalentJobMatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">岗位匹配</button><button v-if="canConfigureAi" type="button" @click="openTalentCompanyResearch" class="px-4 py-2 rounded-lg border border-violet-200 text-violet-700 text-sm font-semibold hover:bg-violet-50">目标公司挖掘</button><button v-if="canWrite && canConfigureAi" type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button v-if="canWrite" @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold">上传简历</button></div></div>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ new Set(workbenchV2.applications.filter(item => item.stage !== SK.CLOSED).map(item => item.candidateId)).size }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'open').length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.filter(item => item.status === 'onboarded').length }}</p></div></div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ candidateSummaryCounts.active }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ candidateSummaryCounts.open }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ candidateSummaryCounts.onboarded }}</p></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-6 gap-2"><input v-model="candidateFilters.query" type="search" placeholder="搜索姓名、公司或技能" class="lg:col-span-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><select v-model="candidateFilters.category" aria-label="按分类筛选人才" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部分类</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select><select v-model="candidateFilters.direction" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部人才方向</option><option v-for="direction in candidateDirections" :key="direction" :value="direction">{{ direction }}</option></select><select v-model="candidateFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select v-model="candidateFilters.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select></div>
-          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in filteredWorkbenchCandidates" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ workbenchV2.applications.filter(item => item.candidateId === candidate.id && item.stage !== SK.CLOSED).length }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button v-if="canWrite" @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div></div>
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>姓名</span><span>当前公司 / 职位</span><span>人才方向</span><span>负责人</span><span>推进岗位</span><span>状态</span><span>最近更新时间</span><span>简历完整度</span></div><button v-for="candidate in pagedWorkbenchCandidates.items" :key="candidate.id" @click="openCandidateDetail(candidate.id)" class="w-full text-left grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.8fr_.6fr_.6fr_.8fr_.7fr] gap-3 px-4 py-4 border-t border-slate-100 hover:bg-emerald-50/40 items-center"><span><b>{{ candidate.name }}</b><small class="block text-slate-400">{{ candidate.city || '城市待补充' }}</small></span><span class="text-sm">{{ candidate.currentCompany || '公司待补充' }}<small class="block text-slate-400">{{ candidate.currentTitle || '职位待补充' }}</small></span><span class="text-sm">{{ (candidate.directions || []).join('、') || '待识别' }}</span><span class="text-sm">{{ candidate.owner || '未分配' }}</span><span class="font-semibold">{{ activeApplicationCountByCandidateId.get(candidate.id) || 0 }}</span><span class="text-sm">{{ candidate.status || 'open' }}</span><span class="text-xs text-slate-400">{{ candidateLastUpdated(candidate)?.slice(0, 10) || '—' }}</span><span class="text-xs font-semibold" :class="candidateResumeCompleteness(candidate) >= 80 ? 'text-emerald-600' : candidateResumeCompleteness(candidate) >= 50 ? 'text-amber-600' : 'text-slate-400'">{{ candidateResumeCompleteness(candidate) }}%</span></button><div v-if="!filteredWorkbenchCandidates.length" class="py-14 text-center"><h3 class="font-semibold">暂无人才</h3><p class="text-sm text-slate-400 mt-1">无需选择岗位，直接上传简历建立人才主档。</p><button v-if="canWrite" @click="openTalentIntake" class="mt-4 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm">上传第一份简历</button></div><nav v-if="pagedWorkbenchCandidates.total" aria-label="人才列表分页" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 text-sm text-slate-600"><span>第 {{ pagedWorkbenchCandidates.start }}–{{ pagedWorkbenchCandidates.end }} 条，共 {{ pagedWorkbenchCandidates.total }} 条</span><div class="flex flex-wrap items-center gap-2"><button type="button" :disabled="pagedWorkbenchCandidates.page === 1" @click="candidatePage = 1" class="px-2 py-1 rounded border disabled:opacity-40">首页</button><button type="button" :disabled="pagedWorkbenchCandidates.page === 1" @click="candidatePage -= 1" class="px-2 py-1 rounded border disabled:opacity-40">上一页</button><span aria-live="polite">第 {{ pagedWorkbenchCandidates.page }} / {{ pagedWorkbenchCandidates.totalPages }} 页</span><button type="button" :disabled="pagedWorkbenchCandidates.page === pagedWorkbenchCandidates.totalPages" @click="candidatePage += 1" class="px-2 py-1 rounded border disabled:opacity-40">下一页</button><button type="button" :disabled="pagedWorkbenchCandidates.page === pagedWorkbenchCandidates.totalPages" @click="candidatePage = pagedWorkbenchCandidates.totalPages" class="px-2 py-1 rounded border disabled:opacity-40">末页</button></div></nav></div>
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'candidate' && selectedCandidate" class="wb-v2-candidate-detail mx-auto space-y-4">
@@ -4572,8 +4577,9 @@
         <div v-else-if="workbenchNav === 'applications' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
           <div class="flex flex-wrap items-end gap-3"><div><h1 class="text-2xl font-bold">推进中心</h1><p class="text-sm text-slate-500 mt-1">集中管理候选人与岗位之间的全部业务推进。</p></div><div class="ml-auto flex rounded-lg bg-slate-200 p-1"><button @click="applicationViewMode = 'table'" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', applicationViewMode === 'table' ? 'bg-white shadow-sm' : 'text-slate-500']">表格模式</button><button @click="applicationViewMode = 'kanban'" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', applicationViewMode === 'kanban' ? 'bg-white shadow-sm' : 'text-slate-500']">阶段看板</button></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-5 gap-2"><select v-model="applicationFilters.companyId" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select><select v-model="applicationFilters.positionId" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部岗位</option><option v-for="position in workbenchV2.positions" :key="position.id" :value="position.id">{{ position.title }}</option></select><select v-model="applicationFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select v-model="applicationFilters.stage" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select><input v-model="applicationFilters.scoreMin" type="number" min="0" max="100" placeholder="最低匹配分" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"></div>
-          <div v-if="applicationViewMode === 'table'" class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>候选人</span><span>公司 / 岗位</span><span>负责人</span><span>匹配</span><span>阶段</span><span>更新时间</span></div><div v-for="application in filteredApplications" :key="application.id" class="grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 items-center"><button @click="openCandidateDetail(application.candidateId)" class="text-left font-semibold hover:text-emerald-700">{{ workbenchV2.candidates.find(item => item.id === application.candidateId)?.name }}</button><div class="text-sm"><button @click="openCompanyDetail(application.companyId)" class="font-medium hover:text-emerald-700 text-left">{{ workbenchV2.companies.find(item => item.id === application.companyId)?.name }}</button><button @click="openPositionDetail(application.positionId)" class="block text-slate-400 hover:text-emerald-700 text-left mt-0.5">{{ workbenchV2.positions.find(item => item.id === application.positionId)?.title }}</button></div><button v-if="application.owner" @click="filterApplicationsByOwner(application.owner)" class="text-sm hover:text-emerald-700 text-left">{{ application.owner }}</button><span v-else class="text-sm text-slate-400">未分配</span><b>{{ application.matchScore ?? '—' }}</b><select :value="application.stage" @change="changeWorkbenchApplicationStage(application, $event.target.value)" class="px-2 py-1.5 rounded-lg border border-slate-200 text-xs"><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select><span class="text-xs text-slate-400">{{ application.updatedAt?.slice(0,10) }}</span></div><p v-if="!filteredApplications.length" class="p-12 text-center text-sm text-slate-400">暂无推进记录</p></div>
-          <div v-else class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"><div v-for="group in applicationStageGroups" :key="group.key" class="bg-slate-200/70 rounded-xl p-3"><div class="flex justify-between text-sm font-bold"><span>{{ group.label }}</span><span>{{ filteredApplications.filter(item => group.stages.includes(item.stage)).length }}</span></div><button v-for="application in filteredApplications.filter(item => group.stages.includes(item.stage))" :key="application.id" @click="openCandidateDetail(application.candidateId)" class="w-full bg-white border border-slate-200 rounded-lg p-3 mt-2 text-left hover:border-emerald-300"><b class="text-sm">{{ workbenchV2.candidates.find(item => item.id === application.candidateId)?.name }}</b><p class="text-xs text-slate-500 mt-1">{{ workbenchV2.positions.find(item => item.id === application.positionId)?.title }}</p><p class="text-xs text-emerald-700 mt-2">{{ candidatePipelineLabel(application.stage) }} · {{ application.matchScore ?? '未评分' }}</p></button></div></div>
+          <div v-if="applicationViewMode === 'table'" class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>候选人</span><span>公司 / 岗位</span><span>负责人</span><span>匹配</span><span>阶段</span><span>更新时间</span></div><div v-for="application in pagedApplications.items" :key="application.id" class="grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 items-center"><button @click="openCandidateDetail(application.candidateId)" class="text-left font-semibold hover:text-emerald-700">{{ candidateById.get(application.candidateId)?.name || '人才已删除' }}</button><div class="text-sm"><button @click="openCompanyDetail(application.companyId)" class="font-medium hover:text-emerald-700 text-left">{{ companyById.get(application.companyId)?.name || '公司已删除' }}</button><button @click="openPositionDetail(application.positionId)" class="block text-slate-400 hover:text-emerald-700 text-left mt-0.5">{{ positionById.get(application.positionId)?.title || '岗位已删除' }}</button></div><button v-if="application.owner" @click="filterApplicationsByOwner(application.owner)" class="text-sm hover:text-emerald-700 text-left">{{ application.owner }}</button><span v-else class="text-sm text-slate-400">未分配</span><b>{{ application.matchScore ?? '—' }}</b><select :value="application.stage" @change="changeWorkbenchApplicationStage(application, $event.target.value)" class="px-2 py-1.5 rounded-lg border border-slate-200 text-xs"><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select><span class="text-xs text-slate-400">{{ application.updatedAt?.slice(0,10) }}</span></div><p v-if="!filteredApplications.length" class="p-12 text-center text-sm text-slate-400">暂无推进记录</p></div>
+          <div v-else class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"><div v-for="group in pagedApplicationStageGroups" :key="group.key" class="bg-slate-200/70 rounded-xl p-3"><div class="flex justify-between text-sm font-bold"><span>{{ group.label }}</span><span>{{ group.items.length }}</span></div><button v-for="application in group.items" :key="application.id" @click="openCandidateDetail(application.candidateId)" class="w-full bg-white border border-slate-200 rounded-lg p-3 mt-2 text-left hover:border-emerald-300"><b class="text-sm">{{ candidateById.get(application.candidateId)?.name || '人才已删除' }}</b><p class="text-xs text-slate-500 mt-1">{{ positionById.get(application.positionId)?.title || '岗位已删除' }}</p><p class="text-xs text-emerald-700 mt-2">{{ candidatePipelineLabel(application.stage) }} · {{ application.matchScore ?? '未评分' }}</p></button></div></div>
+          <nav v-if="pagedApplications.total" aria-label="推进列表分页" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-600"><span>第 {{ pagedApplications.start }}–{{ pagedApplications.end }} 条，共 {{ pagedApplications.total }} 条</span><div class="flex flex-wrap items-center gap-2"><button type="button" :disabled="pagedApplications.page === 1" @click="applicationPage = 1" class="px-2 py-1 rounded border disabled:opacity-40">首页</button><button type="button" :disabled="pagedApplications.page === 1" @click="applicationPage -= 1" class="px-2 py-1 rounded border disabled:opacity-40">上一页</button><span aria-live="polite">第 {{ pagedApplications.page }} / {{ pagedApplications.totalPages }} 页</span><button type="button" :disabled="pagedApplications.page === pagedApplications.totalPages" @click="applicationPage += 1" class="px-2 py-1 rounded border disabled:opacity-40">下一页</button><button type="button" :disabled="pagedApplications.page === pagedApplications.totalPages" @click="applicationPage = pagedApplications.totalPages" class="px-2 py-1 rounded border disabled:opacity-40">末页</button></div></nav>
         </div>
 
         <div v-else-if="workbenchNav === 'ai' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto py-2">
@@ -10334,6 +10340,7 @@ const vueAppConfig = {
   setup() {
     /* ── 流水线阶段常量（来自 src/constants/pipeline-stages.js） ── */
     const { KEYS: SK, GROUPS: SG } = window.WorkBuddyStages;
+    const { PAGE_SIZE, paginate, indexById, groupBy } = window.WorkBuddyListPerformance;
     // -------- 承接方看板数据 --------
     const columns = reactive([
       { name: '承接方A', jobs: [], editing: false, tempName: '' },
@@ -10407,12 +10414,14 @@ const vueAppConfig = {
     const workbenchRoute = reactive({ type: 'list', id: '', parentId: '', tab: 'overview' });
     const globalCreateMenu = ref(false);
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
+    const companyPage = ref(1);
     const companyCreate = reactive({ open: false, name: '', industry: '', city: '', owner: '', status: 'potential' });
     const companyPositionCreate = reactive({ open: false, title: '', city: '', salary: '', owner: '' });
     const positionDescriptionEdit = reactive({ open: false, value: '', city: '', salary: '', owner: '', skills: '' });
     const positionSkillsExtracting = ref(false);
     const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, current: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
+    const candidatePage = ref(1);
     const talentCategoryManager = reactive({ open: false, mainName: '' });
     const talentJobMatch = reactive({
       open: false,
@@ -10434,6 +10443,7 @@ const vueAppConfig = {
       bdRequestGeneration: 0,
     });
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
+    const applicationPage = ref(1);
     const applicationViewMode = ref('table');
     const talentPoolPeriod = ref('30');
     const workbenchApplicationStages = WorkbenchV2.APPLICATION_STAGES;
@@ -10595,12 +10605,19 @@ const vueAppConfig = {
         e.preventDefault(); e.returnValue = '';
       }
     });
-    const selectedCompany = computed(() => workbenchV2.companies.find(item => item.id === workbenchRoute.id) || null);
-    const selectedPosition = computed(() => workbenchV2.positions.find(item => item.id === workbenchRoute.id) || null);
-    const selectedCandidate = computed(() => workbenchV2.candidates.find(item => item.id === workbenchRoute.id) || null);
-    const selectedApplication = computed(() => workbenchV2.applications.find(item => item.id === workbenchRoute.id) || null);
-    const companyPositions = computed(() => workbenchV2.positions.filter(item => item.companyId === selectedCompany.value?.id));
-    const companyApplications = computed(() => workbenchV2.applications.filter(item => item.companyId === selectedCompany.value?.id));
+    const candidateById = computed(() => indexById(workbenchV2.candidates));
+    const positionById = computed(() => indexById(workbenchV2.positions));
+    const companyById = computed(() => indexById(workbenchV2.companies));
+    const applicationById = computed(() => indexById(workbenchV2.applications));
+    const applicationsByCandidateId = computed(() => groupBy(workbenchV2.applications, item => item.candidateId));
+    const applicationsByCompanyId = computed(() => groupBy(workbenchV2.applications, item => item.companyId));
+    const positionsByCompanyId = computed(() => groupBy(workbenchV2.positions, item => item.companyId));
+    const selectedCompany = computed(() => companyById.value.get(workbenchRoute.id) || null);
+    const selectedPosition = computed(() => positionById.value.get(workbenchRoute.id) || null);
+    const selectedCandidate = computed(() => candidateById.value.get(workbenchRoute.id) || null);
+    const selectedApplication = computed(() => applicationById.value.get(workbenchRoute.id) || null);
+    const companyPositions = computed(() => positionsByCompanyId.value.get(selectedCompany.value?.id) || []);
+    const companyApplications = computed(() => applicationsByCompanyId.value.get(selectedCompany.value?.id) || []);
     const positionApplications = computed(() => workbenchV2.applications.filter(item => item.positionId === selectedPosition.value?.id));
     const filteredPositionApplications = computed(() => positionApplications.value.filter(item => item.stage !== SK.CLOSED));
     const filteredWorkbenchCompanies = computed(() => {
@@ -10611,6 +10628,28 @@ const vueAppConfig = {
         return !query || [company.name, company.industry, company.city, company.owner].some(value => String(value || '').toLowerCase().includes(query));
       }).sort((a, b) => (Date.parse(b.updatedAt || b.createdAt || '') || 0) - (Date.parse(a.updatedAt || a.createdAt || '') || 0));
     });
+    const pagedWorkbenchCompanies = computed(() => paginate(filteredWorkbenchCompanies.value, companyPage.value, PAGE_SIZE));
+    const openPositionCountByCompanyId = computed(() => {
+      const counts = new Map();
+      for (const position of workbenchV2.positions) {
+        if (position.companyId && position.status === 'open') counts.set(position.companyId, (counts.get(position.companyId) || 0) + 1);
+      }
+      return counts;
+    });
+    const activeApplicationCountByCompanyId = computed(() => {
+      const counts = new Map();
+      for (const application of workbenchV2.applications) {
+        if (application.companyId && application.stage !== SK.CLOSED) counts.set(application.companyId, (counts.get(application.companyId) || 0) + 1);
+      }
+      return counts;
+    });
+    const interviewApplicationCountByCompanyId = computed(() => {
+      const counts = new Map();
+      for (const application of workbenchV2.applications) {
+        if (application.companyId && SG.INTERVIEW.includes(application.stage)) counts.set(application.companyId, (counts.get(application.companyId) || 0) + 1);
+      }
+      return counts;
+    });
     const talentCategories = computed(() => WorkbenchV2.getTalentCategories(workbenchV2));
     const talentCategoryPaths = computed(() => WorkbenchV2.getTalentCategoryPaths(workbenchV2));
     const filteredWorkbenchCandidates = computed(() => WorkbenchV2.filterCandidatesByCategory(
@@ -10618,6 +10657,27 @@ const vueAppConfig = {
       talentCategories.value,
       candidateFilters.category
     ));
+    const pagedWorkbenchCandidates = computed(() => paginate(filteredWorkbenchCandidates.value, candidatePage.value, PAGE_SIZE));
+    const activeApplicationCountByCandidateId = computed(() => {
+      const counts = new Map();
+      for (const application of workbenchV2.applications) {
+        if (application.candidateId && application.stage !== SK.CLOSED) counts.set(application.candidateId, (counts.get(application.candidateId) || 0) + 1);
+      }
+      return counts;
+    });
+    const candidateSummaryCounts = computed(() => {
+      const activeCandidateIds = new Set();
+      let open = 0;
+      let onboarded = 0;
+      for (const candidate of workbenchV2.candidates) {
+        if (candidate.status === 'open') open += 1;
+        if (candidate.status === 'onboarded') onboarded += 1;
+      }
+      for (const application of workbenchV2.applications) {
+        if (application.candidateId && application.stage !== SK.CLOSED) activeCandidateIds.add(application.candidateId);
+      }
+      return { active: activeCandidateIds.size, open, onboarded };
+    });
     const talentJobMatchOpenPositions = computed(() => workbenchV2.positions.filter(position => ['open', 'hiring', 'active'].includes(position.status || 'open')));
     const talentJobMatchCandidates = computed(() => WorkbenchV2.filterCandidatesByCategory(
       workbenchV2.candidates,
@@ -10932,6 +10992,11 @@ const vueAppConfig = {
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));
     const candidateDirections = computed(() => Array.from(new Set(workbenchV2.candidates.flatMap(item => item.directions || []).filter(Boolean))));
     const filteredApplications = computed(() => WorkbenchV2.filterApplications(workbenchV2.applications, applicationFilters));
+    const pagedApplications = computed(() => paginate(filteredApplications.value, applicationPage.value, PAGE_SIZE));
+    const pagedApplicationStageGroups = computed(() => applicationStageGroups.map(group => ({
+      ...group,
+      items: pagedApplications.value.items.filter(application => group.stages.includes(application.stage)),
+    })));
     const candidatePositionMatches = computed(() => selectedCandidate.value ? WorkbenchV2.matchPositions(selectedCandidate.value, workbenchV2.positions).slice(0, 10) : []);
     const positionCandidateMatches = computed(() => selectedPosition.value ? WorkbenchV2.matchCandidates(selectedPosition.value, workbenchV2.candidates).slice(0, 10) : []);
     const workbenchOwners = computed(() => Array.from(new Set([
@@ -14618,6 +14683,13 @@ ${ocrText}`
     onBeforeUnmount(() => {
       window.removeEventListener('scroll', updateActiveNavFromScroll);
     });
+
+    watch(companyFilter, () => { companyPage.value = 1; }, { deep: true });
+    watch(candidateFilters, () => { candidatePage.value = 1; }, { deep: true });
+    watch(applicationFilters, () => { applicationPage.value = 1; }, { deep: true });
+    watch(() => pagedWorkbenchCompanies.value.page, page => { companyPage.value = page; });
+    watch(() => pagedWorkbenchCandidates.value.page, page => { candidatePage.value = page; });
+    watch(() => pagedApplications.value.page, page => { applicationPage.value = page; });
 
     // 数据变更 → 本地存 + 云端推
     watch(columns, () => {
@@ -22524,12 +22596,12 @@ ${clipped}`
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
-      companyFilter, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications,
-      candidateFilters, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
+      candidateFilters, candidatePage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
-      applicationFilters, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, candidatePositionMatches, positionCandidateMatches,
-      filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
+      applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches,
+      candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
