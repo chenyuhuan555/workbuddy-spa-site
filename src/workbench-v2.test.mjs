@@ -63,6 +63,20 @@ test('validateBundle 分离原始文本和排版文本，并恢复中断状态',
   assert.equal(interrupted.formatError, '旧错误');
 });
 
+test('人才详情优先展示排版文本并提供可见失败与重新处理入口', () => {
+  assert.match(INDEX_HTML, /v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
+  assert.doesNotMatch(INDEX_HTML, /v-html="renderResumeMarkdown\([^"\n]*rawText/);
+  assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'processing'/);
+  assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'queued'/);
+  assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'failed'/);
+  assert.match(INDEX_HTML, /role="alert"[^>]*>\{\{ activeCandidateResumeVersion\.formatError/);
+  assert.match(INDEX_HTML, />原始提取文本</);
+  assert.match(INDEX_HTML, /\{\{ activeCandidateResumeVersion\.rawText \}\}/);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="reprocessCandidateResumeVersion"/);
+  assert.match(INDEX_HTML, /重新提取并排版/);
+  assert.match(INDEX_HTML, /async function reprocessCandidateResumeVersion\(\)/);
+});
+
 test('迁移旧岗位时保留 detail 岗位职责，并只为既有空职责安全回填', () => {
   const legacy = {
     columns: [{

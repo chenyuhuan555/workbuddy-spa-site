@@ -4526,13 +4526,22 @@
                 <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" class="px-2 py-1 rounded-lg border border-slate-200 text-xs">
                   <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
                 </select>
+                <button v-if="canWrite && activeCandidateResumeVersion" type="button" @click="reprocessCandidateResumeVersion" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">{{ activeCandidateResumeVersion?.formatStatus === 'processing' ? '正在提取并排版…' : '重新提取并排版' }}</button>
                 <button type="button" @click="switchCandidateResumeMode('text')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'text' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">电子简历</button>
                 <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'original' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">原始文件</button>
               </div>
             </div>
             <div v-if="candidateResumeView.mode === 'text'" class="mt-4">
-              <div v-if="activeCandidateResumeVersion?.rawText || selectedCandidate?.electronicResumeText" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion?.rawText || selectedCandidate?.electronicResumeText || '暂无电子简历内容')"></div>
-              <p v-else class="text-sm text-slate-400 py-8 text-center">暂无电子简历内容</p>
+              <div v-if="activeCandidateResumeVersion?.formatStatus === 'processing'" role="status" aria-live="polite" class="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">正在执行基础信息提取、候选人画像提取和电子简历排版，请稍候。</div>
+              <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'queued'" role="status" class="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">尚未完成 AI 排版。可以点击“重新提取并排版”开始处理。</div>
+              <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'failed'" role="alert" class="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{{ activeCandidateResumeVersion.formatError || 'AI 排版失败，请重试' }}</div>
+              <div v-if="activeCandidateResumeVersion?.formattedText" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion.formattedText)"></div>
+              <section v-if="activeCandidateResumeVersion?.rawText && (activeCandidateResumeVersion?.formatStatus === 'failed' || !activeCandidateResumeVersion?.formattedText)" class="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
+                <h3 class="text-sm font-bold text-slate-700">原始提取文本</h3>
+                <p class="mt-1 text-xs text-slate-400">以下内容未经 AI 排版，仅用于核对原始解析结果。</p>
+                <pre class="mt-3 max-h-[50vh] overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-600">{{ activeCandidateResumeVersion.rawText }}</pre>
+              </section>
+              <p v-if="!activeCandidateResumeVersion?.formattedText && !activeCandidateResumeVersion?.rawText" class="text-sm text-slate-400 py-8 text-center">暂无可用简历文本，请确认原始文件仍可读取后重新处理。</p>
             </div>
             <div v-else class="mt-4">
               <div v-if="candidateResumeView.loading" class="py-12 text-center"><div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div><p class="mt-3 text-sm text-slate-400">正在加载原始文件…</p></div>
@@ -11147,6 +11156,21 @@ const vueAppConfig = {
         { candidateId, versionId },
         processResumeAiVersion,
       );
+    }
+    async function reprocessCandidateResumeVersion() {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
+      const candidate = selectedCandidate.value;
+      const version = activeCandidateResumeVersion.value;
+      if (!candidate || !version) {
+        showToast('当前没有可重新处理的简历版本', 'error');
+        return;
+      }
+      try {
+        await enqueueResumeAiProcessing(candidate.id, version.id);
+        showToast('基础信息、候选人画像和电子简历排版已更新');
+      } catch (error) {
+        showToast(error.message || '简历重新处理失败，请重试', 'error');
+      }
     }
     const hasCandidateResumeOriginal = computed(() => {
       const v = activeCandidateResumeVersion.value;
@@ -22791,7 +22815,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
-      candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
+      candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal, reprocessCandidateResumeVersion,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
