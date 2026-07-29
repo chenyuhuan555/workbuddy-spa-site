@@ -44,4 +44,4 @@
 - 当前 Vue 仍使用浏览器运行时模板编译，因此基线 CSP 暂时需要 `script-src 'unsafe-eval'`；待 P1-1 将模板迁移并预编译后移除。
 - 页面仍有内联脚本和内联样式，因此当前 CSP 暂时需要 `'unsafe-inline'`；模块拆分后应改用 nonce/hash 或纯外部资源。
 - `img-src https:` 是 RSS、公司资料和简历图片的内容例外，不等于允许任意脚本或任意 API 连接。
-- Tesseract.js 5.1.1 默认 worker 指向 jsDelivr；CSP 上线前必须改为本地 worker/语言资产或为实际资源增加精确策略，不能放宽成通配 `https:`。
+- Tesseract.js 5.1.1 默认从 `https://cdn.jsdelivr.net` 加载 OCR worker，并从 `https://tessdata.projectnaptha.com` 加载语言模型；基础 CSP 仅在 `worker-src` / `connect-src` 为这两个真实资源添加精确来源。中期应把 worker、WASM core 和 `chi_sim+eng` 模型全部纳入版本化本地资产，再删除这两个网络例外。

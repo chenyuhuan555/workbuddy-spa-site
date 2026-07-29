@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
+import { parse } from 'parse5';
 
 const root = new URL('../', import.meta.url);
 
@@ -37,4 +38,40 @@ test('依赖和许可证清单覆盖所有生产与构建依赖', () => {
   for (const field of ['用途', '版本', '来源', '许可证']) {
     assert.match(content, new RegExp(field), `清单缺少${field}字段`);
   }
+});
+
+test('基础 CSP 只允许当前业务所需的脚本和连接来源', () => {
+  const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const document = parse(sourceHtml);
+  let csp = '';
+  function visit(node) {
+    if (node.tagName === 'meta') {
+      const attributes = Object.fromEntries((node.attrs || []).map(item => [item.name, item.value]));
+      if ((attributes['http-equiv'] || '').toLowerCase() === 'content-security-policy') csp = attributes.content || '';
+    }
+    for (const child of node.childNodes || []) visit(child);
+  }
+  visit(document);
+  assert.ok(csp, '应声明 Content-Security-Policy meta');
+  const directives = new Map(csp.split(';').map(item => item.trim()).filter(Boolean).map(item => {
+    const [name, ...values] = item.split(/\s+/);
+    return [name, values];
+  }));
+  assert.deepEqual(directives.get('default-src'), ["'self'"]);
+  assert.deepEqual(directives.get('object-src'), ["'none'"]);
+  assert.deepEqual(directives.get('base-uri'), ["'self'"]);
+  assert.deepEqual(directives.get('form-action'), ["'self'"]);
+  assert.doesNotMatch((directives.get('script-src') || []).join(' '), /cdn\.jsdelivr\.net|unpkg\.com/);
+  const connections = directives.get('connect-src') || [];
+  assert.equal(connections.includes('https:'), false, 'connect-src 不得允许任意 HTTPS');
+  assert.equal(connections.includes('*'), false, 'connect-src 不得使用通配来源');
+  for (const source of [
+    'https://pskqpgzwifdozaxprpik.supabase.co',
+    'wss://pskqpgzwifdozaxprpik.supabase.co',
+    'https://api.deepseek.com',
+    'https://api.rss2json.com',
+    'https://api.allorigins.win',
+    'https://raw.githubusercontent.com',
+  ]) assert.ok(connections.includes(source), `connect-src 缺少 ${source}`);
+  assert.doesNotMatch(sourceHtml, /https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)\/vue@3\/dist\/vue\.global\.prod\.js/);
 });

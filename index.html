@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' blob: https://pskqpgzwifdozaxprpik.supabase.co wss://pskqpgzwifdozaxprpik.supabase.co https://api.deepseek.com https://api.rss2json.com https://api.allorigins.win https://raw.githubusercontent.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src 'self' blob:;">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>猎头工作台</title>
@@ -10132,19 +10133,12 @@ function loadScript(src) {
 
 async function ensureVueDependency() {
   if (window.Vue) return;
-  const candidates = [
-    './lib/vue.global.prod.js',
-    '../lib/vue.global.prod.js',
-    'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js',
-    'https://unpkg.com/vue@3/dist/vue.global.prod.js',
-  ];
-  for (const src of candidates) {
-    try {
-      await loadScript(src);
-      if (window.Vue) return;
-    } catch (e) {}
+  try {
+    await loadScript('./lib/vue.global.prod.js');
+  } catch (error) {
+    throw new Error('Vue 本地运行库加载失败，请确认 lib/vue.global.prod.js 已随站点部署。');
   }
-  throw new Error('Vue 未加载成功，请确认浏览器允许 JavaScript，并使用 index.html 所在目录打开页面。');
+  if (!window.Vue) throw new Error('Vue 本地运行库未正确初始化，请重新构建并部署完整 dist 目录。');
 }
 
 async function ensureScriptDependency(globalName, src, label) {
