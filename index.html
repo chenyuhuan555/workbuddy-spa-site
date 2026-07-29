@@ -19,6 +19,7 @@
   <script src="./src/workbench-v2.js"></script>
   <script src="./src/services/sync-merge.js"></script>
   <script src="./src/services/save-coordinator.js"></script>
+  <script src="./src/services/resume-ai-processing.js?v=20260729-resumeai1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260729-core1"></script>
@@ -4525,13 +4526,22 @@
                 <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" class="px-2 py-1 rounded-lg border border-slate-200 text-xs">
                   <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
                 </select>
+                <button v-if="canWrite && activeCandidateResumeVersion" type="button" @click="reprocessCandidateResumeVersion" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">{{ activeCandidateResumeVersion?.formatStatus === 'processing' ? '正在提取并排版…' : '重新提取并排版' }}</button>
                 <button type="button" @click="switchCandidateResumeMode('text')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'text' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">电子简历</button>
                 <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'original' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">原始文件</button>
               </div>
             </div>
             <div v-if="candidateResumeView.mode === 'text'" class="mt-4">
-              <div v-if="activeCandidateResumeVersion?.rawText || selectedCandidate?.electronicResumeText" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion?.rawText || selectedCandidate?.electronicResumeText || '暂无电子简历内容')"></div>
-              <p v-else class="text-sm text-slate-400 py-8 text-center">暂无电子简历内容</p>
+              <div v-if="activeCandidateResumeVersion?.formatStatus === 'processing'" role="status" aria-live="polite" class="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">正在执行基础信息提取、候选人画像提取和电子简历排版，请稍候。</div>
+              <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'queued'" role="status" class="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">尚未完成 AI 排版。可以点击“重新提取并排版”开始处理。</div>
+              <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'failed'" role="alert" class="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{{ activeCandidateResumeVersion.formatError || 'AI 排版失败，请重试' }}</div>
+              <div v-if="activeCandidateResumeVersion?.formattedText && activeCandidateResumeVersion?.formatStatus !== 'failed'" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion.formattedText)"></div>
+              <section v-if="activeCandidateResumeVersion?.formatStatus === 'failed' && activeCandidateResumeVersion?.rawText" class="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
+                <h3 class="text-sm font-bold text-slate-700">原始提取文本</h3>
+                <p class="mt-1 text-xs text-slate-400">以下内容未经 AI 排版，仅用于核对原始解析结果。</p>
+                <pre class="mt-3 max-h-[50vh] overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-600">{{ activeCandidateResumeVersion.rawText }}</pre>
+              </section>
+              <p v-if="!activeCandidateResumeVersion?.formattedText && !activeCandidateResumeVersion?.rawText" class="text-sm text-slate-400 py-8 text-center">暂无可用简历文本，请确认原始文件仍可读取后重新处理。</p>
             </div>
             <div v-else class="mt-4">
               <div v-if="candidateResumeView.loading" class="py-12 text-center"><div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div><p class="mt-3 text-sm text-slate-400">正在加载原始文件…</p></div>
@@ -10375,6 +10385,7 @@ const vueAppConfig = {
     const { KEYS: SK, GROUPS: SG } = window.WorkBuddyStages;
     const { PAGE_SIZE, paginate, indexById, groupBy } = window.WorkBuddyListPerformance;
     const CandidateCoreEditor = window.WorkBuddyCandidateCoreEditor;
+    const ResumeAiProcessing = window.WorkBuddyResumeAiProcessing;
     // -------- 承接方看板数据 --------
     const columns = reactive([
       { name: '承接方A', jobs: [], editing: false, tempName: '' },
@@ -10533,6 +10544,7 @@ const vueAppConfig = {
         });
       },
       persist: saveWorkbenchV2,
+      afterTalentSaved: ({ candidateId, versionId }) => enqueueResumeAiProcessing(candidateId, versionId),
     };
     function openBatchUpload() {
       if (!requireTalentWritePermission()) return;
@@ -11087,6 +11099,146 @@ const vueAppConfig = {
       }
       return versions[0];
     });
+    const resumeAiQueue = ResumeAiProcessing.createQueue();
+    const RESUME_AI_PENDING_KEY = STORAGE_KEY + '_resume_ai_pending_v1';
+    function readResumeAiPendingKeys() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(RESUME_AI_PENDING_KEY) || '[]');
+        return Array.from(new Set((Array.isArray(parsed) ? parsed : [])
+          .map(value => String(value || '').trim())
+          .filter(value => value.length <= 200 && value.includes(':'))));
+      } catch {
+        return [];
+      }
+    }
+    function writeResumeAiPendingKeys(keys) {
+      const clean = Array.from(new Set(keys
+        .map(value => String(value || '').trim())
+        .filter(value => value.length <= 200 && value.includes(':'))));
+      try {
+        if (clean.length) localStorage.setItem(RESUME_AI_PENDING_KEY, JSON.stringify(clean));
+        else localStorage.removeItem(RESUME_AI_PENDING_KEY);
+      } catch (error) {
+        console.warn('无法记录简历 AI 待处理任务，刷新恢复将不可用：', error);
+      }
+    }
+    function markResumeAiPending(candidateId, versionId) {
+      const key = `${candidateId}:${versionId}`;
+      writeResumeAiPendingKeys(readResumeAiPendingKeys().concat(key));
+      return key;
+    }
+    function clearResumeAiPending(key) {
+      writeResumeAiPendingKeys(readResumeAiPendingKeys().filter(item => item !== key));
+    }
+    async function resumeBlobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('原始简历文件读取失败'));
+        reader.readAsDataURL(blob);
+      });
+    }
+    async function loadCandidateResumeRawText(version, candidate, options = {}) {
+      if (!options.refresh && String(version?.rawText || '').trim()) return String(version.rawText).trim();
+      let fileData = String(version?.fileData || '');
+      let fileType = String(version?.fileType || '');
+      if (!fileData && version?.fileId) {
+        const record = await getResumeBlob(version.fileId);
+        if (record?.blob) {
+          fileData = await resumeBlobToDataUrl(record.blob);
+          fileType = String(record.fileType || record.blob.type || fileType);
+        }
+      }
+      if (!fileData && (version?.sourceResumeId || version?.id)) {
+        const legacyResume = {
+          id: version.id,
+          sourceResumeId: version.sourceResumeId || version.id,
+          name: version.fileName || '简历',
+          data: '',
+        };
+        await ensureResumeData(legacyResume);
+        fileData = String(legacyResume.data || '');
+      }
+      if (!fileData) throw new Error('原始简历文件不存在且原始文本为空');
+      return extractResumeText({ name: version.fileName || '简历', type: fileType, data: fileData });
+    }
+    async function processResumeAiVersion({ candidateId, versionId, refreshRawText = false }) {
+      return ResumeAiProcessing.process({
+        bundle: workbenchV2,
+        candidateId,
+        versionId,
+        canWrite,
+        canUseAi: canConfigureAi,
+        refreshRawText,
+        deps: {
+          assertConfigured: requireDeepSeekApiKey,
+          extractBasic: extractCandidateBasicInfoWithDeepSeek,
+          extractProfile: extractCandidateProfileWithDeepSeek,
+          format: formatElectronicResumeWithDeepSeek,
+          loadRawText: loadCandidateResumeRawText,
+          persist: saveWorkbenchV2,
+          scheduleSync: schedulePush,
+        },
+      });
+    }
+    function enqueueResumeAiProcessing(candidateId, versionId, options = {}) {
+      const pendingKey = markResumeAiPending(candidateId, versionId);
+      const run = ResumeAiProcessing.enqueue(
+        resumeAiQueue,
+        { candidateId, versionId, refreshRawText: options.refreshRawText === true },
+        processResumeAiVersion,
+      );
+      void run.finally(() => clearResumeAiPending(pendingKey)).catch(() => {});
+      return run;
+    }
+    async function recoverResumeAiProcessing() {
+      const pendingKeys = readResumeAiPendingKeys();
+      if (!pendingKeys.length) return;
+      const recovered = ResumeAiProcessing.recoverInterrupted(workbenchV2, pendingKeys);
+      const validKeys = recovered.map(item => `${item.candidateId}:${item.versionId}`);
+      writeResumeAiPendingKeys(validKeys);
+      if (!validKeys.length) return;
+
+      const aiConfigured = canConfigureAi && String(aiConfig.apiKey || '').trim().startsWith('sk-');
+      if (!aiConfigured) {
+        const reason = canConfigureAi
+          ? 'DeepSeek API Key 未配置或无效'
+          : '当前账号没有 AI 功能权限';
+        recovered.forEach(({ candidateId, versionId }) => {
+          try {
+            const { candidate, version } = ResumeAiProcessing.findVersion(workbenchV2, candidateId, versionId);
+            version.formatStatus = 'failed';
+            version.formatError = reason;
+            if (candidate.profileProcessStatus !== 'done') {
+              candidate.profileProcessStatus = 'failed';
+              candidate.profileProcessError = reason;
+            }
+          } catch {}
+        });
+        await saveWorkbenchV2();
+        writeResumeAiPendingKeys([]);
+        return;
+      }
+
+      recovered.forEach(({ candidateId, versionId }) => {
+        void enqueueResumeAiProcessing(candidateId, versionId).catch(() => {});
+      });
+    }
+    async function reprocessCandidateResumeVersion() {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
+      const candidate = selectedCandidate.value;
+      const version = activeCandidateResumeVersion.value;
+      if (!candidate || !version) {
+        showToast('当前没有可重新处理的简历版本', 'error');
+        return;
+      }
+      try {
+        await enqueueResumeAiProcessing(candidate.id, version.id, { refreshRawText: true });
+        showToast('基础信息、候选人画像和电子简历排版已更新');
+      } catch (error) {
+        showToast(error.message || '简历重新处理失败，请重试', 'error');
+      }
+    }
     const hasCandidateResumeOriginal = computed(() => {
       const v = activeCandidateResumeVersion.value;
       return !!(v && (v.fileId || v.fileData || v.sourceResumeId));
@@ -12039,6 +12191,7 @@ const vueAppConfig = {
       if (await saveWorkbenchV2()) {
         if (cloudReady) schedulePush();
         showToast(linkedToPosition ? '人才已入库并加入当前岗位' : '人才已保存到人才库');
+        if (version) void enqueueResumeAiProcessing(candidate.id, version.id).catch(error => showToast(error.message, 'error'));
       }
       return candidate;
     }
@@ -12062,7 +12215,11 @@ const vueAppConfig = {
       candidateUpload.createdId = target.id;
       candidateUpload.step = 'complete';
       if (candidateUpload.batchTaskId) { finalizeBatchProxy('success'); return; } // 批量代理
-      if (await saveWorkbenchV2()) { if (cloudReady) schedulePush(); showToast('已合并到既有人才并追加简历版本'); }
+      if (await saveWorkbenchV2()) {
+        if (cloudReady) schedulePush();
+        showToast('已合并到既有人才并追加简历版本');
+        if (version) void enqueueResumeAiProcessing(target.id, version.id).catch(error => showToast(error.message, 'error'));
+      }
     }
 
     // 阶段 3 查重确认：保存为已有人员的新简历版本（不改任何人才基础资料）
@@ -12080,7 +12237,11 @@ const vueAppConfig = {
       candidateUpload.createdId = target.id;
       candidateUpload.step = 'complete';
       if (candidateUpload.batchTaskId) { finalizeBatchProxy('success'); return; } // 批量代理
-      if (await saveWorkbenchV2()) { if (cloudReady) schedulePush(); showToast('已保存为新简历版本'); }
+      if (await saveWorkbenchV2()) {
+        if (cloudReady) schedulePush();
+        showToast('已保存为新简历版本');
+        if (version) void enqueueResumeAiProcessing(target.id, version.id).catch(error => showToast(error.message, 'error'));
+      }
     }
     // 查重弹窗取消：批量代理时写回任务为 skipped，否则关闭单份弹窗
     function onCancelDedup() {
@@ -14799,6 +14960,7 @@ ${ocrText}`
       await reconcileMigratedPositionDescriptions();
       const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
+      await recoverResumeAiProcessing();
       if (localPipelineMigrated || cloudPipelineMigrated) markDirty('legacy');
       updateActiveNavFromScroll();
       window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });
@@ -22721,7 +22883,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
-      candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
+      candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal, reprocessCandidateResumeVersion,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
