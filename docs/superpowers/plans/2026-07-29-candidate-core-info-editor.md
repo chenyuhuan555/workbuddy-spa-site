@@ -187,6 +187,7 @@ test('save rolls editable fields back when persistence fails', async () => {
     phone: 'old-phone', email: 'old@example.com', updatedAt: 'old-time', note: '保留',
   };
   const bundle = { candidates: [candidate] };
+  let persistCalls = 0;
   await assert.rejects(() => Editor.save({
     canWrite: true, bundle, candidateId: 'c1',
     draft: { skills: ['新技能'], directions: [], owner: '', phone: '', email: '' },
@@ -194,12 +195,13 @@ test('save rolls editable fields back when persistence fails', async () => {
       Object.assign(candidate, patch, { updatedAt: 'new-time' });
       return candidate;
     },
-    persist: async () => false,
+    persist: async () => { persistCalls++; return persistCalls > 1; },
   }), /保存失败/);
   assert.deepEqual(candidate, {
     id: 'c1', skills: ['旧技能'], directions: ['旧方向'], owner: '旧顾问',
     phone: 'old-phone', email: 'old@example.com', updatedAt: 'old-time', note: '保留',
   });
+  assert.equal(persistCalls, 2, '失败后必须尽力持久化回滚状态，避免备用快照保留未保存值');
 });
 ```
 
@@ -224,9 +226,13 @@ Add inside the module factory and export `save`:
     const previous = { ...createDraft(candidate), updatedAt: candidate.updatedAt };
     const patch = buildPatch(options.draft, options.skillInput, options.directionInput);
     options.updateTalent(options.bundle, candidate.id, patch);
-    const persisted = await options.persist();
-    if (persisted !== true) {
+    let persisted = false;
+    try {
+      persisted = await options.persist() === true;
+    } catch {}
+    if (!persisted) {
       Object.assign(candidate, previous);
+      try { await options.persist(); } catch {}
       throw new Error('核心信息保存失败，请重试');
     }
     return candidate;
