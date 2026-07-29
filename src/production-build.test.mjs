@@ -23,6 +23,8 @@ test('生产构建使用本地静态 Tailwind CSS', () => {
   for (const selector of ['.hidden', '.grid', '.bg-emerald-700', '.sm\\:grid-cols-2', '.grid-cols-\\[']) {
     assert.ok(css.includes(selector), `生产 CSS 缺少 ${selector}`);
   }
+  assert.equal(fs.existsSync(new URL('../dist/THIRD_PARTY_NOTICES.md', import.meta.url)), true, '发布包应包含第三方许可证通知');
+  assert.equal(fs.existsSync(new URL('../dist/docs/dependencies.md', import.meta.url)), true, '发布包应包含依赖清单');
 });
 
 test('依赖和许可证清单覆盖所有生产与构建依赖', () => {

@@ -50,4 +50,7 @@ if (existsSync(docsDir)) {
   cpSync(docsDir, resolve(dist, 'docs'), { recursive: true });
 }
 
+// 5. 随发布包提供第三方许可证通知
+cpSync(resolve(root, 'THIRD_PARTY_NOTICES.md'), resolve(dist, 'THIRD_PARTY_NOTICES.md'));
+
 console.log('✓ 构建完成 → dist/');
