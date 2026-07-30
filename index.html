@@ -4646,7 +4646,7 @@
                   <button type="button" @click="cancelCandidateResumeEdit" :disabled="candidateResumeEdit.saving" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50">取消</button>
                   <button type="button" @click="saveCandidateResumeEdit" :disabled="candidateResumeEdit.saving" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-700 bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-50">{{ candidateResumeEdit.saving ? '保存中…' : '保存电子简历' }}</button>
                 </span>
-                <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="startCandidateResumeEdit" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100">编辑电子简历</button>
+                <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="startCandidateResumeEdit" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed">编辑电子简历</button>
                 <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="reprocessCandidateResumeFromText" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">使用现有文本重新处理</button>
                 <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="reextractCandidateResumeFromOriginal" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">从原始文件重新提取并处理</button>
                 <button type="button" @click="switchCandidateResumeMode('text')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'text' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">电子简历</button>
@@ -12586,6 +12586,10 @@ const vueAppConfig = {
       const candidate = selectedCandidate.value;
       const version = activeCandidateResumeVersion.value;
       if (!requireTalentWritePermission() || !candidate || !version) return;
+      if (version.formatStatus === 'processing') {
+        showToast('AI 正在处理该简历，请完成后再编辑', 'warning');
+        return;
+      }
       resetCandidateResumeEdit();
       candidateResumeView.mode = 'text';
       candidateResumeEdit.candidateId = candidate.id;

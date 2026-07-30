@@ -123,6 +123,7 @@ test('简历页提供当前版本电子简历编辑入口和可访问表单', ()
   assert.match(INDEX_HTML, /for="candidate-resume-formatted-text"/);
   assert.match(INDEX_HTML, /id="candidate-resume-formatted-text"/);
   assert.match(INDEX_HTML, /v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit\.active"/);
+  assert.match(INDEX_HTML, /@click="startCandidateResumeEdit"[^>]*:disabled="activeCandidateResumeVersion\?\.formatStatus === 'processing'"/);
   assert.match(INDEX_HTML, /candidateResumeEdit\.saving \? '保存中…' : '保存电子简历'/);
   assert.match(INDEX_HTML, /candidateResumeEdit\.error[^>]*role="alert"|role="alert"[^>]*candidateResumeEdit\.error/);
 });
