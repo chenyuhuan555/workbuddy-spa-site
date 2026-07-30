@@ -3454,6 +3454,36 @@
       padding: 20px 10px 28px;
     }
 
+    .wb-account-logout-icon {
+      display: none;
+      width: 16px;
+      height: 16px;
+    }
+
+    .wb-v2-workspace .wb-v2-sidebar.is-collapsed #wb-account-bar {
+      display: flex !important;
+      justify-content: center !important;
+      margin: 0 10px 12px !important;
+      padding: 6px !important;
+    }
+
+    .wb-v2-workspace .wb-v2-sidebar.is-collapsed .wb-account-copy,
+    .wb-v2-workspace .wb-v2-sidebar.is-collapsed .wb-account-logout-label {
+      display: none;
+    }
+
+    .wb-v2-workspace .wb-v2-sidebar.is-collapsed .wb-account-logout-icon {
+      display: block !important;
+    }
+
+    .wb-v2-workspace .wb-v2-sidebar.is-collapsed #wb-logout {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      margin-left: 0 !important;
+      padding: 7px !important;
+    }
+
     .wb-v2-workspace .wb-v2-topbar {
       height: 112px !important;
       padding: 0 58px 0 44px;
@@ -3896,6 +3926,11 @@
       .wb-v2-workspace .wb-v2-sidebar-navigation > button,
       .wb-v2-workspace .wb-v2-sidebar-footer > button { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
       .wb-v2-workspace .wb-v2-sidebar-footer { padding-left: 12px; padding-right: 12px; }
+      .wb-v2-workspace .wb-v2-sidebar #wb-account-bar { display: flex !important; justify-content: center !important; margin: 0 10px 12px !important; padding: 6px !important; }
+      .wb-v2-workspace .wb-v2-sidebar .wb-account-copy,
+      .wb-v2-workspace .wb-v2-sidebar .wb-account-logout-label { display: none; }
+      .wb-v2-workspace .wb-v2-sidebar .wb-account-logout-icon { display: block !important; }
+      .wb-v2-workspace .wb-v2-sidebar #wb-logout { display: inline-flex !important; align-items: center; justify-content: center; margin-left: 0 !important; padding: 7px !important; }
       .wb-v2-workspace .wb-v2-topbar { padding: 0 20px; }
       .wb-v2-workspace .wb-v2-main { padding: 0 20px 30px !important; }
       .wb-v2-workspace .wb-v2-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3950,8 +3985,11 @@
   </section>
 </div>
 <div id="wb-account-bar" style="display:none;position:fixed;right:18px;top:14px;z-index:99998;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:8px 10px;box-shadow:0 6px 20px rgba(15,23,42,.1);font:13px 'PingFang SC','Microsoft YaHei',sans-serif">
-  <span id="wb-account-name"></span><span id="wb-account-role" style="margin-left:6px;color:#64748b"></span>
-  <button id="wb-logout" type="button" style="margin-left:10px;border:0;background:#f1f5f9;border-radius:8px;padding:5px 9px;cursor:pointer">退出</button>
+  <span class="wb-account-copy"><span id="wb-account-name"></span><span id="wb-account-role" style="margin-left:6px;color:#64748b"></span></span>
+  <button id="wb-logout" type="button" aria-label="退出登录" title="退出登录" style="margin-left:10px;border:0;background:#f1f5f9;border-radius:8px;padding:5px 9px;cursor:pointer">
+    <svg class="wb-account-logout-icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 17l5-5-5-5M15 12H3m10-7h5a2 2 0 012 2v10a2 2 0 01-2 2h-5"/></svg>
+    <span class="wb-account-logout-label">退出</span>
+  </button>
 </div>
 
 <!-- 加载兜底：Vue 挂载成功后自动隐藏，12 秒超时显示错误 -->

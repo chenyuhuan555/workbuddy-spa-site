@@ -147,3 +147,47 @@ test('减少动态效果时取消侧栏 transition', () => {
     /\.wb-v2-workspace\s+\.wb-v2-sidebar(?:\.is-collapsed)?\s*\{[^}]*\btransition\s*:\s*none\s*(?:!important\s*)?;/s,
   );
 });
+
+test('账号栏在手动收起和自动窄栏时只保留居中的退出图标', () => {
+  const accountBar = descendants(DOCUMENT).find(node => attribute(node, 'id') === 'wb-account-bar');
+  assert.ok(accountBar, '缺少账号栏');
+
+  const accountCopy = descendants(accountBar).find(node => hasClass(node, 'wb-account-copy'));
+  assert.ok(accountCopy, '账号名和角色必须由 .wb-account-copy 包裹');
+  assert.ok(descendants(accountCopy).some(node => attribute(node, 'id') === 'wb-account-name'));
+  assert.ok(descendants(accountCopy).some(node => attribute(node, 'id') === 'wb-account-role'));
+
+  const logout = descendants(accountBar).find(node => attribute(node, 'id') === 'wb-logout');
+  assert.ok(logout, '缺少退出登录按钮');
+  assert.equal(attribute(logout, 'aria-label'), '退出登录');
+  assert.equal(attribute(logout, 'title'), '退出登录');
+  assert.ok(
+    descendants(logout).some(node => hasClass(node, 'wb-account-logout-icon') && attribute(node, 'aria-hidden') === 'true'),
+    '退出按钮必须提供 aria-hidden 的独立图标',
+  );
+  assert.ok(
+    descendants(logout).some(node => hasClass(node, 'wb-account-logout-label')),
+    '退出文字必须由 .wb-account-logout-label 包裹',
+  );
+
+  const collapsedAccountCss = cssBlock('.wb-v2-workspace .wb-v2-sidebar.is-collapsed #wb-account-bar');
+  assert.match(collapsedAccountCss, /\bdisplay\s*:\s*flex\s*!important\s*;/s);
+  assert.match(collapsedAccountCss, /\bjustify-content\s*:\s*center\s*!important\s*;/s);
+  assert.match(collapsedAccountCss, /\bmargin\s*:[^;]+!important\s*;/s);
+  assert.match(collapsedAccountCss, /\bpadding\s*:[^;]+!important\s*;/s);
+  assertMatches(
+    INDEX_HTML,
+    /\.wb-v2-workspace\s+\.wb-v2-sidebar\.is-collapsed\s+\.wb-account-copy\s*,\s*\.wb-v2-workspace\s+\.wb-v2-sidebar\.is-collapsed\s+\.wb-account-logout-label\s*\{[^}]*\bdisplay\s*:\s*none\s*(?:!important\s*)?;/s,
+    '桌面收起态必须隐藏账号文字和退出文字',
+  );
+  assertMatches(
+    INDEX_HTML,
+    /\.wb-v2-workspace\s+\.wb-v2-sidebar\.is-collapsed\s+\.wb-account-logout-icon\s*\{[^}]*\bdisplay\s*:\s*(?:block|inline-block|inline-flex)\s*(?:!important\s*)?;/s,
+    '桌面收起态必须显示退出图标',
+  );
+
+  const narrowScreenCss = cssBlock('@media (max-width: 820px)');
+  assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+#wb-account-bar\s*\{[^}]*\bjustify-content\s*:\s*center\s*!important\s*;/s);
+  assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-copy\s*,\s*\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-logout-label\s*\{[^}]*\bdisplay\s*:\s*none\s*(?:!important\s*)?;/s);
+  assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-logout-icon\s*\{[^}]*\bdisplay\s*:\s*(?:block|inline-block|inline-flex)\s*(?:!important\s*)?;/s);
+});
