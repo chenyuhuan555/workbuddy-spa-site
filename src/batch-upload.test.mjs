@@ -542,6 +542,27 @@ test('人才可靠入库后才触发后台 AI，后台失败不改变上传成�
   assert.deepEqual(notifications, [{ candidateId: candidate.id, versionId: version.id }]);
 });
 
+test('页面在可靠入库后分别排队原件同步和 AI', () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(source, /src\/services\/resume-file-sync\.js\?v=/);
+  assert.match(source, /const ResumeFileSync = window\.WorkBuddyResumeFileSync/);
+  assert.match(source, /function enqueueResumeFileSync\(candidateId, versionId\)/);
+  assert.match(source, /function scheduleResumePostSaveTasks\(candidateId, versionId\)/);
+  assert.match(source, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => scheduleResumePostSaveTasks\(candidateId, versionId\)/);
+  const scheduler = source.match(/function scheduleResumePostSaveTasks\(candidateId, versionId\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.match(scheduler, /void enqueueResumeFileSync\(candidateId, versionId\)\.catch/);
+  assert.match(scheduler, /void enqueueResumeAiProcessing\(candidateId, versionId\)\.catch/);
+  assert.doesNotMatch(scheduler, /await /);
+});
+
+test('原件同步和 AI 处理共用串行后台保存，避免并发快照覆盖', () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(source, /let resumeBackgroundSaveTail = Promise\.resolve\(true\)/);
+  assert.match(source, /function saveResumeBackgroundState\(\) \{/);
+  assert.match(source, /processResumeAiVersion[\s\S]*?persist:\s*saveResumeBackgroundState/);
+  assert.match(source, /enqueueResumeFileSync[\s\S]*?persist:\s*saveResumeBackgroundState/);
+});
+
 test('重复简历保存为新版本后触发该版本的后台 AI', async () => {
   const bundle = WorkbenchV2.createEmptyBundle();
   const existing = WorkbenchV2.createTalent(bundle, { name: '雷艺旋', currentCompany: '百度' });

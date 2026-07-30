@@ -364,11 +364,11 @@ test('数据校验已转为 queued 的显式任务仍可在刷新后恢复', () 
 });
 
 test('页面加载处理器并为单份和批量入库提供统一后台入口', () => {
-  assert.match(INDEX_HTML, /src\/services\/resume-ai-processing\.js\?v=20260729-resumeai1/);
+  assert.match(INDEX_HTML, /src\/services\/resume-ai-processing\.js\?v=20260730-resumeai2/);
   assert.match(INDEX_HTML, /const ResumeAiProcessing = window\.WorkBuddyResumeAiProcessing/);
   assert.match(INDEX_HTML, /function enqueueResumeAiProcessing\(candidateId, versionId, options = \{\}\)/);
-  assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => enqueueResumeAiProcessing\(candidateId, versionId\)/);
-  assert.match(INDEX_HTML, /enqueueResumeAiProcessing\(candidate\.id, version\.id\)/);
+  assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => scheduleResumePostSaveTasks\(candidateId, versionId\)/);
+  assert.match(INDEX_HTML, /scheduleResumePostSaveTasks\(candidate\.id, version\.id\)/);
 });
 
 test('页面只恢复显式记录的中断任务，不扫描全部历史简历', () => {

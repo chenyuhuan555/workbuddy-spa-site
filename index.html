@@ -19,7 +19,8 @@
   <script src="./src/workbench-v2.js"></script>
   <script src="./src/services/sync-merge.js"></script>
   <script src="./src/services/save-coordinator.js"></script>
-  <script src="./src/services/resume-ai-processing.js?v=20260729-resumeai1"></script>
+  <script src="./src/services/resume-ai-processing.js?v=20260730-resumeai2"></script>
+  <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260729-core1"></script>
@@ -4636,17 +4637,23 @@
                 <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" class="px-2 py-1 rounded-lg border border-slate-200 text-xs">
                   <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
                 </select>
-                <button v-if="canWrite && activeCandidateResumeVersion" type="button" @click="reprocessCandidateResumeVersion" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">{{ activeCandidateResumeVersion?.formatStatus === 'processing' ? '正在提取并排版…' : '重新提取并排版' }}</button>
+                <button v-if="canWrite && activeCandidateResumeVersion" type="button" @click="reprocessCandidateResumeFromText" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">使用现有文本重新处理</button>
+                <button v-if="canWrite && activeCandidateResumeVersion" type="button" @click="reextractCandidateResumeFromOriginal" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">从原始文件重新提取并处理</button>
                 <button type="button" @click="switchCandidateResumeMode('text')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'text' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">电子简历</button>
                 <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'original' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">原始文件</button>
               </div>
             </div>
+            <div v-if="activeCandidateResumeVersion" class="mt-3 flex flex-wrap items-center gap-2 text-xs" role="status" aria-live="polite">
+              <span class="text-slate-500">{{ resumeOriginalStatusLabel(activeCandidateResumeVersion) }}</span>
+              <button v-if="canWrite && ['local-only','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" type="button" @click="retryCandidateResumeFileSync" :disabled="activeCandidateResumeVersion.originalFileStatus === 'syncing'" class="font-semibold text-emerald-700 hover:text-emerald-800">同步原始文件</button>
+              <label v-if="canWrite && activeCandidateResumeVersion.originalFileStatus === 'missing'" class="font-semibold text-blue-700 hover:text-blue-800 cursor-pointer">重新上传原件<input aria-label="重新上传当前简历原件" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
+            </div>
             <div v-if="candidateResumeView.mode === 'text'" class="mt-4">
-              <div v-if="activeCandidateResumeVersion?.formatStatus === 'processing'" role="status" aria-live="polite" class="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">正在执行基础信息提取、候选人画像提取和电子简历排版，请稍候。</div>
+              <div v-if="activeCandidateResumeVersion?.formatStatus === 'processing'" role="status" aria-live="polite" class="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">正在执行{{ resumeAiStageLabel(activeCandidateResumeVersion.aiStage) }}，请稍候。</div>
               <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'queued'" role="status" class="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">尚未完成 AI 排版。可以点击“重新提取并排版”开始处理。</div>
-              <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'failed'" role="alert" class="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{{ activeCandidateResumeVersion.formatError || 'AI 排版失败，请重试' }}</div>
-              <div v-if="activeCandidateResumeVersion?.formattedText && activeCandidateResumeVersion?.formatStatus !== 'failed'" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion.formattedText)"></div>
-              <section v-if="activeCandidateResumeVersion?.formatStatus === 'failed' && activeCandidateResumeVersion?.rawText" class="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
+              <div v-else-if="activeCandidateResumeVersion?.formatStatus === 'failed'" role="alert" class="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><b>{{ resumeAiStageLabel(activeCandidateResumeVersion.aiStage) }}失败</b><span v-if="activeCandidateResumeVersion.formatErrorCode" class="ml-1 text-red-500">（{{ activeCandidateResumeVersion.formatErrorCode }}）</span><p class="mt-1">{{ activeCandidateResumeVersion.formatError || 'AI 处理失败，请重试' }}</p></div>
+              <div v-if="activeCandidateResumeVersion?.formattedText" class="resume-markdown rounded-xl bg-slate-50 border border-slate-200 px-6 py-5" v-html="renderResumeMarkdown(activeCandidateResumeVersion.formattedText)"></div>
+              <section v-if="!activeCandidateResumeVersion?.formattedText && activeCandidateResumeVersion?.formatStatus === 'failed' && activeCandidateResumeVersion?.rawText" class="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
                 <h3 class="text-sm font-bold text-slate-700">原始提取文本</h3>
                 <p class="mt-1 text-xs text-slate-400">以下内容未经 AI 排版，仅用于核对原始解析结果。</p>
                 <pre class="mt-3 max-h-[50vh] overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-600">{{ activeCandidateResumeVersion.rawText }}</pre>
@@ -10496,6 +10503,7 @@ const vueAppConfig = {
     const { PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate } = window.WorkBuddyListPerformance;
     const CandidateCoreEditor = window.WorkBuddyCandidateCoreEditor;
     const ResumeAiProcessing = window.WorkBuddyResumeAiProcessing;
+    const ResumeFileSync = window.WorkBuddyResumeFileSync;
     // -------- 承接方看板数据 --------
     const columns = reactive([
       { name: '承接方A', jobs: [], editing: false, tempName: '' },
@@ -10655,7 +10663,7 @@ const vueAppConfig = {
         });
       },
       persist: saveWorkbenchV2,
-      afterTalentSaved: ({ candidateId, versionId }) => enqueueResumeAiProcessing(candidateId, versionId),
+      afterTalentSaved: ({ candidateId, versionId }) => scheduleResumePostSaveTasks(candidateId, versionId),
     };
     function openBatchUpload() {
       if (!requireTalentWritePermission()) return;
@@ -11211,6 +11219,13 @@ const vueAppConfig = {
       return versions[0];
     });
     const resumeAiQueue = ResumeAiProcessing.createQueue();
+    const resumeFileQueue = ResumeFileSync.createQueue();
+    let resumeBackgroundSaveTail = Promise.resolve(true);
+    function saveResumeBackgroundState() {
+      const current = resumeBackgroundSaveTail.then(() => saveWorkbenchV2());
+      resumeBackgroundSaveTail = current.catch(() => false);
+      return current;
+    }
     const RESUME_AI_PENDING_KEY = STORAGE_KEY + '_resume_ai_pending_v1';
     function readResumeAiPendingKeys() {
       try {
@@ -11249,28 +11264,52 @@ const vueAppConfig = {
         reader.readAsDataURL(blob);
       });
     }
+    function resumeDataUrlToBlob(dataUrl, fallbackType = 'application/octet-stream') {
+      const match = String(dataUrl || '').match(/^data:([^;,]+)?(;base64)?,([\s\S]*)$/);
+      if (!match) return null;
+      const mime = match[1] || fallbackType;
+      const bytes = match[2]
+        ? Uint8Array.from(atob(match[3]), char => char.charCodeAt(0))
+        : new TextEncoder().encode(decodeURIComponent(match[3]));
+      return new Blob([bytes], { type: mime });
+    }
+    async function loadCandidateOriginalRecord(version) {
+      if (!version) throw Object.assign(new Error('当前没有可用的简历版本'), { code: 'ORIGINAL_NOT_FOUND' });
+      const createdFileId = !version.fileId;
+      if (createdFileId) version.fileId = `fid_${version.id || Date.now().toString(36)}`;
+      try {
+        const record = await ResumeFileSync.loadOriginal(version, {
+          getLocal: getResumeBlob,
+          download: path => getWorkspaceStateClient().downloadFile(path),
+          saveLocal: saveResumeBlob,
+          loadLegacy: async current => {
+            let data = String(current.fileData || '');
+            if (!data && (current.sourceResumeId || current.id)) {
+              const legacyResume = {
+                id: current.id,
+                sourceResumeId: current.sourceResumeId || current.id,
+                name: current.fileName || '简历',
+                data: '',
+              };
+              await ensureResumeData(legacyResume);
+              data = String(legacyResume.data || '');
+            }
+            const blob = resumeDataUrlToBlob(data, current.fileType || 'application/pdf');
+            return blob ? { blob, fileType: current.fileType || blob.type } : null;
+          },
+        });
+        if (createdFileId) await saveResumeBackgroundState();
+        return record;
+      } catch (error) {
+        if (createdFileId) version.fileId = '';
+        throw error;
+      }
+    }
     async function loadCandidateResumeRawText(version, candidate, options = {}) {
       if (!options.refresh && String(version?.rawText || '').trim()) return String(version.rawText).trim();
-      let fileData = String(version?.fileData || '');
-      let fileType = String(version?.fileType || '');
-      if (!fileData && version?.fileId) {
-        const record = await getResumeBlob(version.fileId);
-        if (record?.blob) {
-          fileData = await resumeBlobToDataUrl(record.blob);
-          fileType = String(record.fileType || record.blob.type || fileType);
-        }
-      }
-      if (!fileData && (version?.sourceResumeId || version?.id)) {
-        const legacyResume = {
-          id: version.id,
-          sourceResumeId: version.sourceResumeId || version.id,
-          name: version.fileName || '简历',
-          data: '',
-        };
-        await ensureResumeData(legacyResume);
-        fileData = String(legacyResume.data || '');
-      }
-      if (!fileData) throw new Error('原始简历文件不存在且原始文本为空');
+      const record = await loadCandidateOriginalRecord(version);
+      const fileData = await resumeBlobToDataUrl(record.blob);
+      const fileType = String(record.fileType || record.blob.type || version.fileType || '');
       return extractResumeText({ name: version.fileName || '简历', type: fileType, data: fileData });
     }
     async function processResumeAiVersion({ candidateId, versionId, refreshRawText = false }) {
@@ -11287,7 +11326,7 @@ const vueAppConfig = {
           extractProfile: extractCandidateProfileWithDeepSeek,
           format: formatElectronicResumeWithDeepSeek,
           loadRawText: loadCandidateResumeRawText,
-          persist: saveWorkbenchV2,
+          persist: saveResumeBackgroundState,
           scheduleSync: schedulePush,
         },
       });
@@ -11301,6 +11340,22 @@ const vueAppConfig = {
       );
       void run.finally(() => clearResumeAiPending(pendingKey)).catch(() => {});
       return run;
+    }
+    function enqueueResumeFileSync(candidateId, versionId) {
+      return ResumeFileSync.enqueue(resumeFileQueue, { candidateId, versionId }, async task => {
+        const { version } = ResumeAiProcessing.findVersion(workbenchV2, task.candidateId, task.versionId);
+        return ResumeFileSync.syncOriginal({ ...task, version }, {
+          getLocal: getResumeBlob,
+          upload: options => getWorkspaceStateClient().uploadFile(options),
+          download: path => getWorkspaceStateClient().downloadFile(path),
+          persist: saveResumeBackgroundState,
+          scheduleSync: () => { if (cloudReady) schedulePush(); },
+        });
+      });
+    }
+    function scheduleResumePostSaveTasks(candidateId, versionId) {
+      void enqueueResumeFileSync(candidateId, versionId).catch(() => {});
+      void enqueueResumeAiProcessing(candidateId, versionId).catch(() => {});
     }
     async function recoverResumeAiProcessing() {
       const pendingKeys = readResumeAiPendingKeys();
@@ -11335,24 +11390,108 @@ const vueAppConfig = {
         void enqueueResumeAiProcessing(candidateId, versionId).catch(() => {});
       });
     }
-    async function reprocessCandidateResumeVersion() {
+    function resumeAiStageLabel(stage) {
+      return ({ source: '原始文件提取', basic: '基础信息提取', profile: '候选人画像提取', format: '电子简历排版' })[stage]
+        || '简历 AI 处理';
+    }
+    async function runCandidateResumeReprocess({ refreshRawText }) {
       if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       const candidate = selectedCandidate.value;
       const version = activeCandidateResumeVersion.value;
       if (!candidate || !version) {
-        showToast('当前没有可重新处理的简历版本', 'error');
+        showToast('当前没有可处理的简历版本', 'error');
+        return;
+      }
+      if (!refreshRawText && String(version.rawText || '').trim().length < 40) {
+        showToast('现有原始文本不足，请从原始文件重新提取', 'error');
         return;
       }
       try {
-        await enqueueResumeAiProcessing(candidate.id, version.id, { refreshRawText: true });
-        showToast('基础信息、候选人画像和电子简历排版已更新');
+        await enqueueResumeAiProcessing(candidate.id, version.id, { refreshRawText });
+        showToast(refreshRawText ? '已从原始文件重新提取并处理' : '已使用现有文本重新处理');
       } catch (error) {
         showToast(error.message || '简历重新处理失败，请重试', 'error');
       }
     }
+    async function reprocessCandidateResumeFromText() {
+      return runCandidateResumeReprocess({ refreshRawText: false });
+    }
+    async function reextractCandidateResumeFromOriginal() {
+      return runCandidateResumeReprocess({ refreshRawText: true });
+    }
+    async function reprocessCandidateResumeVersion() {
+      return reextractCandidateResumeFromOriginal();
+    }
+    function resumeOriginalStatusLabel(version) {
+      if (!version) return '暂无原始文件';
+      if (version.originalFileStatus === 'syncing') return '原件正在同步到私有云端';
+      if (version.originalFileStatus === 'synced') return '原件已同步，可跨设备查看';
+      if (version.originalFileStatus === 'sync-failed') return version.originalFileError || '原件仅在已缓存设备可用，云端同步失败';
+      if (version.originalFileStatus === 'missing') return '原件缺失，可重新上传且不会影响业务记录';
+      return '原件仅在已缓存设备可用';
+    }
+    async function retryCandidateResumeFileSync() {
+      if (!requireTalentWritePermission()) return;
+      const candidate = selectedCandidate.value;
+      const version = activeCandidateResumeVersion.value;
+      if (!candidate || !version) return;
+      try {
+        await loadCandidateOriginalRecord(version);
+        await enqueueResumeFileSync(candidate.id, version.id);
+        showToast('原始文件已同步，可在其他设备查看');
+      } catch (error) {
+        if (error?.code === 'ORIGINAL_NOT_FOUND') {
+          version.originalFileStatus = 'missing';
+          version.originalFileError = '当前设备和云端均没有原始文件';
+          await saveResumeBackgroundState();
+        }
+        showToast(error.message || '原始文件同步失败，请重试', 'error');
+      }
+    }
+    async function replaceCandidateResumeOriginal(event) {
+      if (!requireTalentWritePermission()) return;
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      const candidate = selectedCandidate.value;
+      const version = activeCandidateResumeVersion.value;
+      if (!file || !candidate || !version) return;
+      const classification = WorkbenchV2.classifyResumeFile(file.name, file.type);
+      if (!classification.ok) return showToast('仅支持 PDF、Word、图片或 TXT 简历', 'error');
+      if (file.size > 20 * 1024 * 1024) return showToast('原始文件不能超过 20MB', 'error');
+      try {
+        const fileData = await resumeBlobToDataUrl(file);
+        const fileId = (crypto.randomUUID && crypto.randomUUID()) || `fid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+        const fileHash = await hashResumeData(fileData);
+        await saveResumeBlob(fileId, file, {
+          fileName: file.name,
+          fileType: file.type || '',
+          fileSize: file.size,
+          fileHash,
+        });
+        Object.assign(version, {
+          fileId,
+          fileName: file.name,
+          fileType: file.type || '',
+          fileSize: file.size,
+          fileHash,
+          cloudFilePath: '',
+          originalFileStatus: 'local-only',
+          originalFileError: '',
+          originalFileSyncedAt: '',
+        });
+        candidate.updatedAt = new Date().toISOString();
+        await saveResumeBackgroundState();
+        if (cloudReady) schedulePush();
+        void enqueueResumeFileSync(candidate.id, version.id).catch(error => showToast(error.message, 'error'));
+        if (candidateResumeView.mode === 'original') await loadCandidateResumeOriginal();
+        showToast('原始文件已补充，业务记录和历史版本保持不变');
+      } catch (error) {
+        showToast(error.message || '原始文件保存失败', 'error');
+      }
+    }
     const hasCandidateResumeOriginal = computed(() => {
       const v = activeCandidateResumeVersion.value;
-      return !!(v && (v.fileId || v.fileData || v.sourceResumeId));
+      return !!(v && v.originalFileStatus !== 'missing' && (v.fileId || v.cloudFilePath || v.fileData || v.sourceResumeId));
     });
     const selectedApplicationCandidate = computed(() => workbenchV2.candidates.find(c => c.id === selectedApplication.value?.candidateId) || null);
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));
@@ -12302,7 +12441,7 @@ const vueAppConfig = {
       if (await saveWorkbenchV2()) {
         if (cloudReady) schedulePush();
         showToast(linkedToPosition ? '人才已入库并加入当前岗位' : '人才已保存到人才库');
-        if (version) void enqueueResumeAiProcessing(candidate.id, version.id).catch(error => showToast(error.message, 'error'));
+        if (version) scheduleResumePostSaveTasks(candidate.id, version.id);
       }
       return candidate;
     }
@@ -12329,7 +12468,7 @@ const vueAppConfig = {
       if (await saveWorkbenchV2()) {
         if (cloudReady) schedulePush();
         showToast('已合并到既有人才并追加简历版本');
-        if (version) void enqueueResumeAiProcessing(target.id, version.id).catch(error => showToast(error.message, 'error'));
+        if (version) scheduleResumePostSaveTasks(target.id, version.id);
       }
     }
 
@@ -12351,7 +12490,7 @@ const vueAppConfig = {
       if (await saveWorkbenchV2()) {
         if (cloudReady) schedulePush();
         showToast('已保存为新简历版本');
-        if (version) void enqueueResumeAiProcessing(target.id, version.id).catch(error => showToast(error.message, 'error'));
+        if (version) scheduleResumePostSaveTasks(target.id, version.id);
       }
     }
     // 查重弹窗取消：批量代理时写回任务为 skipped，否则关闭单份弹窗
@@ -12414,40 +12553,20 @@ const vueAppConfig = {
       if (candidateResumeView.blobUrl) { URL.revokeObjectURL(candidateResumeView.blobUrl); candidateResumeView.blobUrl = ''; }
       candidateResumeView.imageSrc = '';
       try {
-        // 阶段 3：优先从外部 IndexedDB 按 fileId 取回二进制原件
-        if (version.fileId) {
-          const rec = await getResumeBlob(version.fileId);
-          if (rec && rec.blob) {
-            const url = URL.createObjectURL(rec.blob);
-            if (String(rec.fileType || '').startsWith('image/')) candidateResumeView.imageSrc = url;
-            else candidateResumeView.blobUrl = url;
-            return;
-          }
-        }
-        // 旧版兼容：fileData（base64 快照）或云端同步原件
-        let fd = version.fileData || '';
-        if (!fd && (version.sourceResumeId || version.id)) {
-          const resume = { id: version.id, sourceResumeId: version.sourceResumeId || version.id, name: version.fileName || '简历', data: '' };
-          await ensureResumeData(resume);
-          fd = resume.data || '';
-        }
-        if (!fd) { candidateResumeView.error = '原始文件未上传，仅电子简历可用'; return; }
-        if (fd.startsWith('data:image')) {
-          candidateResumeView.imageSrc = fd;
-        } else if (fd.startsWith('data:application/pdf') || fd.startsWith('data:application/octet')) {
-          const arr = fd.split(',');
-          const mimeMatch = arr[0].match(/:(.*?);/);
-          const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
-          const bstr = atob(arr.length >= 2 ? arr[1] : arr[0]);
-          const n = bstr.length;
-          const u8arr = new Uint8Array(n);
-          for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
-          candidateResumeView.blobUrl = URL.createObjectURL(new Blob([u8arr], { type: mime }));
-        } else {
-          candidateResumeView.error = '原始文件格式不支持预览';
-        }
+        const record = await loadCandidateOriginalRecord(version);
+        const url = URL.createObjectURL(record.blob);
+        const fileType = String(record.fileType || record.blob.type || version.fileType || '');
+        if (fileType.startsWith('image/')) candidateResumeView.imageSrc = url;
+        else candidateResumeView.blobUrl = url;
       } catch (e) {
-        candidateResumeView.error = e.message || '原始文件加载失败';
+        if (e?.code === 'ORIGINAL_NOT_FOUND') {
+          version.originalFileStatus = 'missing';
+          version.originalFileError = '当前设备和云端均没有原始文件';
+          candidateResumeView.error = '当前设备和云端均没有原始文件，可重新上传原件';
+          await saveResumeBackgroundState();
+        } else {
+          candidateResumeView.error = ResumeFileSync.sanitizeFileError(e).message;
+        }
       } finally {
         candidateResumeView.loading = false;
       }
@@ -22994,7 +23113,9 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
-      candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal, reprocessCandidateResumeVersion,
+      candidateResumeView, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
+      reprocessCandidateResumeVersion, reprocessCandidateResumeFromText, reextractCandidateResumeFromOriginal, resumeAiStageLabel,
+      resumeOriginalStatusLabel, retryCandidateResumeFileSync, replaceCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,

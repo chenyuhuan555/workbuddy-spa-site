@@ -9,6 +9,22 @@
     return `workspace/main/resumes/${encodeURIComponent(candidateId)}/${encodeURIComponent(versionId)}/${encodeURIComponent(fileId)}`;
   }
 
+  function inferResumeMimeType(fileName) {
+    const extension = String(fileName || '').toLowerCase().split('.').pop();
+    return ({
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      webp: 'image/webp',
+      txt: 'text/plain',
+    })[extension] || 'application/octet-stream';
+  }
+
   function createQueue() {
     return { tail: Promise.resolve(), active: new Map() };
   }
@@ -79,7 +95,7 @@
       await deps.upload({
         path,
         blob: local.blob,
-        contentType: version.fileType || local.fileType || local.blob.type || 'application/octet-stream',
+        contentType: version.fileType || local.fileType || local.blob.type || inferResumeMimeType(version.fileName),
       });
     } catch (error) {
       if (error?.code === 'STORAGE_ALREADY_EXISTS') {
@@ -148,6 +164,7 @@
 
   return Object.freeze({
     buildCloudPath,
+    inferResumeMimeType,
     createQueue,
     enqueue,
     syncOriginal,

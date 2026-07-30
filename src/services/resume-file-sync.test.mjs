@@ -94,6 +94,18 @@ test('云端上传失败保留本地引用并保存可重试状态', async () =>
   assert.match(version.originalFileError, /同步失败/);
 });
 
+test('浏览器未提供 MIME 时按文件扩展名上传允许的内容类型', async () => {
+  const version = { fileId: 'f1', fileName: '候选人.docx', fileType: '', originalFileStatus: 'local-only' };
+  let uploadedContentType = '';
+  await Files.syncOriginal({ candidateId: 'c1', versionId: 'r1', version }, {
+    getLocal: async () => ({ blob: new Blob(['docx']), fileType: '' }),
+    upload: async ({ contentType }) => { uploadedContentType = contentType; },
+    persist: async () => true,
+  });
+
+  assert.equal(uploadedContentType, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+});
+
 test('对象已存在且可读取时重试收敛为 synced', async () => {
   const version = { fileId: 'f1', fileType: 'application/pdf', originalFileStatus: 'sync-failed' };
   let verified = 0;
