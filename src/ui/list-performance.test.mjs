@@ -3,7 +3,27 @@ import assert from 'node:assert/strict';
 
 await import('./list-performance.js');
 
-const { paginate, indexById, groupBy } = globalThis.WorkBuddyListPerformance;
+const { paginate, indexById, groupBy, sortByRecentUpdate } = globalThis.WorkBuddyListPerformance;
+
+test('sortByRecentUpdate 按更新时间降序且不修改原数组', () => {
+  const source = [
+    { id: 'old', updatedAt: '2026-07-01T00:00:00.000Z' },
+    { id: 'new', updatedAt: '2026-07-30T00:00:00.000Z' },
+    { id: 'invalid-updated', updatedAt: 'not-a-date', createdAt: '2026-07-25T00:00:00.000Z' },
+    { id: 'created', createdAt: '2026-07-20T00:00:00.000Z' },
+    { id: 'same-b', updatedAt: '2026-07-10T00:00:00.000Z' },
+    { id: 'same-a', updatedAt: '2026-07-10T00:00:00.000Z' },
+    { id: 'invalid', updatedAt: 'not-a-date' },
+  ];
+
+  assert.deepEqual(sortByRecentUpdate(source).map(item => item.id), [
+    'new', 'invalid-updated', 'created', 'same-a', 'same-b', 'old', 'invalid',
+  ]);
+  assert.deepEqual(source.map(item => item.id), [
+    'old', 'new', 'invalid-updated', 'created', 'same-b', 'same-a', 'invalid',
+  ]);
+  assert.deepEqual(sortByRecentUpdate(null), []);
+});
 
 test('paginate 将页码收敛并返回可展示区间', () => {
   const items = Array.from({ length: 51 }, (_, index) => ({ id: `c${index + 1}` }));

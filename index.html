@@ -21,7 +21,7 @@
   <script src="./src/services/save-coordinator.js"></script>
   <script src="./src/services/resume-ai-processing.js?v=20260729-resumeai1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
-  <script src="./src/ui/list-performance.js"></script>
+  <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260729-core1"></script>
   <script data-workbuddy-pipeline-core>
     window.WorkBuddyPipeline = (() => {
@@ -10383,7 +10383,7 @@ const vueAppConfig = {
   setup() {
     /* ── 流水线阶段常量（来自 src/constants/pipeline-stages.js） ── */
     const { KEYS: SK, GROUPS: SG } = window.WorkBuddyStages;
-    const { PAGE_SIZE, paginate, indexById, groupBy } = window.WorkBuddyListPerformance;
+    const { PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate } = window.WorkBuddyListPerformance;
     const CandidateCoreEditor = window.WorkBuddyCandidateCoreEditor;
     const ResumeAiProcessing = window.WorkBuddyResumeAiProcessing;
     // -------- 承接方看板数据 --------
@@ -10767,11 +10767,11 @@ const vueAppConfig = {
     });
     const talentCategories = computed(() => WorkbenchV2.getTalentCategories(workbenchV2));
     const talentCategoryPaths = computed(() => WorkbenchV2.getTalentCategoryPaths(workbenchV2));
-    const filteredWorkbenchCandidates = computed(() => WorkbenchV2.filterCandidatesByCategory(
+    const filteredWorkbenchCandidates = computed(() => sortByRecentUpdate(WorkbenchV2.filterCandidatesByCategory(
       WorkbenchV2.filterCandidates(workbenchV2.candidates, candidateFilters),
       talentCategories.value,
       candidateFilters.category
-    ));
+    )));
     const pagedWorkbenchCandidates = computed(() => paginate(filteredWorkbenchCandidates.value, candidatePage.value, PAGE_SIZE));
     const activeApplicationCountByCandidateId = computed(() => {
       const counts = new Map();

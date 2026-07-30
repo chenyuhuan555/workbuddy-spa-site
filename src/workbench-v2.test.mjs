@@ -743,13 +743,19 @@ test('工作台三个主列表使用分页结果和预构建索引', () => {
     section("workbenchNav === 'applications' && workbenchRoute.type === 'list'", "workbenchNav === 'ai' && workbenchRoute.type === 'list'"),
   ].join('\n');
 
-  assert.match(INDEX_HTML, /<script src="\.\/src\/ui\/list-performance\.js"><\/script>/);
+  assert.match(INDEX_HTML, /<script src="\.\/src\/ui\/list-performance\.js\?v=20260730-sort1"><\/script>/);
   assert.match(INDEX_HTML, /v-for="company in pagedWorkbenchCompanies\.items"/);
   assert.match(INDEX_HTML, /v-for="candidate in pagedWorkbenchCandidates\.items"/);
   assert.match(INDEX_HTML, /v-for="application in pagedApplications\.items"/);
   assert.match(INDEX_HTML, /v-for="group in pagedApplicationStageGroups"/);
   assert.doesNotMatch(mainLists, /workbenchV2\.(candidates|companies|positions|applications)\.(find|filter)\(/);
   assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
+});
+
+test('人才列表在筛选后、分页前按最近更新时间降序排列', () => {
+  assert.match(INDEX_HTML, /const \{ PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate \} = window\.WorkBuddyListPerformance/);
+  assert.match(INDEX_HTML, /const filteredWorkbenchCandidates = computed\(\(\) => sortByRecentUpdate\(WorkbenchV2\.filterCandidatesByCategory\(/);
+  assert.match(INDEX_HTML, /paginate\(filteredWorkbenchCandidates\.value, candidatePage\.value, PAGE_SIZE\)/);
 });
 
 test('深度监听只标记脏域并展示本地保存状态', () => {

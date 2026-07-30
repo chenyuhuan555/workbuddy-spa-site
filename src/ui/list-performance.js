@@ -44,5 +44,18 @@
     return groups;
   }
 
-  return { PAGE_SIZE, paginate, indexById, groupBy };
+  function sortByRecentUpdate(source) {
+    const timestamp = item => {
+      const updated = Date.parse(item?.updatedAt || '');
+      if (Number.isFinite(updated)) return updated;
+      const created = Date.parse(item?.createdAt || '');
+      return Number.isFinite(created) ? created : Number.NEGATIVE_INFINITY;
+    };
+    return [...(Array.isArray(source) ? source : [])].sort((a, b) => {
+      const difference = timestamp(b) - timestamp(a);
+      return difference || String(a?.id || '').localeCompare(String(b?.id || ''));
+    });
+  }
+
+  return { PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate };
 });
