@@ -79,7 +79,6 @@ test('buildPatch 拒绝空白候选人姓名，但允许清空当前公司', () 
 test('save 只应用核心字段并持久化一次', async () => {
   const candidate = {
     id: 'c1',
-    name: '旧姓名',
     currentCompany: '旧公司',
     name: '雷艺旋',
     skills: [],

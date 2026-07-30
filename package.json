@@ -9,7 +9,7 @@
     "build": "npm run build:css && node scripts/build.js",
     "build:vite": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/workbench-v2.test.mjs src/storage/indexeddb-cache.test.mjs src/batch-upload.test.mjs src/editor-deepseek-settings.test.mjs src/ui/list-performance.test.mjs src/ui/candidate-core-editor.test.mjs src/ui/sidebar-collapse.test.mjs src/ui/resume-file-and-ai-retry.test.mjs src/services/save-coordinator.test.mjs src/services/resume-ai-processing.test.mjs src/services/resume-file-sync.test.mjs src/services/resume-storage-policy.test.mjs src/accessibility-static.test.mjs src/production-build.test.mjs"
+    "test": "node --test src/workbench-v2.test.mjs src/storage/indexeddb-cache.test.mjs src/batch-upload.test.mjs src/editor-deepseek-settings.test.mjs src/ui/list-performance.test.mjs src/ui/candidate-core-editor.test.mjs src/ui/resume-formatted-text-editor.test.mjs src/ui/sidebar-collapse.test.mjs src/ui/resume-file-and-ai-retry.test.mjs src/services/save-coordinator.test.mjs src/services/resume-ai-processing.test.mjs src/services/resume-file-sync.test.mjs src/services/resume-storage-policy.test.mjs src/accessibility-static.test.mjs src/production-build.test.mjs"
   },
   "devDependencies": {
     "parse5": "7.3.0",
