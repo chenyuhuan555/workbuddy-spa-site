@@ -16,6 +16,16 @@
     return appError('BACKEND_REQUEST_FAILED', error);
   }
 
+  function mapStorageError(error) {
+    const text = `${error?.statusCode || ''} ${error?.code || ''} ${error?.error || ''} ${error?.message || ''}`;
+    if (/not.?found|\b404\b/i.test(text)) return appError('STORAGE_NOT_FOUND', error);
+    if (/already exists|duplicate|resource.*exists|\b409\b/i.test(text)) return appError('STORAGE_ALREADY_EXISTS', error);
+    if (/unauthorized|\b401\b/i.test(text)) return appError('AUTH_REQUIRED', error);
+    if (/forbidden|row.level.security|\b403\b/i.test(text)) return appError('STORAGE_FORBIDDEN', error);
+    if (/rate|limit|\b429\b/i.test(text)) return appError('STORAGE_RATE_LIMITED', error);
+    return appError('BACKEND_REQUEST_FAILED', error);
+  }
+
   function createWorkspaceClient({ supabase, getProfile }) {
     let retained = null;
 
@@ -79,14 +89,14 @@
     async function uploadFile({ path, blob, contentType }) {
       requireWriter();
       const { data, error } = await supabase.storage.from('workbuddy-files').upload(path, blob, { contentType, upsert: false });
-      if (error) throw mapError(error);
+      if (error) throw mapStorageError(error);
       return data;
     }
 
     async function downloadFile(path) {
       requireReader();
       const { data, error } = await supabase.storage.from('workbuddy-files').download(path);
-      if (error) throw mapError(error);
+      if (error) throw mapStorageError(error);
       return data;
     }
 
