@@ -45,6 +45,22 @@ function cssBlock(header) {
   assert.fail(`样式块没有结束花括号：${header}`);
 }
 
+function functionBody(name) {
+  const declaration = new RegExp(String.raw`\bfunction\s+${name}\s*\([^)]*\)\s*\{`).exec(INDEX_HTML);
+  assert.ok(declaration, `缺少函数：${name}`);
+  const openIndex = declaration.index + declaration[0].lastIndexOf('{');
+
+  let depth = 0;
+  for (let index = openIndex; index < INDEX_HTML.length; index++) {
+    if (INDEX_HTML[index] === '{') depth++;
+    if (INDEX_HTML[index] === '}') {
+      depth--;
+      if (depth === 0) return INDEX_HTML.slice(openIndex + 1, index);
+    }
+  }
+  assert.fail(`函数没有结束花括号：${name}`);
+}
+
 test('侧栏收起状态默认展开、从 setup 暴露且不进入持久化链路', () => {
   assertMatches(
     INDEX_HTML,
@@ -190,4 +206,32 @@ test('账号栏在手动收起和自动窄栏时只保留居中的退出图标',
   assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+#wb-account-bar\s*\{[^}]*\bjustify-content\s*:\s*center\s*!important\s*;/s);
   assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-copy\s*,\s*\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-logout-label\s*\{[^}]*\bdisplay\s*:\s*none\s*(?:!important\s*)?;/s);
   assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-logout-icon\s*\{[^}]*\bdisplay\s*:\s*(?:block|inline-block|inline-flex)\s*(?:!important\s*)?;/s);
+});
+
+test('认证完成后账号栏仍挂载到新版侧栏并切换为 flex 布局', () => {
+  const dockingBody = functionBody('dockAccountBar');
+
+  assert.match(dockingBody, /\bdocument\s*\.\s*querySelector\(\s*(['"])\.wb-v2-sidebar\1\s*\)/);
+  assert.match(dockingBody, /\bsidebar\s*\.\s*appendChild\(\s*accountBar\s*\)/);
+
+  for (const [property, value] of [
+    ['position', 'static'],
+    ['right', 'auto'],
+    ['top', 'auto'],
+    ['display', 'flex'],
+    ['alignItems', 'center'],
+  ]) {
+    assert.match(
+      dockingBody,
+      new RegExp(String.raw`\baccountBar\.style\.${property}\s*=\s*(['"])${value}\1\s*;`),
+      `dockAccountBar 必须设置 ${property}=${value}`,
+    );
+  }
+
+  const authenticatedBody = functionBody('onStateChange');
+  assert.match(
+    authenticatedBody,
+    /\bif\s*\(\s*state\.status\s*!==\s*(['"])authenticated\1\s*\)\s*return\s*;[\s\S]*\bdockAccountBar\s*\(\s*\)\s*;/,
+    '认证完成路径必须调用 dockAccountBar',
+  );
 });
