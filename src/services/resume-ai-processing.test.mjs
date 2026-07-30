@@ -163,6 +163,90 @@ test('手动重新提取时从原始文件刷新 rawText，而不是复用旧解
   assert.ok(calls.indexOf('loadRaw') < calls.indexOf('basic'));
 });
 
+test('使用现有文本重试时完全不读取原始文件', async () => {
+  const bundle = makeBundle();
+  const deps = successfulDeps([]);
+  deps.loadRawText = async () => assert.fail('已有 rawText 时不应读取原件');
+
+  await Processor.process({
+    bundle,
+    candidateId: 'candidate_lei',
+    versionId: 'resume_lei',
+    canWrite: true,
+    canUseAi: true,
+    refreshRawText: false,
+    deps,
+  });
+
+  assert.equal(bundle.candidates[0].resumeVersions[0].formatStatus, 'done');
+});
+
+test('画像阶段限流时保存准确阶段和安全错误码', async () => {
+  const bundle = makeBundle();
+  const version = bundle.candidates[0].resumeVersions[0];
+  const deps = successfulDeps([]);
+  deps.extractProfile = async () => { throw new Error('HTTP 429 rate limit: private response'); };
+
+  await assert.rejects(() => Processor.process({
+    bundle,
+    candidateId: 'candidate_lei',
+    versionId: 'resume_lei',
+    canWrite: true,
+    canUseAi: true,
+    deps,
+  }), /候选人画像提取失败/);
+
+  assert.equal(version.aiStage, 'profile');
+  assert.equal(version.formatErrorCode, 'AI_RATE_LIMITED');
+  assert.match(version.formatError, /请求过于频繁或额度不足/);
+  assert.doesNotMatch(version.formatError, /private response/);
+});
+
+test('新排版失败时继续保留上一次成功排版', async () => {
+  const bundle = makeBundle();
+  const candidate = bundle.candidates[0];
+  const version = candidate.resumeVersions[0];
+  version.formattedText = '### 上一次成功结果';
+  version.formattedAt = '2026-07-20T00:00:00.000Z';
+  const deps = successfulDeps([]);
+  deps.format = async () => { throw new Error('timeout'); };
+
+  await assert.rejects(() => Processor.process({
+    bundle,
+    candidateId: candidate.id,
+    versionId: version.id,
+    canWrite: true,
+    canUseAi: true,
+    deps,
+  }), /电子简历排版失败/);
+
+  assert.equal(version.aiStage, 'format');
+  assert.equal(version.formatErrorCode, 'AI_TIMEOUT');
+  assert.equal(version.formattedText, '### 上一次成功结果');
+  assert.equal(version.formattedAt, '2026-07-20T00:00:00.000Z');
+  assert.equal(candidate.profileProcessStatus, 'done');
+});
+
+test('从原件重新提取失败时记录 source 阶段', async () => {
+  const bundle = makeBundle();
+  const version = bundle.candidates[0].resumeVersions[0];
+  const deps = successfulDeps([]);
+  deps.loadRawText = async () => { throw new Error('原文件不存在'); };
+
+  await assert.rejects(() => Processor.process({
+    bundle,
+    candidateId: 'candidate_lei',
+    versionId: 'resume_lei',
+    canWrite: true,
+    canUseAi: true,
+    refreshRawText: true,
+    deps,
+  }), /原始文件提取失败/);
+
+  assert.equal(version.aiStage, 'source');
+  assert.equal(version.formatErrorCode, 'SOURCE_MISSING');
+});
+
 test('只读调用在任何修改前拒绝', async () => {
   const bundle = makeBundle();
   const before = structuredClone(bundle);
@@ -219,7 +303,9 @@ test('排版失败保留已提取画像与原始文件，并显示分类后的�
   assert.equal(candidate.summary, '十年人才发展经验');
   assert.equal(candidate.profileProcessStatus, 'done');
   assert.equal(version.formatStatus, 'failed');
-  assert.equal(version.formatError, 'AI 网络请求失败，请检查网络后重试');
+  assert.equal(version.aiStage, 'format');
+  assert.equal(version.formatErrorCode, 'AI_NETWORK');
+  assert.equal(version.formatError, '电子简历排版失败：AI 网络请求失败，请检查网络后重试');
   assert.equal(version.formattedText, '');
   assert.deepEqual(
     { fileId: version.fileId, fileHash: version.fileHash, uploadedAt: version.uploadedAt, rawText: version.rawText },
