@@ -356,6 +356,14 @@
   function normalizeResumeVersion(version = {}) {
     const source = copy(version || {});
     const formattedText = String(source.formattedText || '');
+    const cloudFilePath = String(source.cloudFilePath || '');
+    const originalFileStatus = ['local-only', 'syncing', 'synced', 'sync-failed', 'missing'].includes(source.originalFileStatus)
+      ? source.originalFileStatus
+      : cloudFilePath
+        ? 'synced'
+        : source.fileId || source.fileData || source.sourceResumeId
+          ? 'local-only'
+          : 'missing';
     const priorStatus = String(source.formatStatus || '');
     const formatStatus = priorStatus === 'processing'
       ? 'queued'
@@ -364,9 +372,15 @@
         : formattedText.trim() ? 'done' : 'queued';
     return {
       ...source,
+      cloudFilePath,
+      originalFileStatus: originalFileStatus === 'syncing' ? 'local-only' : originalFileStatus,
+      originalFileError: String(source.originalFileError || ''),
+      originalFileSyncedAt: String(source.originalFileSyncedAt || ''),
       rawText: String(source.rawText || ''),
       formattedText,
+      aiStage: String(source.aiStage || ''),
       formatStatus,
+      formatErrorCode: String(source.formatErrorCode || ''),
       formatError: String(source.formatError || ''),
       formattedAt: String(source.formattedAt || ''),
     };
@@ -731,10 +745,16 @@
       fileType: version.fileType || '',
       fileSize: version.fileSize || 0,
       fileHash: version.fileHash || '',
+      cloudFilePath: version.cloudFilePath || '',
+      originalFileStatus: version.originalFileStatus || '',
+      originalFileError: version.originalFileError || '',
+      originalFileSyncedAt: version.originalFileSyncedAt || '',
       uploadedAt: version.uploadedAt || nowIso(),
       rawText: version.rawText || '',
       formattedText: version.formattedText || '',
+      aiStage: version.aiStage || '',
       formatStatus: version.formatStatus || '',
+      formatErrorCode: version.formatErrorCode || '',
       formatError: version.formatError || '',
       formattedAt: version.formattedAt || '',
     });
@@ -824,9 +844,15 @@
       fileType: form.fileType,
       fileSize: form.fileSize,
       fileHash: form.fileHash,
+      cloudFilePath: '',
+      originalFileStatus: form.fileId ? 'local-only' : 'missing',
+      originalFileError: '',
+      originalFileSyncedAt: '',
       rawText: form.rawText,
       formattedText: '',
+      aiStage: '',
       formatStatus: 'queued',
+      formatErrorCode: '',
       formatError: '',
       formattedAt: '',
       uploadedAt: nowIso(),
