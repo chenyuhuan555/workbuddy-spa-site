@@ -22,6 +22,12 @@ function assertMatches(value, pattern, message) {
   assert.ok(pattern.test(value), message);
 }
 
+function mainNavigation() {
+  return descendants(DOCUMENT).find(node => (
+    node.tagName === 'nav' && attribute(node, 'id') === 'workbench-main-navigation'
+  ));
+}
+
 function cssBlock(header) {
   const headerIndex = INDEX_HTML.indexOf(header);
   assert.notEqual(headerIndex, -1, `缺少样式块：${header}`);
@@ -46,32 +52,41 @@ test('侧栏收起状态默认展开、从 setup 暴露且不进入持久化链�
     '缺少 const workbenchSidebarCollapsed = ref(false)',
   );
 
-  const setupReturnStart = INDEX_HTML.lastIndexOf('\n    return {');
-  const setupReturnEnd = INDEX_HTML.indexOf('\n    };', setupReturnStart);
-  assert.ok(setupReturnStart >= 0 && setupReturnEnd > setupReturnStart, '应能定位 Vue setup 的返回对象');
-  assert.match(INDEX_HTML.slice(setupReturnStart, setupReturnEnd), /\bworkbenchSidebarCollapsed\b/);
-
-  const stateLines = INDEX_HTML.split(/\r?\n/).flatMap((line, index, lines) => (
-    line.includes('workbenchSidebarCollapsed')
-      ? lines.slice(Math.max(0, index - 4), index + 5)
-      : []
-  )).join('\n');
-  assert.doesNotMatch(
-    stateLines,
-    /\b(?:localStorage|sessionStorage|localSave|schedulePush|saveWorkbenchV2)\b/,
-    '收起状态及其切换逻辑不得读写本地、会话或工作台快照存储',
+  assertMatches(
+    INDEX_HTML,
+    /\breturn\s*\{[^}]*\bworkbenchSidebarCollapsed\b[^}]*\}/s,
+    'Vue setup 返回对象必须暴露 workbenchSidebarCollapsed',
   );
+
+  const forbiddenCalls = [
+    String.raw`(?:localStorage|sessionStorage)\s*\.\s*\w+`,
+    'watch',
+    'localSave',
+    'schedulePush',
+    'saveWorkbenchV2',
+  ];
+  for (const call of forbiddenCalls) {
+    const stateParticipatesInCall = new RegExp(
+      String.raw`(?:\b${call}\s*\([^;]{0,500}\bworkbenchSidebarCollapsed\b|\bworkbenchSidebarCollapsed\b[^;]{0,500}\b${call}\s*\()`,
+      's',
+    );
+    assert.doesNotMatch(
+      INDEX_HTML,
+      stateParticipatesInCall,
+      `workbenchSidebarCollapsed 不得参与 ${call} 调用`,
+    );
+  }
 });
 
 test('主导航用内存状态绑定 is-collapsed 类', () => {
-  const nav = descendants(DOCUMENT).find(node => (
-    node.tagName === 'nav' && attribute(node, 'id') === 'workbench-main-navigation'
-  ));
+  const nav = mainNavigation();
 
   assert.ok(nav, '主导航必须提供稳定 id=workbench-main-navigation');
   assert.ok(hasClass(nav, 'wb-v2-sidebar'));
-  assert.match(attribute(nav, ':class') || '', /\bworkbenchSidebarCollapsed\b/);
-  assert.match(attribute(nav, ':class') || '', /\bis-collapsed\b/);
+  assert.match(
+    attribute(nav, ':class') || '',
+    /^\s*\{\s*['"]is-collapsed['"]\s*:\s*workbenchSidebarCollapsed\s*\}\s*$/,
+  );
 });
 
 test('桌面侧栏开关提供完整动态无障碍属性', () => {
@@ -82,20 +97,26 @@ test('桌面侧栏开关提供完整动态无障碍属性', () => {
   assert.ok(toggle, '缺少 .wb-v2-sidebar-toggle 按钮');
   assert.equal(attribute(toggle, 'type'), 'button');
   assert.equal(attribute(toggle, 'aria-controls'), 'workbench-main-navigation');
-  assert.match(attribute(toggle, ':aria-expanded') || '', /!\s*workbenchSidebarCollapsed/);
-  assert.match(attribute(toggle, ':aria-label') || '', /workbenchSidebarCollapsed/);
-  assert.match(attribute(toggle, ':aria-label') || '', /展开导航栏/);
-  assert.match(attribute(toggle, ':aria-label') || '', /收起导航栏/);
+  assert.match(attribute(toggle, '@click') || '', /^\s*workbenchSidebarCollapsed\s*=\s*!\s*workbenchSidebarCollapsed\s*$/);
+  assert.match(attribute(toggle, ':aria-expanded') || '', /^\s*!\s*workbenchSidebarCollapsed\s*$/);
+  assert.match(
+    attribute(toggle, ':aria-label') || '',
+    /^\s*workbenchSidebarCollapsed\s*\?\s*['"]展开导航栏['"]\s*:\s*['"]收起导航栏['"]\s*$/,
+  );
 });
 
 test('图标导航在收起态提供 title，并用专用类包裹文字', () => {
-  const navItem = descendants(DOCUMENT).find(node => (
-    node.tagName === 'button' && attribute(node, 'v-for') === 'item in workbenchNavItems'
+  const nav = mainNavigation();
+  assert.ok(nav, '应能定位工作台主导航');
+  const navItem = descendants(nav).find(node => (
+    node.tagName === 'button' && attribute(node, ':aria-label') === 'item.label'
   ));
 
   assert.ok(navItem, '应能定位工作台导航项');
-  assert.match(attribute(navItem, ':title') || '', /workbenchSidebarCollapsed/);
-  assert.match(attribute(navItem, ':title') || '', /item\.label/);
+  assert.match(
+    attribute(navItem, ':title') || '',
+    /^\s*workbenchSidebarCollapsed\s*\?\s*item\.label\s*:\s*(['"])\1\s*$/,
+  );
   assert.ok(
     descendants(navItem).some(node => node.tagName === 'span' && hasClass(node, 'wb-v2-sidebar-label')),
     '导航文字必须由 .wb-v2-sidebar-label 包裹',
