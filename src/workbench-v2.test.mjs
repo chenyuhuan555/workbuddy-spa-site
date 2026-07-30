@@ -63,20 +63,56 @@ test('validateBundle 分离原始文本和排版文本，并恢复中断状态',
   assert.equal(interrupted.formatError, '旧错误');
 });
 
+test('新简历版本包含本机原件、云端同步和 AI 阶段默认值', () => {
+  const version = WorkbenchV2.buildResumeVersionFromForm({
+    fileName: 'candidate.pdf',
+    fileId: 'f1',
+    fileType: 'application/pdf',
+    fileSize: 42,
+    fileHash: 'h1',
+    rawText: 'raw text',
+  });
+
+  assert.equal(version.originalFileStatus, 'local-only');
+  assert.equal(version.cloudFilePath, '');
+  assert.equal(version.originalFileError, '');
+  assert.equal(version.originalFileSyncedAt, '');
+  assert.equal(version.aiStage, '');
+  assert.equal(version.formatErrorCode, '');
+});
+
+test('旧版本只有 fileId 时保留引用但不伪装为云端已同步', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push({
+    id: 'c1',
+    name: '候选人',
+    resumeVersions: [{ id: 'r1', fileId: 'f1', rawText: 'raw' }],
+  });
+
+  const clean = WorkbenchV2.validateBundle(bundle);
+  const version = clean.candidates[0].resumeVersions[0];
+
+  assert.equal(version.fileId, 'f1');
+  assert.equal(version.cloudFilePath, '');
+  assert.equal(version.originalFileStatus, 'local-only');
+});
+
 test('人才详情优先展示排版文本并提供可见失败与重新处理入口', () => {
   assert.match(INDEX_HTML, /v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
   assert.doesNotMatch(INDEX_HTML, /v-html="renderResumeMarkdown\([^"\n]*rawText/);
   assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'processing'/);
   assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'queued'/);
   assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'failed'/);
-  assert.match(INDEX_HTML, /role="alert"[^>]*>\{\{ activeCandidateResumeVersion\.formatError/);
+  assert.match(INDEX_HTML, /role="alert"[^>]*>[\s\S]*?activeCandidateResumeVersion\.formatError/);
   assert.match(INDEX_HTML, />原始提取文本</);
   assert.match(INDEX_HTML, /\{\{ activeCandidateResumeVersion\.rawText \}\}/);
-  assert.match(INDEX_HTML, /type="button"[^>]*@click="reprocessCandidateResumeVersion"/);
-  assert.match(INDEX_HTML, /重新提取并排版/);
-  assert.match(INDEX_HTML, /async function reprocessCandidateResumeVersion\(\)/);
-  assert.match(INDEX_HTML, /v-if="activeCandidateResumeVersion\?\.formattedText && activeCandidateResumeVersion\?\.formatStatus !== 'failed'"[^>]*v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
-  assert.match(INDEX_HTML, /<section v-if="activeCandidateResumeVersion\?\.formatStatus === 'failed' && activeCandidateResumeVersion\?\.rawText"[\s\S]*?<h3[^>]*>原始提取文本</);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="reprocessCandidateResumeFromText"/);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="reextractCandidateResumeFromOriginal"/);
+  assert.match(INDEX_HTML, /使用现有文本重新处理/);
+  assert.match(INDEX_HTML, /从原始文件重新提取并处理/);
+  assert.match(INDEX_HTML, /v-if="activeCandidateResumeVersion\?\.formattedText"[^>]*v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
+  assert.match(INDEX_HTML, /<section v-if="!activeCandidateResumeVersion\?\.formattedText && activeCandidateResumeVersion\?\.formatStatus === 'failed' && activeCandidateResumeVersion\?\.rawText"[\s\S]*?<h3[^>]*>原始提取文本</);
+  assert.match(INDEX_HTML, /refreshRawText:\s*false/);
   assert.match(INDEX_HTML, /refreshRawText:\s*true/);
 });
 
