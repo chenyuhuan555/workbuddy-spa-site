@@ -23,7 +23,7 @@
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
-  <script src="./src/ui/candidate-core-editor.js?v=20260729-core1"></script>
+  <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
   <script data-workbuddy-pipeline-core>
     window.WorkBuddyPipeline = (() => {
       /* 阶段 / 原因码统一来自 src/constants/pipeline-stages.js */
@@ -4605,6 +4605,10 @@
                 <div><dt class="font-medium text-slate-500">联系方式</dt><dd class="mt-2 leading-6 text-slate-700"><span v-if="selectedCandidate.phone" class="block">手机号：{{ selectedCandidate.phone }}</span><span v-if="selectedCandidate.email" class="block">邮箱：{{ selectedCandidate.email }}</span><span v-if="!selectedCandidate.phone && !selectedCandidate.email">待补充</span></dd></div>
               </dl>
               <div v-else class="mt-5 space-y-5 text-sm">
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div><label for="candidate-core-name" class="block font-medium text-slate-600">候选人姓名</label><input id="candidate-core-name" v-model="candidateCoreEdit.draft.name" type="text" autocomplete="name" required aria-describedby="candidate-core-name-help" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"><p id="candidate-core-name-help" class="mt-1 text-xs text-slate-400">姓名不能为空，保存后会同步更新人才列表和详情标题。</p></div>
+                  <div><label for="candidate-core-company" class="block font-medium text-slate-600">当前公司</label><input id="candidate-core-company" v-model="candidateCoreEdit.draft.currentCompany" type="text" autocomplete="organization" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"></div>
+                </div>
                 <div>
                   <label for="candidate-core-skills-input" class="block font-medium text-slate-600">技术栈</label>
                   <div class="mt-2 flex flex-wrap gap-2"><span v-for="skill in candidateCoreEdit.draft.skills" :key="skill" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">{{ skill }}<button type="button" @click="removeCandidateCoreTag('skills', skill)" :aria-label="'删除技术栈 ' + skill" class="text-emerald-500 hover:text-red-600">×</button></span></div>

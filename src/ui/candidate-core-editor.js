@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : window, function createCandidateCoreEditor() {
   'use strict';
 
-  const EDITABLE_FIELDS = ['skills', 'directions', 'owner', 'phone', 'email'];
+  const EDITABLE_FIELDS = ['name', 'currentCompany', 'skills', 'directions', 'owner', 'phone', 'email'];
 
   function copyTags(value) {
     return Array.isArray(value) ? value.map(item => String(item || '')) : [];
@@ -13,6 +13,8 @@
 
   function createDraft(candidate = {}) {
     return {
+      name: String(candidate.name || ''),
+      currentCompany: String(candidate.currentCompany || ''),
       skills: copyTags(Array.isArray(candidate.skills) ? candidate.skills : candidate.keywords),
       directions: copyTags(candidate.directions),
       owner: String(candidate.owner || ''),
@@ -33,7 +35,11 @@
   }
 
   function buildPatch(draft = {}, skillInput = '', directionInput = '') {
+    const name = String(draft.name || '').trim();
+    if (!name) throw new Error('候选人姓名不能为空');
     return {
+      name,
+      currentCompany: String(draft.currentCompany || '').trim(),
       skills: normalizeTags(draft.skills, skillInput),
       directions: normalizeTags(draft.directions, directionInput),
       owner: String(draft.owner || '').trim(),

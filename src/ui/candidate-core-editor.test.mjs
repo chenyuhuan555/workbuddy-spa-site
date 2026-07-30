@@ -23,6 +23,8 @@ test('createDraft 只复制允许编辑的核心字段', () => {
   const draft = Editor.createDraft(candidate);
 
   assert.deepEqual(draft, {
+    name: '雷艺旋',
+    currentCompany: '',
     skills: ['培训', '企业文化'],
     directions: ['人才发展'],
     owner: '顾问A',
@@ -46,17 +48,21 @@ test('normalizeTags 支持数组和逗号分隔的待提交输入', () => {
   );
 });
 
-test('buildPatch 只返回五个允许写入的底层字段', () => {
+test('buildPatch 返回姓名、当前公司和既有核心字段，并清理首尾空格', () => {
   const patch = Editor.buildPatch({
+    name: ' 雷艺旋 ',
+    currentCompany: ' 百度（百度智能云） ',
     skills: [' 培训 '],
     directions: ['人才发展'],
     owner: ' 顾问B ',
     phone: ' 15500000000 ',
     email: ' lei@example.com ',
-    name: '不得写入',
+    resumeVersions: ['不得写入'],
   }, '企业文化', '组织发展');
 
   assert.deepEqual(patch, {
+    name: '雷艺旋',
+    currentCompany: '百度（百度智能云）',
     skills: ['培训', '企业文化'],
     directions: ['人才发展', '组织发展'],
     owner: '顾问B',
@@ -65,9 +71,16 @@ test('buildPatch 只返回五个允许写入的底层字段', () => {
   });
 });
 
+test('buildPatch 拒绝空白候选人姓名，但允许清空当前公司', () => {
+  assert.throws(() => Editor.buildPatch({ name: '   ' }), /姓名不能为空/);
+  assert.equal(Editor.buildPatch({ name: '雷艺旋', currentCompany: '   ' }).currentCompany, '');
+});
+
 test('save 只应用核心字段并持久化一次', async () => {
   const candidate = {
     id: 'c1',
+    name: '旧姓名',
+    currentCompany: '旧公司',
     name: '雷艺旋',
     skills: [],
     note: '保留',
@@ -82,6 +95,8 @@ test('save 只应用核心字段并持久化一次', async () => {
     bundle,
     candidateId: 'c1',
     draft: {
+      name: '雷艺旋（更新）',
+      currentCompany: '百度',
       skills: ['培训'],
       directions: ['人才发展'],
       owner: '顾问A',
@@ -101,7 +116,9 @@ test('save 只应用核心字段并持久化一次', async () => {
   });
 
   assert.equal(result, candidate);
-  assert.deepEqual(Object.keys(updates[0].patch).sort(), ['directions', 'email', 'owner', 'phone', 'skills']);
+  assert.deepEqual(Object.keys(updates[0].patch).sort(), ['currentCompany', 'directions', 'email', 'name', 'owner', 'phone', 'skills']);
+  assert.equal(candidate.name, '雷艺旋（更新）');
+  assert.equal(candidate.currentCompany, '百度');
   assert.equal(candidate.note, '保留');
   assert.deepEqual(candidate.resumeVersions, [{ id: 'r1' }]);
   assert.equal(persistCalls, 1);
@@ -125,6 +142,8 @@ test('save 在任何修改前拒绝只读调用', async () => {
 test('save 持久化失败时回滚并再次持久化回滚状态', async () => {
   const candidate = {
     id: 'c1',
+    name: '旧姓名',
+    currentCompany: '旧公司',
     skills: ['旧技能'],
     directions: ['旧方向'],
     owner: '旧顾问',
@@ -140,7 +159,7 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
     canWrite: true,
     bundle,
     candidateId: 'c1',
-    draft: { skills: ['新技能'], directions: [], owner: '', phone: '', email: '' },
+    draft: { name: '雷艺旋', currentCompany: '', skills: ['新技能'], directions: [], owner: '', phone: '', email: '' },
     updateTalent(_bundle, _id, patch) {
       Object.assign(candidate, patch, { updatedAt: 'new-time' });
       return candidate;
@@ -153,6 +172,8 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
 
   assert.deepEqual(candidate, {
     id: 'c1',
+    name: '旧姓名',
+    currentCompany: '旧公司',
     skills: ['旧技能'],
     directions: ['旧方向'],
     owner: '旧顾问',
@@ -165,10 +186,12 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
 });
 
 test('核心信息卡提供卡片级编辑动作和有标签的字段', () => {
-  assert.match(INDEX_HTML, /candidate-core-editor\.js\?v=20260729-core1/);
+  assert.match(INDEX_HTML, /candidate-core-editor\.js\?v=20260730-core2/);
   assert.match(INDEX_HTML, /@click="startCandidateCoreEdit"/);
   assert.match(INDEX_HTML, /@click="saveCandidateCoreEdit"/);
   assert.match(INDEX_HTML, /@click="cancelCandidateCoreEdit"/);
+  assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.name"/);
+  assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.currentCompany"/);
   assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.owner"/);
   assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.phone"/);
   assert.match(INDEX_HTML, /v-model="candidateCoreEdit\.draft\.email"/);
