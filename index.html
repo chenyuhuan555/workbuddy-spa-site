@@ -5534,7 +5534,7 @@
                 <p class="text-sm text-slate-500 mt-1">把简历文本迁移到独立的云端数据表（resume_texts）。迁移后跨设备可查看文本，云端同步体积大幅缩小。只需执行一次，失败可重复执行。</p>
               </div>
               <div class="lg:ml-auto flex flex-wrap items-center gap-3">
-                <button type="button" @click="runResumeTextMigration" :disabled="resumeTextMigration.running" class="px-4 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50">{{ resumeTextMigration.running ? '迁移中…' : resumeTextMigration.finished ? '重新迁移' : '开始迁移' }}</button>
+                <button type="button" @click="runResumeTextMigration" :disabled="resumeTextMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ resumeTextMigration.running ? '迁移中…' : resumeTextMigration.finished ? '重新迁移' : '开始迁移' }}</button>
               </div>
             </div>
             <div v-if="resumeTextMigration.running || resumeTextMigration.finished" class="mt-4">
