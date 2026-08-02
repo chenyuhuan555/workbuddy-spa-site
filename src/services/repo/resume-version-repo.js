@@ -45,7 +45,12 @@
   function createResumeVersionRepo({ supabase, getProfile }) {
     function normalizeTimestamp(value) {
       if (value == null || value === '') return null;
-      const date = value instanceof Date ? value : new Date(String(value));
+      if (!(value instanceof Date) && typeof value !== 'number') {
+        const text = String(value).trim();
+        // 旧数据中的“06-05 16:56”没有年份，不能让 JS 猜年份后写入云端。
+        if (!/^\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[T\s].*)?$/.test(text)) return null;
+      }
+      const date = value instanceof Date || typeof value === 'number' ? new Date(value) : new Date(String(value));
       return Number.isNaN(date.getTime()) ? null : date.toISOString();
     }
     function requireReader() {
