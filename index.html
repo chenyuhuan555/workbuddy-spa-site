@@ -15316,6 +15316,8 @@ ${ocrText}`
     }
 
     const RESUME_TEXT_FP_KEY = STORAGE_KEY + '_resume_text_fingerprints';
+    const RESUME_TEXT_OFFLINE_QUEUE_KEY = STORAGE_KEY + '_resume_text_offline_queue';
+    const resumeTextOfflineQueue = window.WorkBuddyOfflineSyncQueue.createOfflineSyncQueue({ key: RESUME_TEXT_OFFLINE_QUEUE_KEY });
     function readResumeTextFingerprints() {
       try { return JSON.parse(localStorage.getItem(RESUME_TEXT_FP_KEY) || '{}') || {}; } catch { return {}; }
     }
@@ -15350,14 +15352,21 @@ ${ocrText}`
     // 双写：把内存中新增/变化的简历文本 upsert 到 resume_texts 表。
     // forceAll=true 时忽略指纹全量推送（一次性回填用）。
     async function syncResumeTextsWithCloud({ forceAll = false, onProgress } = {}) {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || resumeTextSyncRunning) {
+      if (!window.WorkBuddyAccess?.canWrite || resumeTextSyncRunning) {
         return { skipped: true, total: 0, synced: 0, failed: 0 };
       }
       resumeTextSyncRunning = true;
       try {
         const repo = getResumeTextRepo();
         const fingerprints = readResumeTextFingerprints();
-        const rows = collectResumeTextRows().filter(row => forceAll || fingerprints[row.versionId] !== row.fingerprint);
+        const allRows = collectResumeTextRows();
+        if (!cloudReady) {
+          resumeTextOfflineQueue.enqueue(allRows.filter(row => forceAll || fingerprints[row.versionId] !== row.fingerprint).map(row => ({ kind: 'resume_texts', id: row.versionId, model: row })));
+          return { skipped: true, total: allRows.length, synced: 0, failed: 0, queued: resumeTextOfflineQueue.size() };
+        }
+        const currentById = new Map(allRows.map(row => [String(row.versionId), row]));
+        const queuedRows = resumeTextOfflineQueue.listDue().map(item => currentById.get(String(item.id)) || item.model);
+        const rows = [...new Map([...allRows.filter(row => forceAll || fingerprints[row.versionId] !== row.fingerprint), ...queuedRows].map(row => [String(row.versionId), row])).values()];
         let synced = 0;
         let failed = 0;
         for (let i = 0; i < rows.length; i += 20) {
@@ -15371,8 +15380,10 @@ ${ocrText}`
             if (result.status === 'fulfilled') {
               synced += 1;
               fingerprints[batch[index].versionId] = batch[index].fingerprint;
+              resumeTextOfflineQueue.markSuccess([{ kind: 'resume_texts', id: batch[index].versionId }]);
             } else {
               failed += 1;
+              resumeTextOfflineQueue.markFailure([{ kind: 'resume_texts', id: batch[index].versionId }], result.reason?.message || '简历文本同步失败');
               console.warn('简历文本云端同步失败：', batch[index].versionId, result.reason);
             }
           });
@@ -15419,6 +15430,8 @@ ${ocrText}`
       return resumeVersionRepo;
     }
     const RESUME_VERSION_FP_KEY = STORAGE_KEY + '_resume_version_fingerprints';
+    const RESUME_VERSION_OFFLINE_QUEUE_KEY = STORAGE_KEY + '_resume_version_offline_queue';
+    const resumeVersionOfflineQueue = window.WorkBuddyOfflineSyncQueue.createOfflineSyncQueue({ key: RESUME_VERSION_OFFLINE_QUEUE_KEY });
     const RESUME_VERSION_LARGE_FIELDS = new Set(['rawText', 'formattedText', 'fileData', 'electronicResumeText', 'resumeText', 'bossImportedText']);
     const RESUME_VERSION_VOLATILE_FIELDS = new Set(['candidateId', 'createdAt', 'updatedAt', 'deletedAt']);
     function stableResumeVersionValue(value) {
@@ -15451,11 +15464,18 @@ ${ocrText}`
     }
     let resumeVersionSyncPromise = null;
     async function syncResumeVersionsWithCloud({ forceAll = false, onProgress } = {}) {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) return { skipped: true, total: 0, synced: 0, failed: 0 };
+      if (!window.WorkBuddyAccess?.canWrite) return { skipped: true, total: 0, synced: 0, failed: 0 };
       while (resumeVersionSyncPromise) await resumeVersionSyncPromise;
       const run = (async () => {
         const fingerprints = readResumeVersionFingerprints();
-        const rows = collectResumeVersionRows().filter(row => forceAll || fingerprints[row.version.id] !== row.fingerprint);
+        const allRows = collectResumeVersionRows();
+        if (!cloudReady) {
+          resumeVersionOfflineQueue.enqueue(allRows.filter(row => forceAll || fingerprints[row.version.id] !== row.fingerprint).map(row => ({ kind: 'resume_versions', id: row.version.id, model: row })));
+          return { skipped: true, total: allRows.length, synced: 0, failed: 0, queued: resumeVersionOfflineQueue.size() };
+        }
+        const currentById = new Map(allRows.map(row => [String(row.version.id), row]));
+        const queuedRows = resumeVersionOfflineQueue.listDue().map(item => currentById.get(String(item.id)) || item.model);
+        const rows = [...new Map([...allRows.filter(row => forceAll || fingerprints[row.version.id] !== row.fingerprint), ...queuedRows].map(row => [String(row.version.id), row])).values()];
         let synced = 0;
         let failed = 0;
         for (let i = 0; i < rows.length; i += 50) {
@@ -15463,8 +15483,10 @@ ${ocrText}`
           try {
             await getResumeVersionRepo().upsertVersionRows(batch);
             batch.forEach(row => { synced += 1; fingerprints[row.version.id] = row.fingerprint; });
+            resumeVersionOfflineQueue.markSuccess(batch.map(row => ({ kind: 'resume_versions', id: row.version.id })));
           } catch (error) {
             failed += batch.length;
+            resumeVersionOfflineQueue.markFailure(batch.map(row => ({ kind: 'resume_versions', id: row.version.id })), error?.message || '简历版本同步失败');
             console.warn('简历版本云端同步失败：', error);
           }
           writeResumeVersionFingerprints(fingerprints);
