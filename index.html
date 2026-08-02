@@ -22,6 +22,7 @@
   <script src="./src/services/resume-ai-processing.js?v=20260730-resumeai2"></script>
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
+  <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
@@ -5526,26 +5527,6 @@
               <div v-if="!memberManagement.members.length && !memberManagement.loading" class="p-8 text-center text-sm text-slate-400">暂无成员</div>
             </div>
           </div>
-          <div v-if="canWrite" data-settings-card="resume-text-migration" class="bg-white border border-slate-200 rounded-2xl p-6">
-            <div class="flex flex-col lg:flex-row lg:items-center gap-4">
-              <div class="min-w-0">
-                <p class="text-xs font-bold tracking-wider text-emerald-700">数据维护</p>
-                <h2 class="text-lg font-bold text-slate-900 mt-1">简历文本云端迁移</h2>
-                <p class="text-sm text-slate-500 mt-1">把简历文本迁移到独立的云端数据表（resume_texts）。迁移后跨设备可查看文本，云端同步体积大幅缩小。只需执行一次，失败可重复执行。</p>
-              </div>
-              <div class="lg:ml-auto flex flex-wrap items-center gap-3">
-                <button type="button" @click="runResumeTextMigration" :disabled="resumeTextMigration.running" class="px-4 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50">{{ resumeTextMigration.running ? '迁移中…' : resumeTextMigration.finished ? '重新迁移' : '开始迁移' }}</button>
-              </div>
-            </div>
-            <div v-if="resumeTextMigration.running || resumeTextMigration.finished" class="mt-4">
-              <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div class="h-full bg-emerald-600 transition-all" :style="{ width: resumeTextMigration.total ? Math.round(resumeTextMigration.done / resumeTextMigration.total * 100) + '%' : '0%' }"></div>
-              </div>
-              <p class="mt-2 text-sm text-slate-600">{{ resumeTextMigration.done }} / {{ resumeTextMigration.total }} 已处理 · 成功 {{ resumeTextMigration.synced }} · 失败 {{ resumeTextMigration.failed }}</p>
-              <p v-if="resumeTextMigration.finished && !resumeTextMigration.failed" class="mt-1 text-sm font-semibold text-emerald-700">迁移完成，简历文本已存入云端数据表。</p>
-              <p v-if="resumeTextMigration.error" role="alert" class="mt-1 text-sm text-red-600">{{ resumeTextMigration.error }}</p>
-            </div>
-          </div>
           <div data-settings-card="deepseek" class="bg-white border border-slate-200 rounded-2xl p-6">
             <div class="flex flex-col lg:flex-row lg:items-center gap-4">
               <div class="min-w-0"><p class="text-xs font-bold tracking-wider text-emerald-700">AI 配置</p><h2 class="text-lg font-bold text-slate-900 mt-1">DeepSeek API Key</h2><p class="text-sm text-slate-500 mt-1">用于人才方向识别、候选人信息补全等 AI 功能。</p></div>
@@ -7353,6 +7334,75 @@
           </div>
         </div>
       </div>
+      <!-- Phase 1：简历文本云端迁移 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+        <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-slate-800">简历文本云端迁移</h2>
+              <span v-if="resumeTextMigration.finished" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">已完成</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">把简历文本迁移到独立的云端数据表（resume_texts）。迁移后跨设备可查看文本，云端同步体积大幅缩小。只需执行一次，失败可重复执行。</p>
+          </div>
+          <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
+            <button type="button" @click="runResumeTextMigration" :disabled="resumeTextMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ resumeTextMigration.running ? '迁移中…' : resumeTextMigration.finished ? '重新迁移' : '开始迁移' }}</button>
+          </div>
+        </div>
+        <div v-if="resumeTextMigration.running || resumeTextMigration.finished" class="px-5 pb-4">
+          <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full bg-emerald-600 transition-all" :style="{ width: resumeTextMigration.total ? Math.round(resumeTextMigration.done / resumeTextMigration.total * 100) + '%' : '0%' }"></div>
+          </div>
+          <p class="mt-2 text-sm text-slate-600">{{ resumeTextMigration.done }} / {{ resumeTextMigration.total }} 已处理 · 成功 {{ resumeTextMigration.synced }} · 失败 {{ resumeTextMigration.failed }}</p>
+        </div>
+      </div>
+
+      <!-- Phase 2a：候选人云端迁移 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+        <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-slate-800">候选人云端迁移</h2>
+              <span v-if="candidateMigration.finished" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">已完成</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">把候选人元数据（含版本列表）迁移到独立的云端数据表（candidates）。迁移后跨设备以候选人粒度同步、独立更新。只需执行一次，失败可重复执行。</p>
+          </div>
+          <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
+            <button type="button" @click="runCandidateMigration" :disabled="candidateMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ candidateMigration.running ? '迁移中…' : candidateMigration.finished ? '重新迁移' : '开始迁移' }}</button>
+          </div>
+        </div>
+        <div v-if="candidateMigration.running || candidateMigration.finished" class="px-5 pb-4">
+          <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full bg-emerald-600 transition-all" :style="{ width: candidateMigration.total ? Math.round(candidateMigration.done / candidateMigration.total * 100) + '%' : '0%' }"></div>
+          </div>
+          <p class="mt-2 text-sm text-slate-600">{{ candidateMigration.done }} / {{ candidateMigration.total }} 已处理 · 成功 {{ candidateMigration.synced }} · 失败 {{ candidateMigration.failed }}</p>
+        </div>
+      </div>
+
+      <!-- Phase 2b：候选人增量同步（预览，非破坏） -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+        <div class="px-5 py-4">
+          <div class="flex items-center gap-2">
+            <h2 class="font-bold text-slate-800">候选人增量同步</h2>
+            <span class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold">Phase 2b 预览</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">把 candidates 表的数据流回本地做对账与补齐（不切换渲染数据源）。正式切读路径前，请先跑「候选人云端迁移」并确认下方一致性校验为 0 漂移。</p>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" @click="verifyCandidateParity" :disabled="candidateParity.checking" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ candidateParity.checking ? '校验中…' : '校验一致性' }}</button>
+            <button type="button" @click="pullCandidatesFromCloud" :disabled="candidatePull.running" class="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ candidatePull.running ? '拉取中…' : '从云端拉取增量' }}</button>
+          </div>
+          <div v-if="candidateParity.tableCount !== null || candidateParity.error" class="mt-3 text-sm">
+            <template v-if="candidateParity.error">
+              <span class="text-red-600">校验失败：{{ candidateParity.error }}</span>
+            </template>
+            <template v-else>
+              <span class="text-slate-600">云端表 {{ candidateParity.tableCount }} 行 · 本地 {{ candidateParity.localCount }} 人</span>
+              <span class="ml-2" :class="candidateParity.drift === 0 ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">漂移 {{ candidateParity.drift >= 0 ? '+' : '' }}{{ candidateParity.drift }}</span>
+            </template>
+          </div>
+          <div v-if="candidatePull.pulled" class="mt-2 text-sm text-slate-600">本次拉取 {{ candidatePull.pulled }} 条 · 新增 {{ candidatePull.added }} · 合并 {{ candidatePull.updated }}<template v-if="candidatePull.failed"> · <span class="text-red-600">失败 {{ candidatePull.failed }}</span></template></div>
+        </div>
+      </div>
+
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-3">
           <div class="min-w-0">
@@ -15084,6 +15134,7 @@ ${ocrText}`
         syncStatus.value = 'synced';
         syncError.value = '';
         void syncResumeTextsWithCloud(); // Phase 1 双写：文本同步到 resume_texts 表（不阻塞主同步）
+        void syncCandidatesWithCloud(); // Phase 2a 双写：候选人同步到 candidates 表
       } catch (error) {
         if (error?.code === 'WORKSPACE_VERSION_CONFLICT') {
           // 版本冲突：其他成员已推送新数据。尝试合并后重试一次。
@@ -15102,6 +15153,7 @@ ${ocrText}`
             syncStatus.value = 'synced';
             syncError.value = '';
             void syncResumeTextsWithCloud(); // Phase 1 双写
+            void syncCandidatesWithCloud(); // Phase 2a 双写
             if (stats.fromCloud) showToast(`已自动合并其他成员的 ${stats.fromCloud} 条更新`, 'info');
           } catch (retryError) {
             syncStatus.value = 'error';
@@ -15227,6 +15279,206 @@ ${ocrText}`
       }
     }
 
+    // 设置页回填卡片状态（Phase 1：简历文本云端迁移）
+    const resumeTextMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
+    async function runResumeTextMigration() {
+      if (resumeTextMigration.running) return;
+      resumeTextMigration.running = true;
+      resumeTextMigration.finished = false;
+      resumeTextMigration.total = resumeTextMigration.done = resumeTextMigration.synced = resumeTextMigration.failed = 0;
+      try {
+        const result = await syncResumeTextsWithCloud({ forceAll: true, onProgress: p => Object.assign(resumeTextMigration, p) });
+        resumeTextMigration.total = result.total;
+        resumeTextMigration.synced = result.synced;
+        resumeTextMigration.failed = result.failed;
+        resumeTextMigration.finished = true;
+      } catch (error) {
+        console.warn('简历文本云端迁移失败：', error);
+      } finally {
+        resumeTextMigration.running = false;
+      }
+    }
+
+    // -------- Phase 2a：候选人独立存表（candidates） --------
+    let candidateRepo = null;
+    function getCandidateRepo() {
+      if (!candidateRepo) {
+        candidateRepo = window.WorkBuddyCandidateRepo.createCandidateRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+        });
+      }
+      return candidateRepo;
+    }
+
+    const CANDIDATE_FP_KEY = STORAGE_KEY + '_candidate_fingerprints';
+    function readCandidateFingerprints() {
+      try { return JSON.parse(localStorage.getItem(CANDIDATE_FP_KEY) || '{}') || {}; } catch { return {}; }
+    }
+    function writeCandidateFingerprints(map) {
+      try { localStorage.setItem(CANDIDATE_FP_KEY, JSON.stringify(map)); } catch {}
+    }
+    function candidateHash(text) {
+      let hash = 5381;
+      const str = String(text || '');
+      for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
+      return hash.toString(36);
+    }
+    // 候选人行指纹：取结构化字段（与 candidate-repo.toRow 映射一致），版本元数据剥离大文本
+    function candidateFingerprint(cand) {
+      const norm = {
+        id: cand.id,
+        name: cand.name, phone: cand.phone, email: cand.email,
+        currentCompany: cand.currentCompany, currentTitle: cand.currentTitle, city: cand.city,
+        status: cand.status, owner: cand.owner, source: cand.source,
+        education: cand.education, experienceYears: cand.experienceYears,
+        tags: cand.tags, skills: cand.skills, keywords: cand.keywords,
+        directions: cand.directions, categoryIds: cand.categoryIds,
+        summary: cand.summary, profileText: cand.profileText,
+        resumeVersions: (cand.resumeVersions || []).map(v => {
+          const o = Object.assign({}, v);
+          delete o.rawText; delete o.formattedText; delete o.fileData; delete o.electronicResumeText;
+          return o;
+        }),
+      };
+      return candidateHash(JSON.stringify(norm));
+    }
+    function collectCandidateRows() {
+      const rows = [];
+      (workbenchV2.candidates || []).forEach(candidate => {
+        if (!candidate || !candidate.id) return;
+        rows.push({ id: candidate.id, candidate, fingerprint: candidateFingerprint(candidate) });
+      });
+      return rows;
+    }
+
+    let candidateSyncRunning = false;
+    // 双写：把内存中新增/变化的候选人 upsert 到 candidates 表。
+    // forceAll=true 时忽略指纹全量推送（一次性回填用）。读路径暂不切换，仍走 workspace_state。
+    async function syncCandidatesWithCloud({ forceAll = false, onProgress } = {}) {
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || candidateSyncRunning) {
+        return { skipped: true, total: 0, synced: 0, failed: 0 };
+      }
+      candidateSyncRunning = true;
+      try {
+        const repo = getCandidateRepo();
+        const fingerprints = readCandidateFingerprints();
+        const rows = collectCandidateRows().filter(row => forceAll || fingerprints[row.id] !== row.fingerprint);
+        let synced = 0;
+        let failed = 0;
+        for (let i = 0; i < rows.length; i += 20) {
+          const batch = rows.slice(i, i + 20);
+          try {
+            await repo.upsertCandidates(batch.map(r => r.candidate));
+            batch.forEach(r => { synced += 1; fingerprints[r.id] = r.fingerprint; });
+          } catch (error) {
+            failed += batch.length;
+            console.warn('候选人云端同步失败：', error);
+          }
+          writeCandidateFingerprints(fingerprints);
+          if (typeof onProgress === 'function') {
+            onProgress({ total: rows.length, done: Math.min(i + batch.length, rows.length), synced, failed });
+          }
+        }
+        return { total: rows.length, synced, failed };
+      } finally {
+        candidateSyncRunning = false;
+      }
+    }
+
+    // 设置页回填卡片状态（Phase 2a：候选人云端迁移）
+    const candidateMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
+    async function runCandidateMigration() {
+      if (candidateMigration.running) return;
+      candidateMigration.running = true;
+      candidateMigration.finished = false;
+      candidateMigration.total = candidateMigration.done = candidateMigration.synced = candidateMigration.failed = 0;
+      try {
+        const result = await syncCandidatesWithCloud({ forceAll: true, onProgress: p => Object.assign(candidateMigration, p) });
+        candidateMigration.total = result.total;
+        candidateMigration.synced = result.synced;
+        candidateMigration.failed = result.failed;
+        candidateMigration.finished = true;
+      } catch (error) {
+        console.warn('候选人云端迁移失败：', error);
+      } finally {
+        candidateMigration.running = false;
+      }
+    }
+
+    // -------- Phase 2b：增量拉取对账（非破坏，预览阶段） --------
+    // 说明：本阶段只把 candidates 表的数据「流回」本地做对账/补齐，不切换渲染数据源，
+    //       也不剥离 workspace_state 里的候选人。真正的读路径切换（2b.2）以「迁移已跑 + 一致性校验通过」为闸门。
+    const CANDIDATE_PULL_CURSOR_KEY = STORAGE_KEY + '_candidate_pull_cursor';
+    function readCandidatePullCursor() {
+      try { return localStorage.getItem(CANDIDATE_PULL_CURSOR_KEY) || null; } catch { return null; }
+    }
+    function writeCandidatePullCursor(cursor) {
+      try { if (cursor) localStorage.setItem(CANDIDATE_PULL_CURSOR_KEY, cursor); } catch {}
+    }
+    const candidatePull = reactive({ running: false, lastCursor: null, pulled: 0, added: 0, updated: 0, failed: 0 });
+    async function pullCandidatesFromCloud() {
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || candidatePull.running) return;
+      candidatePull.running = true;
+      try {
+        const repo = getCandidateRepo();
+        let cursor = readCandidatePullCursor();
+        let page = [];
+        let added = 0, updated = 0, failed = 0, pulled = 0;
+        do {
+          const list = await repo.getCandidatesSince(cursor, 500);
+          page = list;
+          pulled += list.length;
+          for (const cloud of list) {
+            try {
+              const idx = workbenchV2.candidates.findIndex(c => c.id === cloud.id);
+              if (idx === -1) {
+                workbenchV2.candidates.push(cloud);  // 本地缺失：直接补入（版本文本按需从 resume_texts 拉取）
+                added += 1;
+              } else {
+                repo.mergeCandidateInto(workbenchV2.candidates[idx], cloud);  // 存在：比对合并，本地文本优先
+                updated += 1;
+              }
+              if (cloud.updatedAt && (!cursor || cloud.updatedAt > cursor)) cursor = cloud.updatedAt;
+            } catch (e) {
+              failed += 1;
+              console.warn('候选人增量合并失败：', cloud?.id, e);
+            }
+          }
+          if (list.length) writeCandidatePullCursor(cursor);
+        } while (page.length === 500);
+        candidatePull.added = added;
+        candidatePull.updated = updated;
+        candidatePull.failed = failed;
+        candidatePull.pulled = pulled;
+        candidatePull.lastCursor = readCandidatePullCursor();
+      } catch (e) {
+        console.warn('候选人增量拉取失败：', e);
+      } finally {
+        candidatePull.running = false;
+      }
+    }
+
+    // 一致性校验：对比 candidates 表行数 与 本地 workspace_state 候选人计数，检测漂移
+    const candidateParity = reactive({ checking: false, tableCount: null, localCount: null, drift: null, error: '' });
+    async function verifyCandidateParity() {
+      if (!cloudReady) return;
+      candidateParity.checking = true;
+      candidateParity.error = '';
+      try {
+        const repo = getCandidateRepo();
+        const tableCount = await repo.countCandidates();
+        const localCount = (workbenchV2.candidates || []).length;
+        candidateParity.tableCount = tableCount;
+        candidateParity.localCount = localCount;
+        candidateParity.drift = tableCount - localCount;
+      } catch (e) {
+        candidateParity.error = e?.message || '校验失败';
+      } finally {
+        candidateParity.checking = false;
+      }
+    }
+
     // 云端 JSON 瘦身：剥离简历大文本与 base64（文本走 resume_texts 表，原件走 Storage）
     function stripResumeTextsFromBundle(bundle) {
       (bundle?.candidates || []).forEach(candidate => {
@@ -15285,26 +15537,6 @@ ${ocrText}`
       delete packed.kbApiKey;
       if (packed.workbenchV2) stripResumeTextsFromBundle(packed.workbenchV2);
       return packed;
-    }
-
-    // 一次性回填：把存量简历文本全量迁移到 resume_texts 表（设置页入口）
-    const resumeTextMigration = reactive({ running: false, done: 0, total: 0, synced: 0, failed: 0, finished: false, error: '' });
-    async function runResumeTextMigration() {
-      if (resumeTextMigration.running) return;
-      Object.assign(resumeTextMigration, { running: true, done: 0, total: 0, synced: 0, failed: 0, finished: false, error: '' });
-      try {
-        const result = await syncResumeTextsWithCloud({
-          forceAll: true,
-          onProgress: progress => Object.assign(resumeTextMigration, progress),
-        });
-        Object.assign(resumeTextMigration, result, { finished: true });
-        if (result.skipped) resumeTextMigration.error = '当前状态不可迁移（未登录、无写权限或已有迁移在执行）';
-        else if (!result.failed) showToast('简历文本迁移完成');
-      } catch (error) {
-        resumeTextMigration.error = error?.message || '迁移失败，请重试';
-      } finally {
-        resumeTextMigration.running = false;
-      }
     }
 
     function hasWorkspaceBusinessData(data) {
@@ -15443,6 +15675,7 @@ ${ocrText}`
         cloudReady = true;
         // Phase 1 双写：登录/初始化后把本机文本差异同步到 resume_texts 表
         void syncResumeTextsWithCloud();
+        void syncCandidatesWithCloud(); // Phase 2a 双写
       } catch (e) {
         syncStatus.value = 'error';
         syncError.value = e?.code === 'WORKSPACE_VERSION_CONFLICT' ? '云端版本冲突，请刷新页面' : '云端连接失败，请稍后重试';
@@ -23398,7 +23631,6 @@ ${clipped}`
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
-      resumeTextMigration, runResumeTextMigration,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
@@ -23423,6 +23655,8 @@ ${clipped}`
       triggerOcrInput, clearOcr, onOcrPaste, onOcrDrop, onOcrFileChange,
       textParseRaw, textParseStatus, textParseError, parseJobText,
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
+      resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
+      candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
       today, totalJobs, totalCompanies,
       activeNav, scrollToSection, scrollToBackupSection, navigateWorkbench,
       dispatch, addPositionRow, removePositionRow,
