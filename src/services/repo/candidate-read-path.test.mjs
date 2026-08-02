@@ -59,6 +59,20 @@ test('fingerprintCandidate 把本地缺省字段与云端行标准默认值视�
   assert.equal(ReadPath.fingerprintCandidate(local), ReadPath.fingerprintCandidate(cloud));
 });
 
+test('候选人增量合并决策不会用较旧云端字段覆盖本地更新', () => {
+  const local = { id: 'c1', name: '本地新姓名', updatedAt: '2026-08-02T12:00:00Z' };
+  const cloud = { id: 'c1', name: '云端旧姓名', updatedAt: '2026-08-02T11:00:00Z' };
+  const decision = ReadPath.buildCandidateMergeDecision(local, cloud);
+  assert.equal(decision.action, 'keep');
+  assert.equal(decision.conflict.type, 'local_newer_than_cloud');
+});
+
+test('候选人增量合并决策允许较新云端记录合并并处理墓碑', () => {
+  const local = { id: 'c1', name: '本地', updatedAt: '2026-08-02T10:00:00Z' };
+  assert.equal(ReadPath.buildCandidateMergeDecision(local, { id: 'c1', name: '云端', updatedAt: '2026-08-02T11:00:00Z' }).action, 'merge');
+  assert.equal(ReadPath.buildCandidateMergeDecision(local, { id: 'c1', deletedAt: '2026-08-02T11:00:00Z', updatedAt: '2026-08-02T11:00:00Z' }).action, 'remove');
+});
+
 test('buildParityReport 严格报告缺行、字段漂移和云端墓碑', () => {
   const local = [
     { id: 'same', name: '相同', resumeVersions: [] },
@@ -191,4 +205,14 @@ test('读路径启用后候选人行写入是云端同步成功的必要条件',
   const end = INDEX_HTML.indexOf('function schedulePush()', start);
   const source = INDEX_HTML.slice(start, end);
   assert.match(source, /candidateReadPathEnabled\.value[\s\S]*await syncCandidatesWithCloud\(/);
+});
+
+test('候选人增量拉取使用时间戳合并决策并显示冲突', () => {
+  const start = INDEX_HTML.indexOf('async function pullCandidatesFromCloud()');
+  const end = INDEX_HTML.indexOf('// 2b.2 闸门', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /buildCandidateMergeDecision/);
+  assert.match(source, /candidatePull\.conflicts\.push/);
+  assert.match(INDEX_HTML, /候选人本地较新冲突/);
 });

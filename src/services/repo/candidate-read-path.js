@@ -114,6 +114,26 @@
     return Boolean(meta?.backfilledAt && report?.ok);
   }
 
+  function candidateTime(candidate) {
+    return Date.parse(candidate?.updatedAt || candidate?.createdAt || '') || 0;
+  }
+
+  function buildCandidateMergeDecision(local, cloud) {
+    if (!cloud?.id) return Object.freeze({ action: 'ignore', conflict: null });
+    if (!local?.id) return Object.freeze({ action: cloud.deletedAt ? 'ignore' : 'add', conflict: null });
+    const localTime = candidateTime(local);
+    const cloudTime = candidateTime(cloud);
+    const differs = fingerprintCandidate(local) !== fingerprintCandidate(cloud);
+    if (cloud.deletedAt) {
+      if (cloudTime >= localTime) return Object.freeze({ action: 'remove', conflict: null });
+      return Object.freeze({ action: 'keep', conflict: Object.freeze({ id: cloud.id, type: 'local_newer_than_cloud_delete' }) });
+    }
+    if (cloudTime > localTime) return Object.freeze({ action: 'merge', conflict: null });
+    if (cloudTime < localTime && differs) return Object.freeze({ action: 'keep', conflict: Object.freeze({ id: cloud.id, type: 'local_newer_than_cloud' }) });
+    if (cloudTime === localTime && differs) return Object.freeze({ action: 'keep', conflict: Object.freeze({ id: cloud.id, type: 'same_timestamp_different_payload' }) });
+    return Object.freeze({ action: 'keep', conflict: null });
+  }
+
   function copyLocalPayload(target, source) {
     if (!source) return target;
     LOCAL_PAYLOAD_FIELDS.forEach(field => {
@@ -144,6 +164,7 @@
     fingerprintCandidate,
     buildParityReport,
     canEnableReadPath,
+    buildCandidateMergeDecision,
     buildAuthoritativeCandidates,
   });
 });
