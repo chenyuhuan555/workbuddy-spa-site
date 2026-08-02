@@ -7492,6 +7492,7 @@
               <li v-if="candidatePull.conflicts.length > 10">其余 {{ candidatePull.conflicts.length - 10 }} 条冲突已省略</li>
             </ul>
           </div>
+          <p v-if="candidateReadPathEnabled" class="mt-2 text-xs text-slate-500">已启用每 30 秒一次的候选人后台增量拉取，并自动回放离线队列。</p>
           <p v-if="candidateReadSwitch.error" role="alert" class="mt-2 text-sm text-red-600">{{ candidateReadSwitch.error }}</p>
           <p v-else-if="candidateReadPathEnabled" class="mt-2 text-sm font-semibold text-emerald-700">候选人列表已从 candidates 表读取；workspace_state 仍保留为过渡期回退。</p>
         </div>
@@ -15882,7 +15883,7 @@ ${ocrText}`
       try { if (cursor) localStorage.setItem(CANDIDATE_PULL_CURSOR_KEY, cursor); } catch {}
     }
     const candidatePull = reactive({ running: false, lastCursor: null, pulled: 0, added: 0, updated: 0, failed: 0, conflicts: [] });
-    async function pullCandidatesFromCloud() {
+    async function pullCandidatesFromCloud({ automatic = false } = {}) {
       if (!cloudReady || !window.WorkBuddyAccess?.canWrite || candidatePull.running) return;
       candidatePull.running = true;
       candidatePull.conflicts = [];
@@ -15929,10 +15930,24 @@ ${ocrText}`
         candidatePull.pulled = pulled;
         candidatePull.lastCursor = readCandidatePullCursor();
       } catch (e) {
-        console.warn('候选人增量拉取失败：', e);
+        if (!automatic) console.warn('候选人增量拉取失败：', e);
       } finally {
         candidatePull.running = false;
       }
+    }
+    let candidatePollTimer = null;
+    function stopCandidatePolling() {
+      if (candidatePollTimer) window.clearInterval(candidatePollTimer);
+      candidatePollTimer = null;
+    }
+    function startCandidatePolling() {
+      stopCandidatePolling();
+      if (!candidateReadPathEnabled.value) return;
+      candidatePollTimer = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') return;
+        void pullCandidatesFromCloud({ automatic: true });
+        if (candidateOfflineState.pending) void syncCandidatesWithCloud();
+      }, 30000);
     }
 
     // 2b.2 闸门：不只比较数量，还要逐条核对 id、业务字段指纹和删除标记。
@@ -16009,6 +16024,7 @@ ${ocrText}`
         await loadCandidatesFromCloudAsAuthority({ persist: false });
         if (!await saveWorkbenchV2()) throw new Error('候选人云端读取开关保存失败');
         schedulePush();
+        startCandidatePolling();
         showToast('候选人云端读取已启用', 'success');
       } catch (error) {
         candidateCloud.readEnabledAt = previousReadEnabledAt;
@@ -16277,6 +16293,7 @@ ${ocrText}`
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
       startWorkbenchEntityPolling();
+      startCandidatePolling();
       await reconcileMigratedPositionDescriptions();
       const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
@@ -16289,6 +16306,7 @@ ${ocrText}`
     onBeforeUnmount(() => {
       window.removeEventListener('scroll', updateActiveNavFromScroll);
       stopWorkbenchEntityPolling();
+      stopCandidatePolling();
       stopSaveStateSubscription();
       saveCoordinator.dispose();
     });

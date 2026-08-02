@@ -208,7 +208,7 @@ test('读路径启用后候选人行写入是云端同步成功的必要条件',
 });
 
 test('候选人增量拉取使用时间戳合并决策并显示冲突', () => {
-  const start = INDEX_HTML.indexOf('async function pullCandidatesFromCloud()');
+  const start = INDEX_HTML.indexOf('async function pullCandidatesFromCloud(');
   const end = INDEX_HTML.indexOf('// 2b.2 闸门', start);
   assert.ok(start >= 0 && end > start);
   const source = INDEX_HTML.slice(start, end);
@@ -226,4 +226,11 @@ test('候选人双写接入离线队列并在失败后保留待重试状态', ()
   assert.match(source, /markFailure/);
   assert.match(source, /listDue/);
   assert.match(INDEX_HTML, /candidateOfflineState\.pending/);
+});
+
+test('候选人读路径启用后启动定时增量拉取并回放离线队列', () => {
+  assert.match(INDEX_HTML, /startCandidatePolling/);
+  assert.match(INDEX_HTML, /stopCandidatePolling/);
+  assert.match(INDEX_HTML, /pullCandidatesFromCloud\(\{ automatic: true \}\)/);
+  assert.match(INDEX_HTML, /candidateOfflineState\.pending[\s\S]{0,180}syncCandidatesWithCloud/);
 });
