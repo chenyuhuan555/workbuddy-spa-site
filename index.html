@@ -25,6 +25,7 @@
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
   <script src="./src/services/repo/resume-version-repo.js?v=20260802-resumeversion1"></script>
   <script src="./src/services/repo/workbench-entity-repo.js?v=20260802-entityrepo1"></script>
+  <script src="./src/services/repo/workbench-entity-read-path.js?v=20260802-entityread1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
@@ -7426,11 +7427,16 @@
           </div>
           <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
             <button type="button" @click="runWorkbenchEntityMigration" :disabled="workbenchEntityMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ workbenchEntityMigration.running ? '迁移中…' : workbenchEntityMigration.finished ? '重新迁移' : '开始迁移' }}</button>
+            <button type="button" @click="verifyWorkbenchEntityParity" :disabled="workbenchEntityParity.checking" class="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ workbenchEntityParity.checking ? '校验中…' : '校验一致性' }}</button>
           </div>
         </div>
         <div v-if="workbenchEntityMigration.running || workbenchEntityMigration.finished" class="px-5 pb-4">
           <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-emerald-600 transition-all" :style="{ width: workbenchEntityMigration.total ? Math.round(workbenchEntityMigration.done / workbenchEntityMigration.total * 100) + '%' : '0%' }"></div></div>
           <p class="mt-2 text-sm text-slate-600">{{ workbenchEntityMigration.done }} / {{ workbenchEntityMigration.total }} 已处理 · 成功 {{ workbenchEntityMigration.synced }} · 失败 {{ workbenchEntityMigration.failed }}</p>
+        </div>
+        <div v-if="workbenchEntityParity.checked || workbenchEntityParity.error" class="px-5 pb-4 text-sm">
+          <span v-if="workbenchEntityParity.error" class="text-red-600">校验失败：{{ workbenchEntityParity.error }}</span>
+          <template v-else><span class="text-slate-600">云端 {{ workbenchEntityParity.cloudCount }} 条 · 本地 {{ workbenchEntityParity.localCount }} 条</span><span class="ml-2" :class="workbenchEntityParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ workbenchEntityParity.ok ? '严格一致' : '存在差异' }}</span><span v-if="!workbenchEntityParity.ok" class="ml-2 text-amber-700">请查看各实体差异后再考虑切读</span></template>
         </div>
       </div>
 
@@ -15569,6 +15575,26 @@ ${ocrText}`
         }
       } catch (error) { console.warn('Phase 3 实体迁移失败：', error); }
       finally { workbenchEntityMigration.running = false; }
+    }
+    const WorkbenchEntityReadPath = window.WorkBuddyWorkbenchEntityReadPath;
+    const workbenchEntityParity = reactive({ checking: false, checked: false, ok: false, localCount: 0, cloudCount: 0, byKind: {}, error: '' });
+    async function verifyWorkbenchEntityParity() {
+      if (!cloudReady || workbenchEntityParity.checking) return;
+      workbenchEntityParity.checking = true;
+      workbenchEntityParity.error = '';
+      try {
+        const cloudBundle = {};
+        for (const kind of WorkbenchEntityReadPath.KINDS) cloudBundle[kind] = await getWorkbenchEntityRepo().listAll(kind);
+        const report = WorkbenchEntityReadPath.buildEntityParityReport(workbenchV2, cloudBundle);
+        Object.assign(workbenchEntityParity, report, { checked: true });
+        const meta = workbenchEntityMigrationMeta();
+        meta.parityVerifiedAt = report.ok && meta.backfilledAt ? new Date().toISOString() : '';
+        if (!await saveWorkbenchV2()) throw new Error('Phase 3 一致性校验状态保存失败');
+        if (cloudReady) schedulePush();
+      } catch (error) {
+        workbenchEntityParity.ok = false;
+        workbenchEntityParity.error = error?.message || '校验失败';
+      } finally { workbenchEntityParity.checking = false; }
     }
 
     // -------- Phase 2a：候选人独立存表（candidates） --------
@@ -24023,7 +24049,7 @@ ${clipped}`
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
       resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, verifyResumeVersionParity,
-      workbenchEntityMigration, runWorkbenchEntityMigration,
+      workbenchEntityMigration, runWorkbenchEntityMigration, workbenchEntityParity, verifyWorkbenchEntityParity,
       candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
