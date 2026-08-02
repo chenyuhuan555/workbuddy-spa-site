@@ -24,6 +24,7 @@
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
   <script src="./src/services/repo/resume-version-repo.js?v=20260802-resumeversion1"></script>
+  <script src="./src/services/repo/workbench-entity-repo.js?v=20260802-entityrepo1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
@@ -7409,6 +7410,27 @@
             <span class="ml-2" :class="resumeVersionParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ resumeVersionParity.ok ? '严格一致' : '存在差异' }}</span>
             <span v-if="!resumeVersionParity.ok" class="ml-2 text-amber-700">缺失 {{ resumeVersionParity.missingInCloud.length }} · 多出 {{ resumeVersionParity.missingInLocal.length }} · 不一致 {{ resumeVersionParity.mismatched.length }}</span>
           </template>
+        </div>
+      </div>
+
+      <!-- Phase 3：公司/岗位/推进记录独立表双写（暂不切读） -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+        <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-slate-800">业务实体云端双写</h2>
+              <span v-if="workbenchEntityMigration.finished" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">已完成</span>
+              <span v-else class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold">Phase 3 · 仅双写，不切读</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">将 companies / positions / applications 的业务实体写入独立表；当前页面继续从 workspace_state / workbenchV2 读取，SQL 可与前面阶段统一执行。</p>
+          </div>
+          <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
+            <button type="button" @click="runWorkbenchEntityMigration" :disabled="workbenchEntityMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ workbenchEntityMigration.running ? '迁移中…' : workbenchEntityMigration.finished ? '重新迁移' : '开始迁移' }}</button>
+          </div>
+        </div>
+        <div v-if="workbenchEntityMigration.running || workbenchEntityMigration.finished" class="px-5 pb-4">
+          <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-emerald-600 transition-all" :style="{ width: workbenchEntityMigration.total ? Math.round(workbenchEntityMigration.done / workbenchEntityMigration.total * 100) + '%' : '0%' }"></div></div>
+          <p class="mt-2 text-sm text-slate-600">{{ workbenchEntityMigration.done }} / {{ workbenchEntityMigration.total }} 已处理 · 成功 {{ workbenchEntityMigration.synced }} · 失败 {{ workbenchEntityMigration.failed }}</p>
         </div>
       </div>
 
@@ -15174,6 +15196,7 @@ ${ocrText}`
         syncError.value = '';
         void syncResumeTextsWithCloud(); // Phase 1 双写：文本同步到 resume_texts 表（不阻塞主同步）
         void syncResumeVersionsWithCloud(); // Phase 2c 双写：版本元数据同步到 resume_versions 表
+        void syncWorkbenchEntitiesWithCloud(); // Phase 3 双写：公司/岗位/推进记录同步到独立表
         if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
       } catch (error) {
         if (error?.code === 'WORKSPACE_VERSION_CONFLICT') {
@@ -15195,6 +15218,7 @@ ${ocrText}`
             syncError.value = '';
             void syncResumeTextsWithCloud(); // Phase 1 双写
             void syncResumeVersionsWithCloud(); // Phase 2c 双写
+            void syncWorkbenchEntitiesWithCloud(); // Phase 3 双写
             if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
             if (stats.fromCloud) showToast(`已自动合并其他成员的 ${stats.fromCloud} 条更新`, 'info');
           } catch (retryError) {
@@ -15454,6 +15478,97 @@ ${ocrText}`
         if (cloudReady) schedulePush();
       } catch (error) { resumeVersionParity.ok = false; resumeVersionParity.error = error?.message || '校验失败'; }
       finally { resumeVersionParity.checking = false; }
+    }
+
+    // -------- Phase 3：公司、岗位、推进记录独立表（兼容双写） --------
+    let workbenchEntityRepo = null;
+    function getWorkbenchEntityRepo() {
+      if (!workbenchEntityRepo) {
+        workbenchEntityRepo = window.WorkBuddyWorkbenchEntityRepo.createWorkbenchEntityRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+        });
+      }
+      return workbenchEntityRepo;
+    }
+    const WORKBENCH_ENTITY_FP_KEY = STORAGE_KEY + '_workbench_entity_fingerprints';
+    const WORKBENCH_ENTITY_KINDS = ['companies', 'positions', 'applications'];
+    function readWorkbenchEntityFingerprints() {
+      try { return JSON.parse(localStorage.getItem(WORKBENCH_ENTITY_FP_KEY) || '{}') || {}; } catch { return {}; }
+    }
+    function writeWorkbenchEntityFingerprints(map) {
+      try { localStorage.setItem(WORKBENCH_ENTITY_FP_KEY, JSON.stringify(map)); } catch {}
+    }
+    function stableWorkbenchEntityValue(value) {
+      if (Array.isArray(value)) return value.map(stableWorkbenchEntityValue);
+      if (!value || typeof value !== 'object') return value;
+      return Object.keys(value).sort().reduce((out, key) => {
+        if (!['createdAt', 'updatedAt', 'deletedAt'].includes(key)) out[key] = stableWorkbenchEntityValue(value[key]);
+        return out;
+      }, {});
+    }
+    function workbenchEntityFingerprint(model) {
+      return resumeTextHash(JSON.stringify(stableWorkbenchEntityValue(model || {})));
+    }
+    function collectWorkbenchEntityRows(kind) {
+      return (workbenchV2[kind] || []).filter(item => item?.id).map(item => ({
+        id: item.id,
+        model: item,
+        fingerprint: workbenchEntityFingerprint(item),
+      }));
+    }
+    let workbenchEntitySyncPromise = null;
+    async function syncWorkbenchEntitiesWithCloud({ forceAll = false, onProgress } = {}) {
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) return { skipped: true, total: 0, synced: 0, failed: 0 };
+      while (workbenchEntitySyncPromise) await workbenchEntitySyncPromise;
+      const run = (async () => {
+        const fingerprints = readWorkbenchEntityFingerprints();
+        const allRows = WORKBENCH_ENTITY_KINDS.flatMap(kind => collectWorkbenchEntityRows(kind).map(row => ({ ...row, kind })));
+        const rows = allRows.filter(row => forceAll || fingerprints[`${row.kind}:${row.id}`] !== row.fingerprint);
+        let synced = 0;
+        let failed = 0;
+        for (let i = 0; i < rows.length; i += 50) {
+          const batch = rows.slice(i, i + 50);
+          try {
+            for (const kind of WORKBENCH_ENTITY_KINDS) {
+              const models = batch.filter(row => row.kind === kind).map(row => row.model);
+              if (models.length) await getWorkbenchEntityRepo().upsertMany(kind, models);
+            }
+            batch.forEach(row => { synced += 1; fingerprints[`${row.kind}:${row.id}`] = row.fingerprint; });
+          } catch (error) {
+            failed += batch.length;
+            console.warn('公司/岗位/推进记录云端同步失败：', error);
+          }
+          writeWorkbenchEntityFingerprints(fingerprints);
+          if (typeof onProgress === 'function') onProgress({ total: rows.length, done: Math.min(i + batch.length, rows.length), synced, failed });
+        }
+        return { total: rows.length, synced, failed };
+      })();
+      workbenchEntitySyncPromise = run;
+      try { return await run; } finally { if (workbenchEntitySyncPromise === run) workbenchEntitySyncPromise = null; }
+    }
+    function workbenchEntityMigrationMeta() {
+      if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') workbenchV2.migrationMeta = {};
+      if (!workbenchV2.migrationMeta.phase3Entities || typeof workbenchV2.migrationMeta.phase3Entities !== 'object') workbenchV2.migrationMeta.phase3Entities = {};
+      return workbenchV2.migrationMeta.phase3Entities;
+    }
+    const workbenchEntityMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
+    async function runWorkbenchEntityMigration() {
+      if (workbenchEntityMigration.running) return;
+      workbenchEntityMigration.running = true;
+      workbenchEntityMigration.finished = false;
+      workbenchEntityMigration.total = workbenchEntityMigration.done = workbenchEntityMigration.synced = workbenchEntityMigration.failed = 0;
+      try {
+        const result = await syncWorkbenchEntitiesWithCloud({ forceAll: true, onProgress: p => Object.assign(workbenchEntityMigration, p) });
+        if (result.skipped) throw new Error('Phase 3 迁移未执行，请确认云端连接和写入权限');
+        Object.assign(workbenchEntityMigration, result, { finished: true });
+        if (!result.failed) {
+          workbenchEntityMigrationMeta().backfilledAt = new Date().toISOString();
+          if (!await saveWorkbenchV2()) throw new Error('Phase 3 迁移状态保存失败');
+          if (cloudReady) schedulePush();
+        }
+      } catch (error) { console.warn('Phase 3 实体迁移失败：', error); }
+      finally { workbenchEntityMigration.running = false; }
     }
 
     // -------- Phase 2a：候选人独立存表（candidates） --------
@@ -15913,6 +16028,7 @@ ${ocrText}`
         // Phase 1 双写：登录/初始化后把本机文本差异同步到 resume_texts 表
         void syncResumeTextsWithCloud();
         void syncResumeVersionsWithCloud(); // Phase 2c 双写：版本元数据同步到 resume_versions 表
+        void syncWorkbenchEntitiesWithCloud(); // Phase 3 双写：公司/岗位/推进记录同步到独立表
         if (candidateReadPathEnabled.value) {
           try {
             await loadCandidatesFromCloudAsAuthority();
@@ -23907,6 +24023,7 @@ ${clipped}`
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
       resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, verifyResumeVersionParity,
+      workbenchEntityMigration, runWorkbenchEntityMigration,
       candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
