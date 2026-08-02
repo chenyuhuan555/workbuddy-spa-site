@@ -7409,6 +7409,7 @@
             <div class="h-full bg-emerald-600 transition-all" :style="{ width: resumeVersionMigration.total ? Math.round(resumeVersionMigration.done / resumeVersionMigration.total * 100) + '%' : '0%' }"></div>
           </div>
           <p class="mt-2 text-sm text-slate-600">{{ resumeVersionMigration.done }} / {{ resumeVersionMigration.total }} 已处理 · 成功 {{ resumeVersionMigration.synced }} · 失败 {{ resumeVersionMigration.failed }}</p>
+          <p v-if="resumeVersionMigration.error" class="mt-2 text-xs text-red-600 break-words">最近一次失败：{{ resumeVersionMigration.error }}</p>
         </div>
         <div v-if="resumeVersionParity.checked || resumeVersionParity.error" class="px-5 pb-4 text-sm">
           <span v-if="resumeVersionParity.error" class="text-red-600">校验失败：{{ resumeVersionParity.error }}</span>
@@ -15485,9 +15486,21 @@ ${ocrText}`
             batch.forEach(row => { synced += 1; fingerprints[row.version.id] = row.fingerprint; });
             resumeVersionOfflineQueue.markSuccess(batch.map(row => ({ kind: 'resume_versions', id: row.version.id })));
           } catch (error) {
-            failed += batch.length;
-            resumeVersionOfflineQueue.markFailure(batch.map(row => ({ kind: 'resume_versions', id: row.version.id })), error?.message || '简历版本同步失败');
-            console.warn('简历版本云端同步失败：', error);
+            // 批量写入失败时逐条重试，避免一条坏数据让整批都显示失败，并暴露首个真实错误。
+            for (const row of batch) {
+              try {
+                await getResumeVersionRepo().upsertVersionRows([row]);
+                synced += 1;
+                fingerprints[row.version.id] = row.fingerprint;
+                resumeVersionOfflineQueue.markSuccess([{ kind: 'resume_versions', id: row.version.id }]);
+              } catch (rowError) {
+                failed += 1;
+                const reason = rowError?.message || error?.message || '简历版本同步失败';
+                resumeVersionOfflineQueue.markFailure([{ kind: 'resume_versions', id: row.version.id }], reason);
+                onProgress?.({ error: reason });
+                console.warn('简历版本单条云端同步失败：', row.version.id, rowError);
+              }
+            }
           }
           writeResumeVersionFingerprints(fingerprints);
           if (typeof onProgress === 'function') onProgress({ total: rows.length, done: Math.min(i + batch.length, rows.length), synced, failed });
@@ -15502,11 +15515,12 @@ ${ocrText}`
       if (!workbenchV2.migrationMeta.resumeVersions || typeof workbenchV2.migrationMeta.resumeVersions !== 'object') workbenchV2.migrationMeta.resumeVersions = {};
       return workbenchV2.migrationMeta.resumeVersions;
     }
-    const resumeVersionMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
+    const resumeVersionMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0, error: '' });
     async function runResumeVersionMigration() {
       if (resumeVersionMigration.running) return;
       resumeVersionMigration.running = true;
       resumeVersionMigration.finished = false;
+      resumeVersionMigration.error = '';
       resumeVersionMigration.total = resumeVersionMigration.done = resumeVersionMigration.synced = resumeVersionMigration.failed = 0;
       try {
         const result = await syncResumeVersionsWithCloud({ forceAll: true, onProgress: p => Object.assign(resumeVersionMigration, p) });
@@ -15519,7 +15533,10 @@ ${ocrText}`
           if (!await saveWorkbenchV2()) throw new Error('简历版本迁移状态保存失败');
           if (cloudReady) schedulePush();
         }
-      } catch (error) { console.warn('简历版本云端迁移失败：', error); }
+      } catch (error) {
+        resumeVersionMigration.error = error?.message || '简历版本云端迁移失败';
+        console.warn('简历版本云端迁移失败：', error);
+      }
       finally { resumeVersionMigration.running = false; }
     }
     const resumeVersionParity = reactive({ checking: false, checked: false, ok: false, cloudCount: 0, localCount: 0, missingInCloud: [], missingInLocal: [], mismatched: [], error: '' });
