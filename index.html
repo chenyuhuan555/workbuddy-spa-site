@@ -27,6 +27,7 @@
   <script src="./src/services/repo/workbench-entity-repo.js?v=20260802-entityrepo1"></script>
   <script src="./src/services/repo/workbench-entity-read-path.js?v=20260802-entityread1"></script>
   <script src="./src/services/repo/workbench-entity-merge.js?v=20260802-entitymerge1"></script>
+  <script src="./src/services/repo/offline-sync-queue.js?v=20260802-offlinequeue1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
@@ -7440,6 +7441,8 @@
         <p v-if="workbenchEntityReadSwitch.error" role="alert" class="px-5 pb-3 text-sm text-red-600">{{ workbenchEntityReadSwitch.error }}</p>
         <p v-else-if="workbenchEntityReadPathEnabled" class="px-5 pb-4 text-sm font-semibold text-emerald-700">公司、岗位和推进记录已从独立表读取，workspace_state 仍保留为过渡期回退。</p>
         <p v-if="workbenchEntityReadPathEnabled" class="px-5 pb-1 text-xs text-slate-500">已启用每 30 秒一次的后台增量拉取{{ workbenchEntityPull.lastPulledAt ? ' · 上次检查 ' + formatBeijingDateTime(workbenchEntityPull.lastPulledAt) : '' }}</p>
+        <p v-if="workbenchEntityOfflineState.pending" class="px-5 pb-1 text-xs text-amber-700">当前有 {{ workbenchEntityOfflineState.pending }} 条业务实体等待联网重试，网络恢复后会按序同步。</p>
+        <p v-if="workbenchEntityOfflineState.lastError" class="px-5 pb-1 text-xs text-red-600">最近一次实体同步失败：{{ workbenchEntityOfflineState.lastError }}</p>
         <p v-if="workbenchEntityPull.pulled" class="px-5 pb-4 text-sm text-slate-600">本次拉取 {{ workbenchEntityPull.pulled }} 条 · 新增 {{ workbenchEntityPull.added }} · 更新 {{ workbenchEntityPull.updated }} · 删除 {{ workbenchEntityPull.removed }}<span v-if="workbenchEntityPull.failed" class="text-red-600"> · 失败 {{ workbenchEntityPull.failed }}</span></p>
         <div v-if="workbenchEntityPull.conflicts.length" class="mx-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
           <p class="font-semibold">发现 {{ workbenchEntityPull.conflicts.length }} 条本地较新冲突，已保留本地版本。</p>
@@ -15524,7 +15527,10 @@ ${ocrText}`
       return workbenchEntityRepo;
     }
     const WORKBENCH_ENTITY_FP_KEY = STORAGE_KEY + '_workbench_entity_fingerprints';
+    const WORKBENCH_ENTITY_OFFLINE_QUEUE_KEY = STORAGE_KEY + '_workbench_entity_offline_queue';
     const WORKBENCH_ENTITY_KINDS = ['companies', 'positions', 'applications'];
+    const workbenchEntityOfflineQueue = window.WorkBuddyOfflineSyncQueue.createOfflineSyncQueue({ key: WORKBENCH_ENTITY_OFFLINE_QUEUE_KEY });
+    const workbenchEntityOfflineState = reactive({ pending: workbenchEntityOfflineQueue.size(), lastError: '' });
     function readWorkbenchEntityFingerprints() {
       try { return JSON.parse(localStorage.getItem(WORKBENCH_ENTITY_FP_KEY) || '{}') || {}; } catch { return {}; }
     }
@@ -15551,12 +15557,20 @@ ${ocrText}`
     }
     let workbenchEntitySyncPromise = null;
     async function syncWorkbenchEntitiesWithCloud({ forceAll = false, onProgress } = {}) {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) return { skipped: true, total: 0, synced: 0, failed: 0 };
+      const canWriteEntities = !!window.WorkBuddyAccess?.canWrite;
+      const allRows = WORKBENCH_ENTITY_KINDS.flatMap(kind => collectWorkbenchEntityRows(kind).map(row => ({ ...row, kind })));
+      if (!canWriteEntities) return { skipped: true, total: 0, synced: 0, failed: 0, queued: workbenchEntityOfflineState.pending };
+      if (!cloudReady) {
+        workbenchEntityOfflineQueue.enqueue(allRows);
+        workbenchEntityOfflineState.pending = workbenchEntityOfflineQueue.size();
+        return { skipped: true, total: allRows.length, synced: 0, failed: 0, queued: workbenchEntityOfflineState.pending };
+      }
       while (workbenchEntitySyncPromise) await workbenchEntitySyncPromise;
       const run = (async () => {
         const fingerprints = readWorkbenchEntityFingerprints();
-        const allRows = WORKBENCH_ENTITY_KINDS.flatMap(kind => collectWorkbenchEntityRows(kind).map(row => ({ ...row, kind })));
-        const rows = allRows.filter(row => forceAll || fingerprints[`${row.kind}:${row.id}`] !== row.fingerprint);
+        const currentByKey = new Map(allRows.map(row => [`${row.kind}:${row.id}`, row]));
+        const queuedRows = workbenchEntityOfflineQueue.listDue().map(item => currentByKey.get(`${item.kind}:${item.id}`) || ({ ...item, fingerprint: workbenchEntityFingerprint(item.model) }));
+        const rows = [...new Map([...allRows.filter(row => forceAll || fingerprints[`${row.kind}:${row.id}`] !== row.fingerprint), ...queuedRows].map(row => [`${row.kind}:${row.id}`, row])).values()];
         let synced = 0;
         let failed = 0;
         for (let i = 0; i < rows.length; i += 50) {
@@ -15567,14 +15581,18 @@ ${ocrText}`
               if (models.length) await getWorkbenchEntityRepo().upsertMany(kind, models);
             }
             batch.forEach(row => { synced += 1; fingerprints[`${row.kind}:${row.id}`] = row.fingerprint; });
+            workbenchEntityOfflineQueue.markSuccess(batch);
           } catch (error) {
             failed += batch.length;
+            workbenchEntityOfflineQueue.markFailure(batch, error?.message || '云端同步失败');
+            workbenchEntityOfflineState.lastError = error?.message || '云端同步失败';
             console.warn('公司/岗位/推进记录云端同步失败：', error);
           }
+          workbenchEntityOfflineState.pending = workbenchEntityOfflineQueue.size();
           writeWorkbenchEntityFingerprints(fingerprints);
           if (typeof onProgress === 'function') onProgress({ total: rows.length, done: Math.min(i + batch.length, rows.length), synced, failed });
         }
-        return { total: rows.length, synced, failed };
+        return { total: rows.length, synced, failed, queued: workbenchEntityOfflineState.pending };
       })();
       workbenchEntitySyncPromise = run;
       try { return await run; } finally { if (workbenchEntitySyncPromise === run) workbenchEntitySyncPromise = null; }
@@ -24196,6 +24214,7 @@ ${clipped}`
       workbenchEntityMigration, runWorkbenchEntityMigration, workbenchEntityParity, verifyWorkbenchEntityParity,
       workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       workbenchEntityPull, pullWorkbenchEntitiesFromCloud,
+      workbenchEntityOfflineState,
       candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
