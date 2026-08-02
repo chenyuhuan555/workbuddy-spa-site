@@ -208,8 +208,9 @@ test('listAllCandidates 用稳定双排序和 range 分页读取全部候选人'
   );
 });
 
-test('candidates.sql 为新旧表都声明 extra jsonb 兼容列', () => {
+test('candidates.sql 自包含 pg_trgm 前置扩展并为新旧表声明 extra 兼容列', () => {
   const sql = fs.readFileSync(new URL('../../../supabase/candidates.sql', import.meta.url), 'utf8');
+  assert.match(sql, /create extension if not exists pg_trgm/i);
   assert.match(sql, /extra\s+jsonb\s+not null\s+default\s+'\{\}'/i);
   assert.match(sql, /alter table public\.candidates\s+add column if not exists extra\s+jsonb/i);
 });

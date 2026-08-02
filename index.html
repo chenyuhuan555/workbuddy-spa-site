@@ -23,6 +23,7 @@
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
+  <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
@@ -7378,17 +7379,18 @@
         </div>
       </div>
 
-      <!-- Phase 2b：候选人增量同步（预览，非破坏） -->
+      <!-- Phase 2b：候选人云端读取切换（严格闸门） -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
         <div class="px-5 py-4">
           <div class="flex items-center gap-2">
             <h2 class="font-bold text-slate-800">候选人增量同步</h2>
-            <span class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold">Phase 2b 预览</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold" :class="candidateReadPathEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-sky-50 text-sky-700'">{{ candidateReadPathEnabled ? 'Phase 2b 已启用' : 'Phase 2b 验证中' }}</span>
           </div>
-          <p class="text-xs text-slate-400 mt-1">把 candidates 表的数据流回本地做对账与补齐（不切换渲染数据源）。正式切读路径前，请先跑「候选人云端迁移」并确认下方一致性校验为 0 漂移。</p>
+          <p class="text-xs text-slate-400 mt-1">先执行候选人云端迁移，再做 ID 与字段指纹的严格校验。只有完全一致时才能启用 candidates 表作为候选人权威读取源；读取失败会继续使用 workspace_state 回退数据。</p>
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" @click="verifyCandidateParity" :disabled="candidateParity.checking" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ candidateParity.checking ? '校验中…' : '校验一致性' }}</button>
             <button type="button" @click="pullCandidatesFromCloud" :disabled="candidatePull.running" class="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ candidatePull.running ? '拉取中…' : '从云端拉取增量' }}</button>
+            <button v-if="canWrite && !candidateReadPathEnabled" type="button" @click="enableCandidateCloudReadPath" :disabled="!candidateReadPathCanEnable || candidateReadSwitch.running" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">{{ candidateReadSwitch.running ? '启用中…' : '启用云端读取' }}</button>
           </div>
           <div v-if="candidateParity.tableCount !== null || candidateParity.error" class="mt-3 text-sm">
             <template v-if="candidateParity.error">
@@ -7396,10 +7398,13 @@
             </template>
             <template v-else>
               <span class="text-slate-600">云端表 {{ candidateParity.tableCount }} 行 · 本地 {{ candidateParity.localCount }} 人</span>
-              <span class="ml-2" :class="candidateParity.drift === 0 ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">漂移 {{ candidateParity.drift >= 0 ? '+' : '' }}{{ candidateParity.drift }}</span>
+              <span class="ml-2" :class="candidateParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ candidateParity.ok ? '严格一致' : '存在差异' }}</span>
+              <p v-if="!candidateParity.ok" class="mt-1 text-xs text-amber-700">仅本地 {{ candidateParity.missingInCloud.length }} · 仅云端 {{ candidateParity.missingInLocal.length }} · 字段不同 {{ candidateParity.mismatched.length }} · 云端已删除 {{ candidateParity.tombstonedLocal.length }}</p>
             </template>
           </div>
           <div v-if="candidatePull.pulled" class="mt-2 text-sm text-slate-600">本次拉取 {{ candidatePull.pulled }} 条 · 新增 {{ candidatePull.added }} · 合并 {{ candidatePull.updated }}<template v-if="candidatePull.failed"> · <span class="text-red-600">失败 {{ candidatePull.failed }}</span></template></div>
+          <p v-if="candidateReadSwitch.error" role="alert" class="mt-2 text-sm text-red-600">{{ candidateReadSwitch.error }}</p>
+          <p v-else-if="candidateReadPathEnabled" class="mt-2 text-sm font-semibold text-emerald-700">候选人列表已从 candidates 表读取；workspace_state 仍保留为过渡期回退。</p>
         </div>
       </div>
 
@@ -15127,6 +15132,7 @@ ${ocrText}`
       if (!cloudReady || !window.WorkBuddyAccess?.canWrite || syncStatus.value === 'syncing') return;
       syncStatus.value = 'syncing';
       try {
+        if (candidateReadPathEnabled.value) await requireCandidateRowsSynced();
         const workspaceClient = getWorkspaceStateClient();
         const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: packWorkspaceState() });
         cloudWorkspaceVersion = saved.version;
@@ -15134,7 +15140,7 @@ ${ocrText}`
         syncStatus.value = 'synced';
         syncError.value = '';
         void syncResumeTextsWithCloud(); // Phase 1 双写：文本同步到 resume_texts 表（不阻塞主同步）
-        void syncCandidatesWithCloud(); // Phase 2a 双写：候选人同步到 candidates 表
+        if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
       } catch (error) {
         if (error?.code === 'WORKSPACE_VERSION_CONFLICT') {
           // 版本冲突：其他成员已推送新数据。尝试合并后重试一次。
@@ -15150,10 +15156,11 @@ ${ocrText}`
             cloudWorkspaceVersion = saved.version;
             markLocalPushed();
             await applyWorkspaceState(merged);
+            if (candidateReadPathEnabled.value) await loadCandidatesFromCloudAsAuthority();
             syncStatus.value = 'synced';
             syncError.value = '';
             void syncResumeTextsWithCloud(); // Phase 1 双写
-            void syncCandidatesWithCloud(); // Phase 2a 双写
+            if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
             if (stats.fromCloud) showToast(`已自动合并其他成员的 ${stats.fromCloud} 条更新`, 'info');
           } catch (retryError) {
             syncStatus.value = 'error';
@@ -15300,6 +15307,7 @@ ${ocrText}`
     }
 
     // -------- Phase 2a：候选人独立存表（candidates） --------
+    const CandidateReadPath = window.WorkBuddyCandidateReadPath;
     let candidateRepo = null;
     function getCandidateRepo() {
       if (!candidateRepo) {
@@ -15318,30 +15326,9 @@ ${ocrText}`
     function writeCandidateFingerprints(map) {
       try { localStorage.setItem(CANDIDATE_FP_KEY, JSON.stringify(map)); } catch {}
     }
-    function candidateHash(text) {
-      let hash = 5381;
-      const str = String(text || '');
-      for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
-      return hash.toString(36);
-    }
-    // 候选人行指纹：取结构化字段（与 candidate-repo.toRow 映射一致），版本元数据剥离大文本
+    // 候选人行指纹：稳定排序、忽略大文本与服务端时间戳，供双写和严格一致性校验共用。
     function candidateFingerprint(cand) {
-      const norm = {
-        id: cand.id,
-        name: cand.name, phone: cand.phone, email: cand.email,
-        currentCompany: cand.currentCompany, currentTitle: cand.currentTitle, city: cand.city,
-        status: cand.status, owner: cand.owner, source: cand.source,
-        education: cand.education, experienceYears: cand.experienceYears,
-        tags: cand.tags, skills: cand.skills, keywords: cand.keywords,
-        directions: cand.directions, categoryIds: cand.categoryIds,
-        summary: cand.summary, profileText: cand.profileText,
-        resumeVersions: (cand.resumeVersions || []).map(v => {
-          const o = Object.assign({}, v);
-          delete o.rawText; delete o.formattedText; delete o.fileData; delete o.electronicResumeText;
-          return o;
-        }),
-      };
-      return candidateHash(JSON.stringify(norm));
+      return CandidateReadPath.fingerprintCandidate(cand);
     }
     function collectCandidateRows() {
       const rows = [];
@@ -15352,15 +15339,15 @@ ${ocrText}`
       return rows;
     }
 
-    let candidateSyncRunning = false;
+    let candidateSyncPromise = null;
     // 双写：把内存中新增/变化的候选人 upsert 到 candidates 表。
-    // forceAll=true 时忽略指纹全量推送（一次性回填用）。读路径暂不切换，仍走 workspace_state。
+    // forceAll=true 时忽略指纹全量推送（一次性回填用）；并发调用会排队，避免旧批次晚于新批次落库。
     async function syncCandidatesWithCloud({ forceAll = false, onProgress } = {}) {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || candidateSyncRunning) {
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) {
         return { skipped: true, total: 0, synced: 0, failed: 0 };
       }
-      candidateSyncRunning = true;
-      try {
+      while (candidateSyncPromise) await candidateSyncPromise;
+      const run = (async () => {
         const repo = getCandidateRepo();
         const fingerprints = readCandidateFingerprints();
         const rows = collectCandidateRows().filter(row => forceAll || fingerprints[row.id] !== row.fingerprint);
@@ -15381,10 +15368,33 @@ ${ocrText}`
           }
         }
         return { total: rows.length, synced, failed };
+      })();
+      candidateSyncPromise = run;
+      try {
+        return await run;
       } finally {
-        candidateSyncRunning = false;
+        if (candidateSyncPromise === run) candidateSyncPromise = null;
       }
     }
+
+    async function requireCandidateRowsSynced() {
+      const result = await syncCandidatesWithCloud();
+      if (result.skipped) throw new Error('候选人云端行同步未执行');
+      if (result.failed) throw new Error(`候选人云端行同步失败（${result.failed} 条）`);
+      return result;
+    }
+
+    function candidateCloudMigrationMeta() {
+      if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') {
+        workbenchV2.migrationMeta = {};
+      }
+      if (!workbenchV2.migrationMeta.candidateCloud || typeof workbenchV2.migrationMeta.candidateCloud !== 'object') {
+        workbenchV2.migrationMeta.candidateCloud = {};
+      }
+      return workbenchV2.migrationMeta.candidateCloud;
+    }
+
+    const candidateReadPathEnabled = computed(() => Boolean(workbenchV2.migrationMeta?.candidateCloud?.readEnabledAt));
 
     // 设置页回填卡片状态（Phase 2a：候选人云端迁移）
     const candidateMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
@@ -15395,10 +15405,18 @@ ${ocrText}`
       candidateMigration.total = candidateMigration.done = candidateMigration.synced = candidateMigration.failed = 0;
       try {
         const result = await syncCandidatesWithCloud({ forceAll: true, onProgress: p => Object.assign(candidateMigration, p) });
+        if (result.skipped) throw new Error('候选人云端迁移未执行，请确认云端连接和写入权限');
         candidateMigration.total = result.total;
         candidateMigration.synced = result.synced;
         candidateMigration.failed = result.failed;
         candidateMigration.finished = true;
+        if (!result.failed) {
+          const candidateCloud = candidateCloudMigrationMeta();
+          candidateCloud.backfilledAt = new Date().toISOString();
+          candidateCloud.parityVerifiedAt = '';
+          if (!await saveWorkbenchV2()) throw new Error('候选人迁移状态保存失败');
+          if (cloudReady) schedulePush();
+        }
       } catch (error) {
         console.warn('候选人云端迁移失败：', error);
       } finally {
@@ -15406,9 +15424,8 @@ ${ocrText}`
       }
     }
 
-    // -------- Phase 2b：增量拉取对账（非破坏，预览阶段） --------
-    // 说明：本阶段只把 candidates 表的数据「流回」本地做对账/补齐，不切换渲染数据源，
-    //       也不剥离 workspace_state 里的候选人。真正的读路径切换（2b.2）以「迁移已跑 + 一致性校验通过」为闸门。
+    // -------- Phase 2b：增量拉取、严格对账与候选人读路径切换 --------
+    // workspace_state 在过渡期保留候选人作为失败回退；启用后 candidates 表是候选人业务字段的权威来源。
     const CANDIDATE_PULL_CURSOR_KEY = STORAGE_KEY + '_candidate_pull_cursor';
     function readCandidatePullCursor() {
       try { return localStorage.getItem(CANDIDATE_PULL_CURSOR_KEY) || null; } catch { return null; }
@@ -15459,23 +15476,86 @@ ${ocrText}`
       }
     }
 
-    // 一致性校验：对比 candidates 表行数 与 本地 workspace_state 候选人计数，检测漂移
-    const candidateParity = reactive({ checking: false, tableCount: null, localCount: null, drift: null, error: '' });
+    // 2b.2 闸门：不只比较数量，还要逐条核对 id、业务字段指纹和删除标记。
+    const candidateParity = reactive({
+      checking: false,
+      ok: false,
+      tableCount: null,
+      localCount: null,
+      drift: null,
+      missingInCloud: [],
+      missingInLocal: [],
+      mismatched: [],
+      tombstonedLocal: [],
+      error: '',
+    });
+    const candidateReadPathCanEnable = computed(() => CandidateReadPath.canEnableReadPath(
+      workbenchV2.migrationMeta?.candidateCloud,
+      candidateParity,
+    ));
+    const candidateReadSwitch = reactive({ running: false, error: '' });
+
     async function verifyCandidateParity() {
       if (!cloudReady) return;
       candidateParity.checking = true;
       candidateParity.error = '';
       try {
         const repo = getCandidateRepo();
-        const tableCount = await repo.countCandidates();
-        const localCount = (workbenchV2.candidates || []).length;
-        candidateParity.tableCount = tableCount;
-        candidateParity.localCount = localCount;
-        candidateParity.drift = tableCount - localCount;
+        const cloudCandidates = await repo.listAllCandidates();
+        const report = CandidateReadPath.buildParityReport(workbenchV2.candidates, cloudCandidates);
+        Object.assign(candidateParity, report, {
+          tableCount: report.cloudCount,
+          drift: report.cloudCount - report.localCount,
+        });
+        const candidateCloud = candidateCloudMigrationMeta();
+        candidateCloud.parityVerifiedAt = report.ok && candidateCloud.backfilledAt ? new Date().toISOString() : '';
+        if (!await saveWorkbenchV2()) throw new Error('候选人一致性校验状态保存失败');
+        if (cloudReady) schedulePush();
       } catch (e) {
+        candidateParity.ok = false;
         candidateParity.error = e?.message || '校验失败';
       } finally {
         candidateParity.checking = false;
+      }
+    }
+
+    async function loadCandidatesFromCloudAsAuthority({ persist = true } = {}) {
+      const previous = workbenchV2.candidates.slice();
+      try {
+        const cloudCandidates = await getCandidateRepo().listAllCandidates();
+        const next = CandidateReadPath.buildAuthoritativeCandidates(previous, cloudCandidates);
+        workbenchV2.candidates.splice(0, workbenchV2.candidates.length, ...next);
+        writeCandidateFingerprints(Object.fromEntries(next.map(candidate => [candidate.id, candidateFingerprint(candidate)])));
+        if (persist && !await saveWorkbenchV2()) throw new Error('候选人本地快照保存失败');
+        return next;
+      } catch (error) {
+        workbenchV2.candidates.splice(0, workbenchV2.candidates.length, ...previous);
+        console.warn('candidates 权威读取失败，已回退 workspace_state 候选人：', error);
+        throw error;
+      }
+    }
+
+    async function enableCandidateCloudReadPath() {
+      if (candidateReadSwitch.running || candidateReadPathEnabled.value) return;
+      const candidateCloud = candidateCloudMigrationMeta();
+      if (!CandidateReadPath.canEnableReadPath(candidateCloud, candidateParity)) {
+        candidateReadSwitch.error = '请先完成候选人回填，并通过严格一致性校验';
+        return;
+      }
+      candidateReadSwitch.running = true;
+      candidateReadSwitch.error = '';
+      const previousReadEnabledAt = candidateCloud.readEnabledAt || '';
+      try {
+        candidateCloud.readEnabledAt = new Date().toISOString();
+        await loadCandidatesFromCloudAsAuthority({ persist: false });
+        if (!await saveWorkbenchV2()) throw new Error('候选人云端读取开关保存失败');
+        schedulePush();
+        showToast('候选人云端读取已启用', 'success');
+      } catch (error) {
+        candidateCloud.readEnabledAt = previousReadEnabledAt;
+        candidateReadSwitch.error = error?.message || '启用失败，已保留 workspace_state 回退';
+      } finally {
+        candidateReadSwitch.running = false;
       }
     }
 
@@ -15548,6 +15628,11 @@ ${ocrText}`
     async function applyWorkspaceState(data) {
       const names = Array.isArray(data?.names) ? data.names : [];
       const jobs = Array.isArray(data?.jobs) ? data.jobs : [];
+      const preserveAuthoritativeCandidates = candidateReadPathEnabled.value;
+      const authoritativeCandidates = preserveAuthoritativeCandidates ? workbenchV2.candidates.slice() : null;
+      const localCandidateCloudMeta = preserveAuthoritativeCandidates
+        ? { ...(workbenchV2.migrationMeta?.candidateCloud || {}) }
+        : null;
       // 远端 JSON 不含简历文本（Phase 1 起剥离），先用本机内存文本回填再应用，防止覆盖丢失
       if (data?.workbenchV2) hydrateResumeTextsFromLocal(data.workbenchV2);
       await applyFullBackup({
@@ -15559,6 +15644,10 @@ ${ocrText}`
           deletedRecords: data?.deletedRecords,
         },
       });
+      if (preserveAuthoritativeCandidates) {
+        workbenchV2.candidates.splice(0, workbenchV2.candidates.length, ...authoritativeCandidates);
+        Object.assign(candidateCloudMigrationMeta(), localCandidateCloudMeta);
+      }
     }
 
     // 去重工具：同名简历只保留第一个
@@ -15670,12 +15759,22 @@ ${ocrText}`
             }
           }
         }
-        syncStatus.value = 'synced';
-        syncError.value = '';
         cloudReady = true;
         // Phase 1 双写：登录/初始化后把本机文本差异同步到 resume_texts 表
         void syncResumeTextsWithCloud();
-        void syncCandidatesWithCloud(); // Phase 2a 双写
+        if (candidateReadPathEnabled.value) {
+          try {
+            await loadCandidatesFromCloudAsAuthority();
+          } catch (error) {
+            syncStatus.value = 'error';
+            syncError.value = '候选人云端读取失败，已使用 workspace_state 回退';
+            return;
+          }
+        } else {
+          void syncCandidatesWithCloud(); // Phase 2a 双写预览
+        }
+        syncStatus.value = 'synced';
+        syncError.value = '';
       } catch (e) {
         syncStatus.value = 'error';
         syncError.value = e?.code === 'WORKSPACE_VERSION_CONFLICT' ? '云端版本冲突，请刷新页面' : '云端连接失败，请稍后重试';
@@ -15707,7 +15806,7 @@ ${ocrText}`
       radarRssApiKeyInput.value = getRadarRssApiKey(); // 自动加载/保存rss2json Key
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
-      await initCloud(); // 登录后以 workspace_state 作为共享业务数据源
+      await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
       await reconcileMigratedPositionDescriptions();
       const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
@@ -23657,6 +23756,7 @@ ${clipped}`
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
       candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
+      candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
       activeNav, scrollToSection, scrollToBackupSection, navigateWorkbench,
       dispatch, addPositionRow, removePositionRow,

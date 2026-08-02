@@ -1,11 +1,13 @@
 -- candidates：候选人独立存表（Phase 2a）
 -- 目的：把候选人元数据（含版本列表）从 workspace_state 大 JSON 挪到独立行，
---       跨设备以"候选人粒度"同步、独立更新；读路径暂不变（仍走 workspace_state），
---       本表先作为双写/回填目标，为 Phase 2b 行级增量同步打底。
+--       跨设备以"候选人粒度"同步、独立更新。Phase 2b.2 启用前先作为双写/回填目标；
+--       完成回填和严格一致性校验后，前端可将本表切换为候选人权威读取源。
 -- 注意：id 使用 text，兼容前端现有 `cand_xxxx` 格式 id（非 uuid），
 --       resume_versions 暂时以 jsonb 内嵌在候选人行，Phase 2b 再抽独立表。
 -- 大简历文本（rawText/formattedText）已在 Phase 1 的 resume_texts 表，
 --       写入本表前由前端剥离，不重复落库。
+
+create extension if not exists pg_trgm;
 
 -- updated_at 自动维护（resume-texts.sql 已建过，这里用 create or replace 保证幂等）
 create or replace function public.touch_updated_at()

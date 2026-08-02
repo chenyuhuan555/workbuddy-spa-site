@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 globalThis.window = globalThis;
 await import('./candidate-read-path.js');
 const ReadPath = globalThis.WorkBuddyCandidateReadPath;
+const INDEX_HTML = fs.readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
 
 test('fingerprintCandidate 忽略本地大文本和对象键顺序，但识别业务字段变化', () => {
   const first = {
@@ -28,6 +30,33 @@ test('fingerprintCandidate 忽略本地大文本和对象键顺序，但识别�
 
   assert.equal(ReadPath.fingerprintCandidate(first), ReadPath.fingerprintCandidate(same));
   assert.notEqual(ReadPath.fingerprintCandidate(first), ReadPath.fingerprintCandidate(changed));
+});
+
+test('fingerprintCandidate 把本地缺省字段与云端行标准默认值视为一致', () => {
+  const local = { id: 'c-defaults', name: '候选人' };
+  const cloud = {
+    id: 'c-defaults',
+    name: '候选人',
+    phone: '',
+    email: '',
+    currentCompany: '',
+    currentTitle: '',
+    city: '',
+    status: 'active',
+    owner: '',
+    source: '',
+    education: '',
+    experienceYears: null,
+    tags: [],
+    skills: [],
+    keywords: [],
+    directions: [],
+    categoryIds: [],
+    summary: '',
+    profileText: '',
+    resumeVersions: [],
+  };
+  assert.equal(ReadPath.fingerprintCandidate(local), ReadPath.fingerprintCandidate(cloud));
 });
 
 test('buildParityReport 严格报告缺行、字段漂移和云端墓碑', () => {
@@ -99,4 +128,67 @@ test('buildAuthoritativeCandidates 以云端集合为准并仅保留本机简历
   assert.equal(merged.resumeVersions[0].rawText, '原始文本');
   assert.equal(merged.resumeVersions[0].formattedText, '排版文本');
   assert.equal(merged.resumeVersions[0].fileData, 'base64');
+});
+
+test('页面加载读路径策略模块并持久记录候选人云端迁移闸门', () => {
+  assert.match(INDEX_HTML, /src\/services\/repo\/candidate-read-path\.js\?v=/);
+  assert.match(INDEX_HTML, /function candidateCloudMigrationMeta\(\)/);
+  assert.match(INDEX_HTML, /const candidateReadPathEnabled = computed\(/);
+  assert.match(INDEX_HTML, /candidateCloud\.backfilledAt/);
+  assert.match(INDEX_HTML, /candidateCloud\.parityVerifiedAt/);
+  assert.match(INDEX_HTML, /candidateCloud\.readEnabledAt/);
+});
+
+test('严格一致性校验读取全部候选人并阻止仅按数量放行', () => {
+  const start = INDEX_HTML.indexOf('async function verifyCandidateParity()');
+  const end = INDEX_HTML.indexOf('async function loadCandidatesFromCloudAsAuthority(', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end + 6);
+  assert.match(source, /listAllCandidates\(/);
+  assert.match(source, /CandidateReadPath\.buildParityReport\(/);
+  assert.doesNotMatch(source, /countCandidates\(/);
+  assert.match(INDEX_HTML, /candidateParity\.mismatched/);
+  assert.match(INDEX_HTML, /candidateParity\.missingInCloud/);
+  assert.match(INDEX_HTML, /candidateParity\.missingInLocal/);
+});
+
+test('启用动作受回填和严格校验闸门保护', () => {
+  const start = INDEX_HTML.indexOf('async function enableCandidateCloudReadPath()');
+  const end = INDEX_HTML.indexOf('// 云端 JSON 瘦身', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end + 6);
+  assert.match(source, /CandidateReadPath\.canEnableReadPath\(/);
+  assert.match(source, /candidateCloud\.readEnabledAt\s*=/);
+  assert.match(source, /await loadCandidatesFromCloudAsAuthority\(/);
+  assert.match(source, /await saveWorkbenchV2\(/);
+  assert.match(INDEX_HTML, /@click="enableCandidateCloudReadPath"/);
+});
+
+test('权威读取替换候选人集合、保存本地快照并保留 workspace 回退', () => {
+  const start = INDEX_HTML.indexOf('async function loadCandidatesFromCloudAsAuthority(');
+  const end = INDEX_HTML.indexOf('async function enableCandidateCloudReadPath()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end + 6);
+  assert.match(source, /listAllCandidates\(/);
+  assert.match(source, /CandidateReadPath\.buildAuthoritativeCandidates\(/);
+  assert.match(source, /workbenchV2\.candidates\.splice\(/);
+  assert.match(source, /await saveWorkbenchV2\(/);
+  assert.match(source, /catch/);
+  assert.match(source, /workspace_state/);
+});
+
+test('启动时已启用则从 candidates 表读取，未启用继续双写预览', () => {
+  const start = INDEX_HTML.indexOf('async function initCloud()');
+  const end = INDEX_HTML.indexOf('// -------- 生命周期 --------', start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /candidateReadPathEnabled\.value/);
+  assert.match(source, /await loadCandidatesFromCloudAsAuthority\(/);
+  assert.match(source, /syncCandidatesWithCloud\(/);
+});
+
+test('读路径启用后候选人行写入是云端同步成功的必要条件', () => {
+  const start = INDEX_HTML.indexOf('async function doPush()');
+  const end = INDEX_HTML.indexOf('function schedulePush()', start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /candidateReadPathEnabled\.value[\s\S]*await syncCandidatesWithCloud\(/);
 });

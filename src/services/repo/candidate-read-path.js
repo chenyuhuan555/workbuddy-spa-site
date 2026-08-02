@@ -13,6 +13,13 @@
     ...LOCAL_PAYLOAD_FIELDS,
     'createdAt', 'updatedAt', 'deletedAt',
   ]);
+  const CANDIDATE_STRING_FIELDS = [
+    'id', 'name', 'phone', 'email', 'currentCompany', 'currentTitle', 'city',
+    'owner', 'source', 'education', 'summary', 'profileText',
+  ];
+  const CANDIDATE_ARRAY_FIELDS = [
+    'tags', 'skills', 'keywords', 'directions', 'categoryIds', 'resumeVersions',
+  ];
 
   function cloneValue(value) {
     if (Array.isArray(value)) return value.map(cloneValue);
@@ -35,8 +42,25 @@
     return output;
   }
 
+  function normalizeCandidateForFingerprint(candidate) {
+    const normalized = cloneValue(candidate || {});
+    CANDIDATE_STRING_FIELDS.forEach(field => {
+      normalized[field] = candidate?.[field] == null ? '' : String(candidate[field]);
+    });
+    CANDIDATE_ARRAY_FIELDS.forEach(field => {
+      normalized[field] = Array.isArray(candidate?.[field]) ? candidate[field] : [];
+    });
+    normalized.status = candidate?.status == null || candidate.status === '' ? 'active' : String(candidate.status);
+    normalized.experienceYears = candidate?.experienceYears == null ? null : Number(candidate.experienceYears);
+    return normalized;
+  }
+
+  function comparableCandidateText(candidate) {
+    return JSON.stringify(stableValue(normalizeCandidateForFingerprint(candidate)));
+  }
+
   function fingerprintCandidate(candidate) {
-    const text = JSON.stringify(stableValue(candidate || {}));
+    const text = comparableCandidateText(candidate);
     let hash = 5381;
     for (let index = 0; index < text.length; index += 1) {
       hash = ((hash << 5) + hash + text.charCodeAt(index)) >>> 0;
@@ -50,6 +74,7 @@
     const tombstones = new Set(cloudRows.filter(candidate => candidate.deletedAt).map(candidate => candidate.id));
     const activeCloud = cloudRows.filter(candidate => !candidate.deletedAt);
     const localById = new Map(local.map(candidate => [candidate.id, candidate]));
+    const localComparableById = new Map(local.map(candidate => [candidate.id, comparableCandidateText(candidate)]));
     const cloudById = new Map(activeCloud.map(candidate => [candidate.id, candidate]));
     const missingInCloud = local
       .filter(candidate => !cloudById.has(candidate.id) && !tombstones.has(candidate.id))
@@ -65,8 +90,8 @@
       .sort();
     const mismatched = activeCloud
       .filter(candidate => {
-        const localCandidate = localById.get(candidate.id);
-        return localCandidate && fingerprintCandidate(localCandidate) !== fingerprintCandidate(candidate);
+        return localById.has(candidate.id)
+          && localComparableById.get(candidate.id) !== comparableCandidateText(candidate);
       })
       .map(candidate => candidate.id)
       .sort();
