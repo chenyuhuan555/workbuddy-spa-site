@@ -216,3 +216,14 @@ test('候选人增量拉取使用时间戳合并决策并显示冲突', () => {
   assert.match(source, /candidatePull\.conflicts\.push/);
   assert.match(INDEX_HTML, /候选人本地较新冲突/);
 });
+
+test('候选人双写接入离线队列并在失败后保留待重试状态', () => {
+  const start = INDEX_HTML.indexOf('async function syncCandidatesWithCloud(');
+  const end = INDEX_HTML.indexOf('async function requireCandidateRowsSynced()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /candidateOfflineQueue/);
+  assert.match(source, /markFailure/);
+  assert.match(source, /listDue/);
+  assert.match(INDEX_HTML, /candidateOfflineState\.pending/);
+});

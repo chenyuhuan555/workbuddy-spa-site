@@ -7482,6 +7482,8 @@
             </template>
           </div>
           <div v-if="candidatePull.pulled" class="mt-2 text-sm text-slate-600">本次拉取 {{ candidatePull.pulled }} 条 · 新增 {{ candidatePull.added }} · 合并 {{ candidatePull.updated }}<template v-if="candidatePull.failed"> · <span class="text-red-600">失败 {{ candidatePull.failed }}</span></template></div>
+          <p v-if="candidateOfflineState.pending" class="mt-2 text-xs text-amber-700">当前有 {{ candidateOfflineState.pending }} 条候选人记录等待联网重试。</p>
+          <p v-if="candidateOfflineState.lastError" class="mt-1 text-xs text-red-600">最近一次候选人同步失败：{{ candidateOfflineState.lastError }}</p>
           <div v-if="candidatePull.conflicts.length" class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
             <p class="font-semibold">发现 {{ candidatePull.conflicts.length }} 条候选人本地较新冲突，已保留本地版本。</p>
             <p class="mt-1 text-xs text-amber-700">请先完成本地候选人云端同步，再重新拉取；系统不会用旧云端字段覆盖本地修改。</p>
@@ -15752,6 +15754,9 @@ ${ocrText}`
     }
 
     const CANDIDATE_FP_KEY = STORAGE_KEY + '_candidate_fingerprints';
+    const CANDIDATE_OFFLINE_QUEUE_KEY = STORAGE_KEY + '_candidate_offline_queue';
+    const candidateOfflineQueue = window.WorkBuddyOfflineSyncQueue.createOfflineSyncQueue({ key: CANDIDATE_OFFLINE_QUEUE_KEY });
+    const candidateOfflineState = reactive({ pending: candidateOfflineQueue.size(), lastError: '' });
     function readCandidateFingerprints() {
       try { return JSON.parse(localStorage.getItem(CANDIDATE_FP_KEY) || '{}') || {}; } catch { return {}; }
     }
@@ -15775,14 +15780,21 @@ ${ocrText}`
     // 双写：把内存中新增/变化的候选人 upsert 到 candidates 表。
     // forceAll=true 时忽略指纹全量推送（一次性回填用）；并发调用会排队，避免旧批次晚于新批次落库。
     async function syncCandidatesWithCloud({ forceAll = false, onProgress } = {}) {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) {
-        return { skipped: true, total: 0, synced: 0, failed: 0 };
+      const canWriteCandidates = !!window.WorkBuddyAccess?.canWrite;
+      const allRows = collectCandidateRows();
+      if (!canWriteCandidates) return { skipped: true, total: 0, synced: 0, failed: 0, queued: candidateOfflineState.pending };
+      if (!cloudReady) {
+        candidateOfflineQueue.enqueue(allRows.map(row => ({ kind: 'candidates', id: row.id, model: row.candidate })));
+        candidateOfflineState.pending = candidateOfflineQueue.size();
+        return { skipped: true, total: allRows.length, synced: 0, failed: 0, queued: candidateOfflineState.pending };
       }
       while (candidateSyncPromise) await candidateSyncPromise;
       const run = (async () => {
         const repo = getCandidateRepo();
         const fingerprints = readCandidateFingerprints();
-        const rows = collectCandidateRows().filter(row => forceAll || fingerprints[row.id] !== row.fingerprint);
+        const currentById = new Map(allRows.map(row => [String(row.id), row]));
+        const queuedRows = candidateOfflineQueue.listDue().map(item => currentById.get(String(item.id)) || ({ id: item.id, candidate: item.model, fingerprint: candidateFingerprint(item.model) }));
+        const rows = [...new Map([...allRows.filter(row => forceAll || fingerprints[row.id] !== row.fingerprint), ...queuedRows].map(row => [String(row.id), row])).values()];
         let synced = 0;
         let failed = 0;
         for (let i = 0; i < rows.length; i += 20) {
@@ -15790,16 +15802,20 @@ ${ocrText}`
           try {
             await repo.upsertCandidates(batch.map(r => r.candidate));
             batch.forEach(r => { synced += 1; fingerprints[r.id] = r.fingerprint; });
+            candidateOfflineQueue.markSuccess(batch.map(row => ({ kind: 'candidates', id: row.id })));
           } catch (error) {
             failed += batch.length;
+            candidateOfflineQueue.markFailure(batch.map(row => ({ kind: 'candidates', id: row.id })), error?.message || '云端同步失败');
+            candidateOfflineState.lastError = error?.message || '云端同步失败';
             console.warn('候选人云端同步失败：', error);
           }
+          candidateOfflineState.pending = candidateOfflineQueue.size();
           writeCandidateFingerprints(fingerprints);
           if (typeof onProgress === 'function') {
             onProgress({ total: rows.length, done: Math.min(i + batch.length, rows.length), synced, failed });
           }
         }
-        return { total: rows.length, synced, failed };
+        return { total: rows.length, synced, failed, queued: candidateOfflineState.pending };
       })();
       candidateSyncPromise = run;
       try {
@@ -24215,7 +24231,7 @@ ${clipped}`
       workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       workbenchEntityPull, pullWorkbenchEntitiesFromCloud,
       workbenchEntityOfflineState,
-      candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
+      candidatePull, pullCandidatesFromCloud, candidateOfflineState, candidateParity, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
       activeNav, scrollToSection, scrollToBackupSection, navigateWorkbench,
