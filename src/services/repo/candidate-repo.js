@@ -6,6 +6,16 @@
   'use strict';
 
   const TABLE = 'candidates';
+  const LARGE_TEXT_FIELDS = new Set([
+    'rawText', 'formattedText', 'fileData', 'electronicResumeText',
+    'resumeText', 'bossImportedText',
+  ]);
+  const ROW_FIELDS = new Set([
+    'id', 'name', 'phone', 'email', 'currentCompany', 'currentTitle', 'city',
+    'status', 'owner', 'source', 'education', 'experienceYears',
+    'tags', 'skills', 'keywords', 'directions', 'categoryIds',
+    'summary', 'profileText', 'resumeVersions', 'createdAt', 'updatedAt', 'deletedAt',
+  ]);
 
   function appError(code, cause) {
     const error = new Error(code);
@@ -40,12 +50,18 @@
     function stripVersionTexts(versions) {
       return (versions || []).map(v => {
         const o = Object.assign({}, v);
-        delete o.rawText;
-        delete o.formattedText;
-        delete o.fileData;
-        delete o.electronicResumeText;
+        LARGE_TEXT_FIELDS.forEach(field => { delete o[field]; });
         return o;
       });
+    }
+
+    function candidateExtra(cand) {
+      const extra = {};
+      Object.keys(cand || {}).forEach(key => {
+        if (ROW_FIELDS.has(key) || LARGE_TEXT_FIELDS.has(key)) return;
+        extra[key] = cand[key];
+      });
+      return extra;
     }
 
     function toRow(cand) {
@@ -72,6 +88,7 @@
         summary: cand.summary != null ? String(cand.summary) : null,
         profile_text: cand.profileText != null ? String(cand.profileText) : null,
         resume_versions: stripVersionTexts(cand.resumeVersions),
+        extra: candidateExtra(cand),
       };
       if (cand.createdAt != null) row.created_at = String(cand.createdAt);
       if (cand.updatedAt != null) row.updated_at = String(cand.updatedAt);
@@ -80,7 +97,7 @@
 
     function toModel(row) {
       if (!row) return null;
-      return {
+      return Object.assign({}, row.extra && typeof row.extra === 'object' ? row.extra : {}, {
         id: row.id,
         name: row.name || '',
         phone: row.phone || '',
@@ -104,7 +121,7 @@
         createdAt: row.created_at || null,
         updatedAt: row.updated_at || null,
         deletedAt: row.deleted_at || null,
-      };
+      });
     }
 
     // 双写入口：upsert 单个候选人（含版本元数据）
@@ -152,6 +169,32 @@
       return (data || []).map(toModel);
     }
 
+    async function listCandidatesPage(offset = 0, limit = 500) {
+      requireReader();
+      const safeOffset = Math.max(0, Number(offset) || 0);
+      const safeLimit = Math.min(500, Math.max(1, Number(limit) || 500));
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select('*')
+        .eq('workspace_id', 'main')
+        .order('updated_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(safeOffset, safeOffset + safeLimit - 1);
+      if (error) throw mapError(error);
+      return (data || []).map(toModel);
+    }
+
+    async function listAllCandidates(pageSize = 500) {
+      const safePageSize = Math.min(500, Math.max(1, Number(pageSize) || 500));
+      const rows = [];
+      let page = [];
+      do {
+        page = await listCandidatesPage(rows.length, safePageSize);
+        rows.push(...page);
+      } while (page.length === safePageSize);
+      return rows;
+    }
+
     // 回填校验用：统计表内行数
     async function countCandidates() {
       requireReader();
@@ -193,6 +236,8 @@
       upsertCandidates,
       getCandidate,
       getCandidatesSince,
+      listCandidatesPage,
+      listAllCandidates,
       countCandidates,
       mergeCandidateInto,
     });

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 globalThis.window = globalThis;
 await import('./candidate-repo.js');
@@ -31,6 +32,11 @@ function mockSupabase(behavior = {}) {
     limit: (n) => {
       calls.push({ op: 'limit', n });
       return builder;
+    },
+    range: (from, to) => {
+      calls.push({ op: 'range', from, to });
+      const result = behavior.rangeResults?.[from] || behavior.selectResult || { data: [], error: null };
+      return Promise.resolve(result);
     },
     maybeSingle: () => Promise.resolve(behavior.singleResult || { data: null, error: null }),
     then: resolve => resolve(behavior.selectResult || { data: [], error: null, count: 0 }),
@@ -69,6 +75,58 @@ test('upsertCandidate 写入 text 主键行并剥离版本文本', async () => {
   // 版本大文本被剥离，元数据保留
   assert.equal(up.row.resume_versions[0].rawText, undefined);
   assert.equal(up.row.resume_versions[0].fileName, 'a.pdf');
+});
+
+test('候选人行通过 extra 无损保留兼容字段，但不复制候选人级和版本级大文本', async () => {
+  const sb = mockSupabase({
+    singleResult: {
+      data: {
+        id: 'c-extra',
+        name: '兼容候选人',
+        extra: {
+          sourceResumeId: 'legacy-1',
+          profileProcessStatus: 'failed',
+          profileProcessError: '可见错误',
+        },
+        resume_versions: [{ id: 'rv-1', fileName: 'a.pdf' }],
+      },
+      error: null,
+    },
+  });
+  const repo = Repo.createCandidateRepo({ supabase: sb, getProfile: () => adminProfile });
+  await repo.upsertCandidate({
+    id: 'c-extra',
+    name: '兼容候选人',
+    sourceResumeId: 'legacy-1',
+    profileProcessStatus: 'failed',
+    profileProcessError: '可见错误',
+    electronicResumeText: '候选人级大文本',
+    resumeVersions: [{
+      id: 'rv-1',
+      fileName: 'a.pdf',
+      rawText: '原始大文本',
+      formattedText: '排版大文本',
+      electronicResumeText: '旧版大文本',
+      fileData: 'base64',
+    }],
+  });
+
+  const up = sb.calls.find(c => c.op === 'upsert');
+  assert.deepEqual(up.row.extra, {
+    sourceResumeId: 'legacy-1',
+    profileProcessStatus: 'failed',
+    profileProcessError: '可见错误',
+  });
+  assert.equal(up.row.extra.electronicResumeText, undefined);
+  assert.equal(up.row.resume_versions[0].rawText, undefined);
+  assert.equal(up.row.resume_versions[0].formattedText, undefined);
+  assert.equal(up.row.resume_versions[0].electronicResumeText, undefined);
+  assert.equal(up.row.resume_versions[0].fileData, undefined);
+
+  const model = await repo.getCandidate('c-extra');
+  assert.equal(model.sourceResumeId, 'legacy-1');
+  assert.equal(model.profileProcessStatus, 'failed');
+  assert.equal(model.profileProcessError, '可见错误');
 });
 
 test('upsertCandidates 批量写入多行', async () => {
@@ -127,6 +185,33 @@ test('getCandidatesSince 按游标分页', async () => {
   const gt = sb.calls.find(c => c.op === 'gt');
   assert.equal(gt.col, 'updated_at');
   assert.equal(gt.val, '2026-01-01T00:00:00Z');
+});
+
+test('listAllCandidates 用稳定双排序和 range 分页读取全部候选人', async () => {
+  const row = id => ({ id, name: id, resume_versions: [], tags: [], skills: [], keywords: [], directions: [], category_ids: [] });
+  const sb = mockSupabase({
+    rangeResults: {
+      0: { data: [row('c1'), row('c2')], error: null },
+      2: { data: [row('c3')], error: null },
+    },
+  });
+  const repo = Repo.createCandidateRepo({ supabase: sb, getProfile: () => adminProfile });
+  const list = await repo.listAllCandidates(2);
+  assert.deepEqual(list.map(item => item.id), ['c1', 'c2', 'c3']);
+  assert.deepEqual(
+    sb.calls.filter(call => call.op === 'order').map(call => call.col),
+    ['updated_at', 'id', 'updated_at', 'id'],
+  );
+  assert.deepEqual(
+    sb.calls.filter(call => call.op === 'range').map(call => [call.from, call.to]),
+    [[0, 1], [2, 3]],
+  );
+});
+
+test('candidates.sql 为新旧表都声明 extra jsonb 兼容列', () => {
+  const sql = fs.readFileSync(new URL('../../../supabase/candidates.sql', import.meta.url), 'utf8');
+  assert.match(sql, /extra\s+jsonb\s+not null\s+default\s+'\{\}'/i);
+  assert.match(sql, /alter table public\.candidates\s+add column if not exists extra\s+jsonb/i);
 });
 
 test('countCandidates 返回数量', async () => {

@@ -40,10 +40,15 @@ create table if not exists public.candidates (
   summary           text,
   profile_text      text,
   resume_versions   jsonb not null default '[]',   -- 版本元数据（文本已在 resume_texts）
+  extra             jsonb not null default '{}',   -- 过渡期兼容尚未拆列的候选人字段
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
   deleted_at        timestamptz                     -- 软删除（墓碑）
 );
+
+-- 兼容已经执行过早期 Phase 2a SQL 的环境。
+alter table public.candidates
+  add column if not exists extra jsonb not null default '{}';
 
 drop trigger if exists trg_candidates_touch on public.candidates;
 create trigger trg_candidates_touch
