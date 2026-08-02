@@ -26,8 +26,8 @@
     createdAt: 'created_at', updatedAt: 'updated_at', deletedAt: 'deleted_at',
   });
 
-  function appError(code, cause) {
-    const error = new Error(code);
+  function appError(code, cause, message = code) {
+    const error = new Error(message);
     error.code = code;
     error.cause = cause;
     return error;
@@ -37,7 +37,9 @@
     const text = `${error?.code || ''} ${error?.message || ''}`;
     if (/unauthorized|\b401\b|jwt/i.test(text)) return appError('AUTH_REQUIRED', error);
     if (/forbidden|row.level.security|\b403\b|42501/i.test(text)) return appError('WRITE_FORBIDDEN', error);
-    return appError('BACKEND_REQUEST_FAILED', error);
+    const reason = String(error?.message || error?.details || error?.hint || '').trim();
+    const safeReason = reason && reason.length <= 240 ? reason : '云端数据库拒绝了本次写入';
+    return appError('BACKEND_REQUEST_FAILED', error, `BACKEND_REQUEST_FAILED: ${safeReason}`);
   }
 
   function createResumeVersionRepo({ supabase, getProfile }) {
