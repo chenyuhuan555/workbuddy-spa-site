@@ -38,14 +38,20 @@ create or replace function public.match_candidates(
 returns table(candidate_id text, candidate_name text, score real, reason text)
 language sql stable security invoker as $$
   select c.id, c.name,
-         similarity(coalesce(c.structured_profile::text, ''), coalesce(p.jd_text, '')),
+         similarity(
+           coalesce(c.profile_text, '') || ' ' || coalesce(c.extra->>'structuredProfile', ''),
+           coalesce(p.jd_text, '')
+         ),
          'Phase 4 基础文本匹配；向量索引启用后由同名 RPC 替换实现'
   from public.candidates c
   join public.positions p on p.id = position_id
   where c.workspace_id = 'main'
     and c.deleted_at is null
     and p.deleted_at is null
-  order by similarity(coalesce(c.structured_profile::text, ''), coalesce(p.jd_text, '')) desc, c.id
+  order by similarity(
+    coalesce(c.profile_text, '') || ' ' || coalesce(c.extra->>'structuredProfile', ''),
+    coalesce(p.jd_text, '')
+  ) desc, c.id
   limit greatest(1, least(result_limit, 100))
   offset greatest(result_offset, 0);
 $$;
