@@ -16,6 +16,7 @@ test('Phase 2c 版本同步具备双写、迁移和一致性校验入口', () =>
   assert.match(html, /markFailure/);
   assert.match(html, /逐条重试/);
   assert.match(html, /resumeVersionMigration\.error/);
+  assert.match(html, /runResumeVersionMigration\(\)[\s\S]*hydrateResumeVersionsFromCandidateCloud\(\)[\s\S]*syncResumeVersionsWithCloud/);
 });
 
 test('Phase 2c 不在迁移完成前切换候选人版本读取来源', () => {

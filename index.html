@@ -15464,6 +15464,27 @@ ${ocrText}`
       return rows;
     }
     let resumeVersionSyncPromise = null;
+    async function hydrateResumeVersionsFromCandidateCloud() {
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) return false;
+      const repo = getCandidateRepo();
+      if (typeof repo.listAllCandidates !== 'function') return false;
+      const cloudCandidates = await repo.listAllCandidates();
+      let changed = false;
+      cloudCandidates.forEach(cloud => {
+        if (!cloud?.id) return;
+        const local = workbenchV2.candidates.find(candidate => candidate.id === cloud.id);
+        if (!local) {
+          workbenchV2.candidates.push(cloud);
+          changed = true;
+          return;
+        }
+        const before = (local.resumeVersions || []).length;
+        repo.mergeCandidateInto(local, cloud);
+        if ((local.resumeVersions || []).length !== before) changed = true;
+      });
+      if (changed && !await saveWorkbenchV2()) throw new Error('简历版本迁移前的候选人快照保存失败');
+      return changed;
+    }
     async function syncResumeVersionsWithCloud({ forceAll = false, onProgress } = {}) {
       if (!window.WorkBuddyAccess?.canWrite) return { skipped: true, total: 0, synced: 0, failed: 0 };
       while (resumeVersionSyncPromise) await resumeVersionSyncPromise;
@@ -15523,6 +15544,7 @@ ${ocrText}`
       resumeVersionMigration.error = '';
       resumeVersionMigration.total = resumeVersionMigration.done = resumeVersionMigration.synced = resumeVersionMigration.failed = 0;
       try {
+        await hydrateResumeVersionsFromCandidateCloud();
         const result = await syncResumeVersionsWithCloud({ forceAll: true, onProgress: p => Object.assign(resumeVersionMigration, p) });
         if (result.skipped) throw new Error('简历版本云端迁移未执行，请确认云端连接和写入权限');
         Object.assign(resumeVersionMigration, result, { finished: true });
