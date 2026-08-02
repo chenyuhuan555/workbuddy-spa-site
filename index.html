@@ -23,6 +23,7 @@
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
+  <script src="./src/services/repo/resume-version-repo.js?v=20260802-resumeversion1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
@@ -7376,6 +7377,38 @@
             <div class="h-full bg-emerald-600 transition-all" :style="{ width: candidateMigration.total ? Math.round(candidateMigration.done / candidateMigration.total * 100) + '%' : '0%' }"></div>
           </div>
           <p class="mt-2 text-sm text-slate-600">{{ candidateMigration.done }} / {{ candidateMigration.total }} 已处理 · 成功 {{ candidateMigration.synced }} · 失败 {{ candidateMigration.failed }}</p>
+        </div>
+      </div>
+
+      <!-- Phase 2c：简历版本独立表双写（暂不切读） -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+        <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-slate-800">简历版本云端双写</h2>
+              <span v-if="resumeVersionMigration.finished" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">已完成</span>
+              <span v-else class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold">Phase 2c · 仅双写，不切读</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">将简历版本元数据写入 resume_versions 表；原文与排版文本继续由 resume_texts 保存，当前候选人读取仍保持兼容，不会改变现有页面数据来源。</p>
+          </div>
+          <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
+            <button type="button" @click="runResumeVersionMigration" :disabled="resumeVersionMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ resumeVersionMigration.running ? '迁移中…' : resumeVersionMigration.finished ? '重新迁移' : '开始迁移' }}</button>
+            <button type="button" @click="verifyResumeVersionParity" :disabled="resumeVersionParity.checking" class="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ resumeVersionParity.checking ? '校验中…' : '校验一致性' }}</button>
+          </div>
+        </div>
+        <div v-if="resumeVersionMigration.running || resumeVersionMigration.finished" class="px-5 pb-4">
+          <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full bg-emerald-600 transition-all" :style="{ width: resumeVersionMigration.total ? Math.round(resumeVersionMigration.done / resumeVersionMigration.total * 100) + '%' : '0%' }"></div>
+          </div>
+          <p class="mt-2 text-sm text-slate-600">{{ resumeVersionMigration.done }} / {{ resumeVersionMigration.total }} 已处理 · 成功 {{ resumeVersionMigration.synced }} · 失败 {{ resumeVersionMigration.failed }}</p>
+        </div>
+        <div v-if="resumeVersionParity.checked || resumeVersionParity.error" class="px-5 pb-4 text-sm">
+          <span v-if="resumeVersionParity.error" class="text-red-600">校验失败：{{ resumeVersionParity.error }}</span>
+          <template v-else>
+            <span class="text-slate-600">云端 {{ resumeVersionParity.cloudCount }} 个 · 本地 {{ resumeVersionParity.localCount }} 个</span>
+            <span class="ml-2" :class="resumeVersionParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ resumeVersionParity.ok ? '严格一致' : '存在差异' }}</span>
+            <span v-if="!resumeVersionParity.ok" class="ml-2 text-amber-700">缺失 {{ resumeVersionParity.missingInCloud.length }} · 多出 {{ resumeVersionParity.missingInLocal.length }} · 不一致 {{ resumeVersionParity.mismatched.length }}</span>
+          </template>
         </div>
       </div>
 
@@ -15140,6 +15173,7 @@ ${ocrText}`
         syncStatus.value = 'synced';
         syncError.value = '';
         void syncResumeTextsWithCloud(); // Phase 1 双写：文本同步到 resume_texts 表（不阻塞主同步）
+        void syncResumeVersionsWithCloud(); // Phase 2c 双写：版本元数据同步到 resume_versions 表
         if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
       } catch (error) {
         if (error?.code === 'WORKSPACE_VERSION_CONFLICT') {
@@ -15160,6 +15194,7 @@ ${ocrText}`
             syncStatus.value = 'synced';
             syncError.value = '';
             void syncResumeTextsWithCloud(); // Phase 1 双写
+            void syncResumeVersionsWithCloud(); // Phase 2c 双写
             if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
             if (stats.fromCloud) showToast(`已自动合并其他成员的 ${stats.fromCloud} 条更新`, 'info');
           } catch (retryError) {
@@ -15304,6 +15339,121 @@ ${ocrText}`
       } finally {
         resumeTextMigration.running = false;
       }
+    }
+
+    // -------- Phase 2c：简历版本独立存表（resume_versions，兼容双写） --------
+    let resumeVersionRepo = null;
+    function getResumeVersionRepo() {
+      if (!resumeVersionRepo) {
+        resumeVersionRepo = window.WorkBuddyResumeVersionRepo.createResumeVersionRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+        });
+      }
+      return resumeVersionRepo;
+    }
+    const RESUME_VERSION_FP_KEY = STORAGE_KEY + '_resume_version_fingerprints';
+    const RESUME_VERSION_LARGE_FIELDS = new Set(['rawText', 'formattedText', 'fileData', 'electronicResumeText', 'resumeText', 'bossImportedText']);
+    const RESUME_VERSION_VOLATILE_FIELDS = new Set(['candidateId', 'createdAt', 'updatedAt', 'deletedAt']);
+    function stableResumeVersionValue(value) {
+      if (Array.isArray(value)) return value.map(stableResumeVersionValue);
+      if (!value || typeof value !== 'object') return value;
+      return Object.keys(value).sort().reduce((out, key) => {
+        if (!RESUME_VERSION_LARGE_FIELDS.has(key) && !RESUME_VERSION_VOLATILE_FIELDS.has(key) && value[key] !== null && value[key] !== undefined && value[key] !== '') out[key] = stableResumeVersionValue(value[key]);
+        return out;
+      }, {});
+    }
+    function resumeVersionFingerprint(version) {
+      return resumeTextHash(JSON.stringify(stableResumeVersionValue(version || {})));
+    }
+    function readResumeVersionFingerprints() {
+      try { return JSON.parse(localStorage.getItem(RESUME_VERSION_FP_KEY) || '{}') || {}; } catch { return {}; }
+    }
+    function writeResumeVersionFingerprints(map) {
+      try { localStorage.setItem(RESUME_VERSION_FP_KEY, JSON.stringify(map)); } catch {}
+    }
+    function collectResumeVersionRows() {
+      const rows = [];
+      (workbenchV2.candidates || []).forEach(candidate => {
+        if (!candidate?.id) return;
+        (candidate.resumeVersions || []).forEach(version => {
+          if (!version?.id) return;
+          rows.push({ candidateId: candidate.id, version, fingerprint: resumeVersionFingerprint(version) });
+        });
+      });
+      return rows;
+    }
+    let resumeVersionSyncPromise = null;
+    async function syncResumeVersionsWithCloud({ forceAll = false, onProgress } = {}) {
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) return { skipped: true, total: 0, synced: 0, failed: 0 };
+      while (resumeVersionSyncPromise) await resumeVersionSyncPromise;
+      const run = (async () => {
+        const fingerprints = readResumeVersionFingerprints();
+        const rows = collectResumeVersionRows().filter(row => forceAll || fingerprints[row.version.id] !== row.fingerprint);
+        let synced = 0;
+        let failed = 0;
+        for (let i = 0; i < rows.length; i += 50) {
+          const batch = rows.slice(i, i + 50);
+          try {
+            await getResumeVersionRepo().upsertVersionRows(batch);
+            batch.forEach(row => { synced += 1; fingerprints[row.version.id] = row.fingerprint; });
+          } catch (error) {
+            failed += batch.length;
+            console.warn('简历版本云端同步失败：', error);
+          }
+          writeResumeVersionFingerprints(fingerprints);
+          if (typeof onProgress === 'function') onProgress({ total: rows.length, done: Math.min(i + batch.length, rows.length), synced, failed });
+        }
+        return { total: rows.length, synced, failed };
+      })();
+      resumeVersionSyncPromise = run;
+      try { return await run; } finally { if (resumeVersionSyncPromise === run) resumeVersionSyncPromise = null; }
+    }
+    function resumeVersionMigrationMeta() {
+      if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') workbenchV2.migrationMeta = {};
+      if (!workbenchV2.migrationMeta.resumeVersions || typeof workbenchV2.migrationMeta.resumeVersions !== 'object') workbenchV2.migrationMeta.resumeVersions = {};
+      return workbenchV2.migrationMeta.resumeVersions;
+    }
+    const resumeVersionMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
+    async function runResumeVersionMigration() {
+      if (resumeVersionMigration.running) return;
+      resumeVersionMigration.running = true;
+      resumeVersionMigration.finished = false;
+      resumeVersionMigration.total = resumeVersionMigration.done = resumeVersionMigration.synced = resumeVersionMigration.failed = 0;
+      try {
+        const result = await syncResumeVersionsWithCloud({ forceAll: true, onProgress: p => Object.assign(resumeVersionMigration, p) });
+        if (result.skipped) throw new Error('简历版本云端迁移未执行，请确认云端连接和写入权限');
+        Object.assign(resumeVersionMigration, result, { finished: true });
+        if (!result.failed) {
+          const meta = resumeVersionMigrationMeta();
+          meta.backfilledAt = new Date().toISOString();
+          meta.parityVerifiedAt = '';
+          if (!await saveWorkbenchV2()) throw new Error('简历版本迁移状态保存失败');
+          if (cloudReady) schedulePush();
+        }
+      } catch (error) { console.warn('简历版本云端迁移失败：', error); }
+      finally { resumeVersionMigration.running = false; }
+    }
+    const resumeVersionParity = reactive({ checking: false, checked: false, ok: false, cloudCount: 0, localCount: 0, missingInCloud: [], missingInLocal: [], mismatched: [], error: '' });
+    async function verifyResumeVersionParity() {
+      if (!cloudReady || resumeVersionParity.checking) return;
+      resumeVersionParity.checking = true;
+      resumeVersionParity.error = '';
+      try {
+        const local = collectResumeVersionRows();
+        const cloud = await getResumeVersionRepo().listAllVersions();
+        const localMap = new Map(local.map(row => [`${row.candidateId}:${row.version.id}`, row.fingerprint]));
+        const cloudMap = new Map(cloud.map(row => [`${row.candidateId}:${row.id}`, resumeVersionFingerprint(row)]));
+        const missingInCloud = [...localMap.keys()].filter(key => !cloudMap.has(key));
+        const missingInLocal = [...cloudMap.keys()].filter(key => !localMap.has(key));
+        const mismatched = [...localMap.keys()].filter(key => cloudMap.has(key) && localMap.get(key) !== cloudMap.get(key));
+        Object.assign(resumeVersionParity, { checked: true, cloudCount: cloudMap.size, localCount: localMap.size, missingInCloud, missingInLocal, mismatched, ok: !missingInCloud.length && !missingInLocal.length && !mismatched.length });
+        const meta = resumeVersionMigrationMeta();
+        meta.parityVerifiedAt = resumeVersionParity.ok && meta.backfilledAt ? new Date().toISOString() : '';
+        if (!await saveWorkbenchV2()) throw new Error('简历版本一致性校验状态保存失败');
+        if (cloudReady) schedulePush();
+      } catch (error) { resumeVersionParity.ok = false; resumeVersionParity.error = error?.message || '校验失败'; }
+      finally { resumeVersionParity.checking = false; }
     }
 
     // -------- Phase 2a：候选人独立存表（candidates） --------
@@ -15762,6 +15912,7 @@ ${ocrText}`
         cloudReady = true;
         // Phase 1 双写：登录/初始化后把本机文本差异同步到 resume_texts 表
         void syncResumeTextsWithCloud();
+        void syncResumeVersionsWithCloud(); // Phase 2c 双写：版本元数据同步到 resume_versions 表
         if (candidateReadPathEnabled.value) {
           try {
             await loadCandidatesFromCloudAsAuthority();
@@ -23755,6 +23906,7 @@ ${clipped}`
       textParseRaw, textParseStatus, textParseError, parseJobText,
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
+      resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, verifyResumeVersionParity,
       candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,

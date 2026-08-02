@@ -10,6 +10,7 @@
 - ☁️ **Supabase 云端同步** —— 业务数据整包上云，多设备实时一致
 - 🔄 **跨设备原件预览** —— 本机缺失时自动从 Supabase Storage 拉取原件（IndexedDB → Storage → 兼容回退）
 - 🗂️ **简历文本独立云表** —— `resume_texts` 分表存储，云端同步体积瘦身 90%+，并为全文检索打底
+- 🧾 **简历版本独立元数据表** —— `resume_versions` 双写版本状态与文件索引；原文/排版文本仍由 `resume_texts` 保存
 - 👤 **候选人独立云表** —— `candidates` 按人存储；严格一致性校验通过后可切换为候选人权威读取源
 - 👥 **多用户协作** —— `profiles` 角色体系（admin / editor / member），RLS 行级权限隔离
 - 🛠️ **一键迁移工具** —— 设置页「简历文本云端迁移」，指纹扫描批量回填历史文本
@@ -21,6 +22,7 @@
   - `workspace_state`：业务整包 JSON（乐观锁 RPC `save_workspace_state`）
   - `resume_texts`：简历文本独立表（Phase 1）
   - `candidates`：候选人业务字段和简历版本元数据（Phase 2a/2b）
+  - `resume_versions`：简历版本元数据独立表（Phase 2c，兼容双写，暂不切读）
   - `profiles` / `private_settings`：成员与私有配置
   - Storage bucket `workbuddy-files`：路径 `workspace/main/resumes/{candidateId}/{versionId}/{fileId}`
 - **AI 解析**：DeepSeek API（简历文本解析，Key 暂存前端，后续迁入 Edge Function）
@@ -37,10 +39,12 @@
 │       ├── repo/resume-text-repo.js      # resume_texts 表读写模块
 │       ├── repo/candidate-repo.js        # candidates 行级读写与分页
 │       ├── repo/candidate-read-path.js   # 严格校验和权威读路径策略
+│       ├── repo/resume-version-repo.js   # resume_versions 元数据读写与分页
 │       └── resume-file-sync.js           # 跨设备原件拉取
 ├── supabase/
 │   ├── resume-texts.sql       # resume_texts 建表 + RLS
-│   └── candidates.sql         # candidates 建表/兼容升级 + RLS + 索引
+│   ├── candidates.sql         # candidates 建表/兼容升级 + RLS + 索引
+│   └── resume-versions.sql    # resume_versions 建表/兼容升级 + RLS + 索引
 ├── scripts/build.js           # 构建脚本
 ├── .github/workflows/         # 部署流水线
 └── README.md
@@ -51,6 +55,13 @@
 1. 浏览器打开线上地址即可，**无需本地安装**（见下方部署）。
 2. 首次使用在设置页配置 **DeepSeek API Key**。
 3. **管理员（admin）** 登录后，设置页点击「简历文本云端迁移」执行一次性历史回填（失败可重复执行）。
+
+### Phase 2c 简历版本双写（SQL 可统一执行）
+
+1. 后续统一迁移时，在 [Supabase SQL Editor](https://supabase.com/dashboard/project/pskqpgzwifdozaxprpik/sql/new) 执行 `supabase/candidates.sql`、`supabase/resume-texts.sql` 和 `supabase/resume-versions.sql`。
+2. 应用设置页点击「开始迁移」完成简历版本元数据回填，再点击「校验一致性」。
+3. 当前代码只做版本元数据双写和严格对账，仍以 `workspace_state` / `candidates` 兼容读路径为准；未执行 SQL 或校验未通过时不会切换读取来源。
+4. `resume_versions` 不保存 `rawText`、`formattedText` 或 base64 原件；这些内容分别继续由 `resume_texts` 与 Storage/IndexedDB 负责。
 
 ### Phase 2b.2 候选人云端读取启用顺序
 
@@ -79,12 +90,13 @@
 | Phase 2a | candidates 独立表 + 双写 + 历史回填 | ✅ 代码完成 |
 | Phase 2b.1 | 候选人增量拉取与对账预览 | ✅ 代码完成 |
 | Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | 🟡 代码完成，待生产启用 |
-| Phase 2c | resume_versions 独立分表 | ⬜ 规划中 |
+| Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | 🟡 代码完成，待统一执行 SQL；暂不切读 |
 | Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | ⬜ 规划中 |
 | Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | ⬜ 规划中 |
 
 ## 更新日志
 
+- **2026-08-02**：完成 Phase 2c 简历版本元数据仓储、双写、迁移进度和一致性校验；SQL 可与后续阶段统一执行，当前不切换读路径
 - **2026-08-02**：完成 Phase 2b.2 候选人云端读取切换代码；新增完整字段保真、确定性分页、严格一致性闸门和失败回退
 - **2026-08-02**：读路径启用后，候选人行写入成为整包同步成功的前置条件，避免 workspace_state 显示成功但 candidates 写入失败
 - **2026-07-31**：接入 Supabase 云端后端（`workspace_state` 整包同步 + `resume_texts` 文本分表）
