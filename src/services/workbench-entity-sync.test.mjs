@@ -11,6 +11,7 @@ test('Phase 3 具备三类实体双写和迁移入口', () => {
   assert.match(html, /verifyWorkbenchEntityParity/);
   assert.match(html, /enableWorkbenchEntityCloudReadPath/);
   assert.match(html, /workbenchEntityReadPathEnabled/);
+  assert.match(html, /requireWorkbenchEntityRowsSynced/);
   assert.match(html, /workbenchEntityMigrationMeta/);
   assert.match(html, /companies\s*\/\s*positions\s*\/\s*applications/);
 });

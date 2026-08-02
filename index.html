@@ -15197,6 +15197,7 @@ ${ocrText}`
       syncStatus.value = 'syncing';
       try {
         if (candidateReadPathEnabled.value) await requireCandidateRowsSynced();
+        if (workbenchEntityReadPathEnabled.value) await requireWorkbenchEntityRowsSynced();
         const workspaceClient = getWorkspaceStateClient();
         const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: packWorkspaceState() });
         cloudWorkspaceVersion = saved.version;
@@ -15218,6 +15219,7 @@ ${ocrText}`
             const merged = mergeWorkspaceStates(localPacked, remote.data);
             const stats = merged._mergeStats || {};
             delete merged._mergeStats;
+            if (workbenchEntityReadPathEnabled.value) await requireWorkbenchEntityRowsSynced();
             const saved = await workspaceClient.saveWorkspace({ expectedVersion: cloudWorkspaceVersion, data: merged });
             cloudWorkspaceVersion = saved.version;
             markLocalPushed();
@@ -15556,6 +15558,12 @@ ${ocrText}`
       })();
       workbenchEntitySyncPromise = run;
       try { return await run; } finally { if (workbenchEntitySyncPromise === run) workbenchEntitySyncPromise = null; }
+    }
+    async function requireWorkbenchEntityRowsSynced() {
+      const result = await syncWorkbenchEntitiesWithCloud();
+      if (result.skipped) throw new Error('公司、岗位和推进记录云端行同步未执行');
+      if (result.failed) throw new Error(`公司、岗位和推进记录云端行同步失败（${result.failed} 条）`);
+      return result;
     }
     function workbenchEntityMigrationMeta() {
       if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') workbenchV2.migrationMeta = {};
