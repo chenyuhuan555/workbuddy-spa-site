@@ -43,7 +43,11 @@
   }
 
   function createResumeVersionRepo({ supabase, getProfile }) {
-    const optionalString = value => value == null || value === '' ? null : String(value);
+    function normalizeTimestamp(value) {
+      if (value == null || value === '') return null;
+      const date = value instanceof Date ? value : new Date(String(value));
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
     function requireReader() {
       const profile = typeof getProfile === 'function' ? getProfile() : null;
       if (!profile) throw appError('AUTH_REQUIRED');
@@ -81,18 +85,21 @@
         cloud_file_path: version.cloudFilePath != null ? String(version.cloudFilePath) : null,
         original_file_status: version.originalFileStatus != null ? String(version.originalFileStatus) : null,
         original_file_error: version.originalFileError != null ? String(version.originalFileError) : null,
-        original_file_synced_at: optionalString(version.originalFileSyncedAt),
-        uploaded_at: optionalString(version.uploadedAt),
+        original_file_synced_at: normalizeTimestamp(version.originalFileSyncedAt),
+        uploaded_at: normalizeTimestamp(version.uploadedAt),
         ai_stage: version.aiStage != null ? String(version.aiStage) : null,
         format_status: version.formatStatus != null ? String(version.formatStatus) : null,
         format_error_code: version.formatErrorCode != null ? String(version.formatErrorCode) : null,
         format_error: version.formatError != null ? String(version.formatError) : null,
-        formatted_at: optionalString(version.formattedAt),
+        formatted_at: normalizeTimestamp(version.formattedAt),
         extra: extraFields(version),
       };
-      if (version.createdAt != null) row.created_at = String(version.createdAt);
-      if (version.updatedAt != null) row.updated_at = String(version.updatedAt);
-      if (version.deletedAt != null) row.deleted_at = String(version.deletedAt);
+      const createdAt = normalizeTimestamp(version.createdAt);
+      const updatedAt = normalizeTimestamp(version.updatedAt);
+      const deletedAt = normalizeTimestamp(version.deletedAt);
+      if (createdAt) row.created_at = createdAt;
+      if (updatedAt) row.updated_at = updatedAt;
+      if (deletedAt) row.deleted_at = deletedAt;
       return row;
     }
 

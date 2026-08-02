@@ -64,6 +64,18 @@ test('upsertVersionRows 支持跨候选人批量写入且空时间归一为 null
   assert.equal(rows[1].formatted_at, null);
 });
 
+test('迁移无法解析的旧时间格式时省略时间字段，避免阻塞整批写入', async () => {
+  const sb = mockSupabase();
+  const repo = Repo.createResumeVersionRepo({ supabase: sb, getProfile: () => adminProfile });
+  await repo.upsertVersions('cand_legacy', [{
+    id: 'v_legacy', createdAt: '06-05 16:56', updatedAt: '06-05 16:56', uploadedAt: '2026-06-05T16:56:00+08:00',
+  }]);
+  const row = sb.calls.find(call => call.op === 'upsert').row[0];
+  assert.equal(row.created_at, undefined);
+  assert.equal(row.updated_at, undefined);
+  assert.equal(row.uploaded_at, '2026-06-05T08:56:00.000Z');
+});
+
 test('toModel 保留 extra 并恢复前端字段', async () => {
   const sb = mockSupabase({ data: [{
     id: 'resume_1', candidate_id: 'cand_1', file_name: 'a.pdf', file_id: 'file_1',
