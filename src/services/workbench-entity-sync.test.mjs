@@ -6,6 +6,7 @@ const html = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8
 
 test('Phase 3 具备三类实体双写和迁移入口', () => {
   assert.match(html, /src\/services\/repo\/workbench-entity-repo\.js\?v=/);
+  assert.match(html, /src\/services\/repo\/workbench-entity-merge\.js\?v=/);
   assert.match(html, /syncWorkbenchEntitiesWithCloud/);
   assert.match(html, /runWorkbenchEntityMigration/);
   assert.match(html, /verifyWorkbenchEntityParity/);
@@ -15,6 +16,9 @@ test('Phase 3 具备三类实体双写和迁移入口', () => {
   assert.match(html, /pullWorkbenchEntitiesFromCloud/);
   assert.match(html, /workbench_entity_pull_cursors/);
   assert.match(html, /workbenchEntityMigrationMeta/);
+  assert.match(html, /mergeEntityCollections/);
+  assert.match(html, /本地较新冲突/);
+  assert.match(html, /workbenchEntityPull\.conflicts/);
   assert.match(html, /companies\s*\/\s*positions\s*\/\s*applications/);
 });
 
