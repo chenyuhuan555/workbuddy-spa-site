@@ -15973,6 +15973,9 @@ ${ocrText}`
         candidatePull.failed = failed;
         candidatePull.pulled = pulled;
         candidatePull.lastCursor = readCandidatePullCursor();
+        if (added || updated) {
+          if (!await saveWorkbenchV2()) throw new Error('候选人云端增量合并后的本地快照保存失败');
+        }
       } catch (e) {
         if (!automatic) console.warn('候选人增量拉取失败：', e);
       } finally {

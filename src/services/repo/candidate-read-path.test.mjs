@@ -214,6 +214,7 @@ test('候选人增量拉取使用时间戳合并决策并显示冲突', () => {
   const source = INDEX_HTML.slice(start, end);
   assert.match(source, /buildCandidateMergeDecision/);
   assert.match(source, /candidatePull\.conflicts\.push/);
+  assert.match(source, /candidatePull\.lastCursor\s*=\s*readCandidatePullCursor\(\);[\s\S]*await saveWorkbenchV2\(\)/, '拉取增量后必须持久化合并结果');
   assert.match(INDEX_HTML, /候选人本地较新冲突/);
 });
 
