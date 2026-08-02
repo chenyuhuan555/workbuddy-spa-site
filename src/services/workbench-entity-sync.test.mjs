@@ -9,11 +9,13 @@ test('Phase 3 具备三类实体双写和迁移入口', () => {
   assert.match(html, /syncWorkbenchEntitiesWithCloud/);
   assert.match(html, /runWorkbenchEntityMigration/);
   assert.match(html, /verifyWorkbenchEntityParity/);
+  assert.match(html, /enableWorkbenchEntityCloudReadPath/);
+  assert.match(html, /workbenchEntityReadPathEnabled/);
   assert.match(html, /workbenchEntityMigrationMeta/);
   assert.match(html, /companies\s*\/\s*positions\s*\/\s*applications/);
 });
 
 test('Phase 3 双写不改变当前 workspace_state 读取来源', () => {
   assert.match(html, /Phase 3 · 仅双写，不切读/);
-  assert.doesNotMatch(html, /loadWorkbenchEntitiesFromCloudAsAuthority/);
+  assert.match(html, /if \(workbenchEntityReadPathEnabled\.value\)[\s\S]{0,500}loadWorkbenchEntitiesFromCloudAsAuthority/);
 });

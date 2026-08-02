@@ -42,3 +42,13 @@ test('只有回填完成且三类实体均严格一致时才允许启用读取',
   assert.equal(Path.canEnableReadPath({}, report), false);
   assert.equal(Path.canEnableReadPath({ backfilledAt: '2026-01-01' }, { ...report, ok: false }), false);
 });
+
+test('权威读取只采用云端活跃实体，并保留本地实体作为失败回退输入', () => {
+  const bundle = Path.buildAuthoritativeEntityBundle(
+    { companies: [{ id: 'co_old', name: '旧' }], positions: [], applications: [] },
+    { companies: [{ id: 'co_1', name: '新' }, { id: 'co_deleted', deletedAt: '2026-01-01' }], positions: [], applications: [] },
+  );
+  assert.deepEqual(bundle.companies.map(item => item.id), ['co_1']);
+  assert.equal(bundle.positions.length, 0);
+  assert.equal(bundle.applications.length, 0);
+});

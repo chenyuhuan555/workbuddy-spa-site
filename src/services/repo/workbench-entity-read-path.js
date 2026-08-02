@@ -62,5 +62,19 @@
     return Boolean(meta?.backfilledAt && meta?.parityVerifiedAt && report?.ok);
   }
 
-  return Object.freeze({ KINDS, fingerprintEntity, buildEntityParityReport, canEnableReadPath });
+  function clone(value) {
+    if (Array.isArray(value)) return value.map(clone);
+    if (!value || typeof value !== 'object') return value;
+    return Object.keys(value).reduce((out, key) => { out[key] = clone(value[key]); return out; }, {});
+  }
+
+  function buildAuthoritativeEntityBundle(localBundle = {}, cloudBundle = {}) {
+    const next = {};
+    KINDS.forEach(kind => {
+      next[kind] = (cloudBundle[kind] || []).filter(item => item?.id && !item.deletedAt).map(clone);
+    });
+    return next;
+  }
+
+  return Object.freeze({ KINDS, fingerprintEntity, buildEntityParityReport, canEnableReadPath, buildAuthoritativeEntityBundle });
 });

@@ -94,7 +94,7 @@
 | Phase 2b.1 | 候选人增量拉取与对账预览 | ✅ 代码完成 |
 | Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | 🟡 代码完成，待生产启用 |
 | Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | 🟡 代码完成，待统一执行 SQL；暂不切读 |
-| Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | 🟡 表、仓储、双写与严格对账完成，暂不切读路径 |
+| Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | 🟡 表、仓储、双写、严格对账与受闸门保护的读切换完成，默认不启用 |
 | Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | ⬜ 规划中 |
 
 ## 更新日志
@@ -103,6 +103,7 @@
 - **2026-08-02**：开始 Phase 3；完成公司、岗位、推进记录独立表 SQL/RLS 和通用行级仓储，页面仍保持现有 workspace_state 读取
 - **2026-08-02**：Phase 3 增加三类实体指纹双写、迁移进度卡片和串行同步，页面仍保持 workspace_state 读取
 - **2026-08-02**：Phase 3 增加三类实体严格一致性报告；只有迁移完成且对账通过才允许后续切换读取
+- **2026-08-02**：Phase 3 增加受迁移/对账闸门保护的云端权威读取与 workspace_state 回退
 - **2026-08-02**：完成 Phase 2b.2 候选人云端读取切换代码；新增完整字段保真、确定性分页、严格一致性闸门和失败回退
 - **2026-08-02**：读路径启用后，候选人行写入成为整包同步成功的前置条件，避免 workspace_state 显示成功但 candidates 写入失败
 - **2026-07-31**：接入 Supabase 云端后端（`workspace_state` 整包同步 + `resume_texts` 文本分表）

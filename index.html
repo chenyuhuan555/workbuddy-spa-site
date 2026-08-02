@@ -7428,12 +7428,15 @@
           <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
             <button type="button" @click="runWorkbenchEntityMigration" :disabled="workbenchEntityMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ workbenchEntityMigration.running ? '迁移中…' : workbenchEntityMigration.finished ? '重新迁移' : '开始迁移' }}</button>
             <button type="button" @click="verifyWorkbenchEntityParity" :disabled="workbenchEntityParity.checking" class="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ workbenchEntityParity.checking ? '校验中…' : '校验一致性' }}</button>
+            <button v-if="canWrite && !workbenchEntityReadPathEnabled" type="button" @click="enableWorkbenchEntityCloudReadPath" :disabled="!workbenchEntityReadPathCanEnable || workbenchEntityReadSwitch.running" class="px-4 py-2.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">{{ workbenchEntityReadSwitch.running ? '启用中…' : '启用云端读取' }}</button>
           </div>
         </div>
         <div v-if="workbenchEntityMigration.running || workbenchEntityMigration.finished" class="px-5 pb-4">
           <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-emerald-600 transition-all" :style="{ width: workbenchEntityMigration.total ? Math.round(workbenchEntityMigration.done / workbenchEntityMigration.total * 100) + '%' : '0%' }"></div></div>
           <p class="mt-2 text-sm text-slate-600">{{ workbenchEntityMigration.done }} / {{ workbenchEntityMigration.total }} 已处理 · 成功 {{ workbenchEntityMigration.synced }} · 失败 {{ workbenchEntityMigration.failed }}</p>
         </div>
+        <p v-if="workbenchEntityReadSwitch.error" role="alert" class="px-5 pb-3 text-sm text-red-600">{{ workbenchEntityReadSwitch.error }}</p>
+        <p v-else-if="workbenchEntityReadPathEnabled" class="px-5 pb-4 text-sm font-semibold text-emerald-700">公司、岗位和推进记录已从独立表读取，workspace_state 仍保留为过渡期回退。</p>
         <div v-if="workbenchEntityParity.checked || workbenchEntityParity.error" class="px-5 pb-4 text-sm">
           <span v-if="workbenchEntityParity.error" class="text-red-600">校验失败：{{ workbenchEntityParity.error }}</span>
           <template v-else><span class="text-slate-600">云端 {{ workbenchEntityParity.cloudCount }} 条 · 本地 {{ workbenchEntityParity.localCount }} 条</span><span class="ml-2" :class="workbenchEntityParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ workbenchEntityParity.ok ? '严格一致' : '存在差异' }}</span><span v-if="!workbenchEntityParity.ok" class="ml-2 text-amber-700">请查看各实体差异后再考虑切读</span></template>
@@ -15220,6 +15223,7 @@ ${ocrText}`
             markLocalPushed();
             await applyWorkspaceState(merged);
             if (candidateReadPathEnabled.value) await loadCandidatesFromCloudAsAuthority();
+            if (workbenchEntityReadPathEnabled.value) await loadWorkbenchEntitiesFromCloudAsAuthority();
             syncStatus.value = 'synced';
             syncError.value = '';
             void syncResumeTextsWithCloud(); // Phase 1 双写
@@ -15595,6 +15599,45 @@ ${ocrText}`
         workbenchEntityParity.ok = false;
         workbenchEntityParity.error = error?.message || '校验失败';
       } finally { workbenchEntityParity.checking = false; }
+    }
+    const workbenchEntityReadPathEnabled = computed(() => Boolean(workbenchV2.migrationMeta?.phase3Entities?.readEnabledAt));
+    const workbenchEntityReadPathCanEnable = computed(() => WorkbenchEntityReadPath.canEnableReadPath(workbenchEntityMigrationMeta(), workbenchEntityParity));
+    const workbenchEntityReadSwitch = reactive({ running: false, error: '' });
+    async function loadWorkbenchEntitiesFromCloudAsAuthority({ persist = true } = {}) {
+      const previous = Object.fromEntries(WorkbenchEntityReadPath.KINDS.map(kind => [kind, (workbenchV2[kind] || []).slice()]));
+      try {
+        const cloudBundle = {};
+        for (const kind of WorkbenchEntityReadPath.KINDS) cloudBundle[kind] = await getWorkbenchEntityRepo().listAll(kind);
+        const next = WorkbenchEntityReadPath.buildAuthoritativeEntityBundle(workbenchV2, cloudBundle);
+        WorkbenchEntityReadPath.KINDS.forEach(kind => workbenchV2[kind].splice(0, workbenchV2[kind].length, ...next[kind]));
+        if (persist && !await saveWorkbenchV2()) throw new Error('业务实体本地快照保存失败');
+        return next;
+      } catch (error) {
+        WorkbenchEntityReadPath.KINDS.forEach(kind => workbenchV2[kind].splice(0, workbenchV2[kind].length, ...previous[kind]));
+        console.warn('业务实体权威读取失败，已回退 workspace_state：', error);
+        throw error;
+      }
+    }
+    async function enableWorkbenchEntityCloudReadPath() {
+      if (workbenchEntityReadSwitch.running || workbenchEntityReadPathEnabled.value) return;
+      const meta = workbenchEntityMigrationMeta();
+      if (!WorkbenchEntityReadPath.canEnableReadPath(meta, workbenchEntityParity)) {
+        workbenchEntityReadSwitch.error = '请先完成 Phase 3 回填，并通过三类实体严格一致性校验';
+        return;
+      }
+      workbenchEntityReadSwitch.running = true;
+      workbenchEntityReadSwitch.error = '';
+      const previous = meta.readEnabledAt || '';
+      try {
+        meta.readEnabledAt = new Date().toISOString();
+        await loadWorkbenchEntitiesFromCloudAsAuthority({ persist: false });
+        if (!await saveWorkbenchV2()) throw new Error('业务实体云端读取开关保存失败');
+        schedulePush();
+        showToast('公司、岗位和推进记录云端读取已启用', 'success');
+      } catch (error) {
+        meta.readEnabledAt = previous;
+        workbenchEntityReadSwitch.error = error?.message || '启用失败，已保留 workspace_state 回退';
+      } finally { workbenchEntityReadSwitch.running = false; }
     }
 
     // -------- Phase 2a：候选人独立存表（candidates） --------
@@ -16066,8 +16109,16 @@ ${ocrText}`
         } else {
           void syncCandidatesWithCloud(); // Phase 2a 双写预览
         }
-        syncStatus.value = 'synced';
-        syncError.value = '';
+        let workbenchEntityReadError = '';
+        if (workbenchEntityReadPathEnabled.value) {
+          try {
+            await loadWorkbenchEntitiesFromCloudAsAuthority();
+          } catch (error) {
+            workbenchEntityReadError = '业务实体云端读取失败，已使用 workspace_state 回退';
+          }
+        }
+        syncStatus.value = workbenchEntityReadError ? 'error' : 'synced';
+        syncError.value = workbenchEntityReadError;
       } catch (e) {
         syncStatus.value = 'error';
         syncError.value = e?.code === 'WORKSPACE_VERSION_CONFLICT' ? '云端版本冲突，请刷新页面' : '云端连接失败，请稍后重试';
@@ -24050,6 +24101,7 @@ ${clipped}`
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
       resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, verifyResumeVersionParity,
       workbenchEntityMigration, runWorkbenchEntityMigration, workbenchEntityParity, verifyWorkbenchEntityParity,
+      workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       candidatePull, pullCandidatesFromCloud, candidateParity, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
