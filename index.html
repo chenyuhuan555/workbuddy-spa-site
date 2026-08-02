@@ -15702,19 +15702,22 @@ ${ocrText}`
       try {
         for (const kind of WORKBENCH_ENTITY_KINDS) {
           let cursor = cursors[kind] || null;
-          const page = await getWorkbenchEntityRepo().listSince(kind, cursor, 500);
-          for (const cloud of page) {
-            workbenchEntityPull.pulled += 1;
-            const items = workbenchV2[kind];
-            const merge = window.WorkBuddyWorkbenchEntityMerge.mergeEntityCollections(items, [cloud]);
-            items.splice(0, items.length, ...merge.items);
-            workbenchEntityPull.added += merge.added;
-            workbenchEntityPull.updated += merge.updated;
-            workbenchEntityPull.removed += merge.removed;
-            workbenchEntityPull.conflicts.push(...merge.conflicts.map(conflict => ({ kind, ...conflict })));
-            if (cloud.updatedAt && (!cursor || cloud.updatedAt > cursor)) cursor = cloud.updatedAt;
-          }
-          if (page.length) { cursors[kind] = cursor; writeWorkbenchEntityPullCursors(cursors); }
+          let page = [];
+          do {
+            page = await getWorkbenchEntityRepo().listSince(kind, cursor, 500);
+            for (const cloud of page) {
+              workbenchEntityPull.pulled += 1;
+              const items = workbenchV2[kind];
+              const merge = window.WorkBuddyWorkbenchEntityMerge.mergeEntityCollections(items, [cloud]);
+              items.splice(0, items.length, ...merge.items);
+              workbenchEntityPull.added += merge.added;
+              workbenchEntityPull.updated += merge.updated;
+              workbenchEntityPull.removed += merge.removed;
+              workbenchEntityPull.conflicts.push(...merge.conflicts.map(conflict => ({ kind, ...conflict })));
+              if (cloud.updatedAt && (!cursor || cloud.updatedAt > cursor)) cursor = cloud.updatedAt;
+            }
+            if (page.length) { cursors[kind] = cursor; writeWorkbenchEntityPullCursors(cursors); }
+          } while (page.length === 500);
         }
         if ((workbenchEntityPull.added + workbenchEntityPull.updated + workbenchEntityPull.removed) && !await saveWorkbenchV2()) throw new Error('实体增量合并后的本地快照保存失败');
         workbenchEntityPull.lastPulledAt = new Date().toISOString();
