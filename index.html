@@ -7439,6 +7439,7 @@
         </div>
         <p v-if="workbenchEntityReadSwitch.error" role="alert" class="px-5 pb-3 text-sm text-red-600">{{ workbenchEntityReadSwitch.error }}</p>
         <p v-else-if="workbenchEntityReadPathEnabled" class="px-5 pb-4 text-sm font-semibold text-emerald-700">公司、岗位和推进记录已从独立表读取，workspace_state 仍保留为过渡期回退。</p>
+        <p v-if="workbenchEntityReadPathEnabled" class="px-5 pb-1 text-xs text-slate-500">已启用每 30 秒一次的后台增量拉取{{ workbenchEntityPull.lastPulledAt ? ' · 上次检查 ' + formatBeijingDateTime(workbenchEntityPull.lastPulledAt) : '' }}</p>
         <p v-if="workbenchEntityPull.pulled" class="px-5 pb-4 text-sm text-slate-600">本次拉取 {{ workbenchEntityPull.pulled }} 条 · 新增 {{ workbenchEntityPull.added }} · 更新 {{ workbenchEntityPull.updated }} · 删除 {{ workbenchEntityPull.removed }}<span v-if="workbenchEntityPull.failed" class="text-red-600"> · 失败 {{ workbenchEntityPull.failed }}</span></p>
         <div v-if="workbenchEntityPull.conflicts.length" class="mx-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
           <p class="font-semibold">发现 {{ workbenchEntityPull.conflicts.length }} 条本地较新冲突，已保留本地版本。</p>
@@ -15591,8 +15592,21 @@ ${ocrText}`
     function writeWorkbenchEntityPullCursors(cursors) {
       try { localStorage.setItem(WORKBENCH_ENTITY_PULL_CURSOR_KEY, JSON.stringify(cursors)); } catch {}
     }
-    const workbenchEntityPull = reactive({ running: false, pulled: 0, added: 0, updated: 0, removed: 0, failed: 0, conflicts: [] });
-    async function pullWorkbenchEntitiesFromCloud() {
+    const workbenchEntityPull = reactive({ running: false, pulled: 0, added: 0, updated: 0, removed: 0, failed: 0, conflicts: [], lastPulledAt: '' });
+    let workbenchEntityPollTimer = null;
+    function stopWorkbenchEntityPolling() {
+      if (workbenchEntityPollTimer) window.clearInterval(workbenchEntityPollTimer);
+      workbenchEntityPollTimer = null;
+    }
+    function startWorkbenchEntityPolling() {
+      stopWorkbenchEntityPolling();
+      if (!workbenchEntityReadPathEnabled.value) return;
+      workbenchEntityPollTimer = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') return;
+        void pullWorkbenchEntitiesFromCloud({ automatic: true });
+      }, 30000);
+    }
+    async function pullWorkbenchEntitiesFromCloud({ automatic = false } = {}) {
       if (!cloudReady || !workbenchEntityReadPathEnabled.value || workbenchEntityPull.running) return;
       workbenchEntityPull.running = true;
       workbenchEntityPull.pulled = workbenchEntityPull.added = workbenchEntityPull.updated = workbenchEntityPull.removed = workbenchEntityPull.failed = 0;
@@ -15616,9 +15630,10 @@ ${ocrText}`
           if (page.length) { cursors[kind] = cursor; writeWorkbenchEntityPullCursors(cursors); }
         }
         if ((workbenchEntityPull.added + workbenchEntityPull.updated + workbenchEntityPull.removed) && !await saveWorkbenchV2()) throw new Error('实体增量合并后的本地快照保存失败');
+        workbenchEntityPull.lastPulledAt = new Date().toISOString();
       } catch (error) {
         workbenchEntityPull.failed += 1;
-        console.warn('公司、岗位和推进记录增量拉取失败：', error);
+        if (!automatic) console.warn('公司、岗位和推进记录增量拉取失败：', error);
       } finally { workbenchEntityPull.running = false; }
     }
     function workbenchEntityMigrationMeta() {
@@ -15697,6 +15712,7 @@ ${ocrText}`
         await loadWorkbenchEntitiesFromCloudAsAuthority({ persist: false });
         if (!await saveWorkbenchV2()) throw new Error('业务实体云端读取开关保存失败');
         schedulePush();
+        startWorkbenchEntityPolling();
         showToast('公司、岗位和推进记录云端读取已启用', 'success');
       } catch (error) {
         meta.readEnabledAt = previous;
@@ -16226,6 +16242,7 @@ ${ocrText}`
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
+      startWorkbenchEntityPolling();
       await reconcileMigratedPositionDescriptions();
       const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
@@ -16237,6 +16254,7 @@ ${ocrText}`
 
     onBeforeUnmount(() => {
       window.removeEventListener('scroll', updateActiveNavFromScroll);
+      stopWorkbenchEntityPolling();
       stopSaveStateSubscription();
       saveCoordinator.dispose();
     });
