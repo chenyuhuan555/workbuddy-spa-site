@@ -95,7 +95,7 @@
 | Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | 🟡 代码完成，待生产启用 |
 | Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | 🟡 代码完成，待统一执行 SQL；暂不切读 |
 | Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | 🟡 表、仓储、双写、严格对账、受闸门保护的读切换与增量冲突报告完成，默认不启用 |
-| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | ⬜ 规划中 |
+| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | 🟡 代码基础完成，待 SQL/Edge Function 启用 |
 
 ## 更新日志
 
@@ -108,6 +108,7 @@
 - **2026-08-02**：Phase 3 增加 30 秒后台增量轮询和可持久化离线写队列；断网时业务实体进入 localStorage 重试队列，恢复联网后按序回放
 - **2026-08-02**：Phase 2a candidates 双写接入同一离线队列，候选人记录断网时可持久化排队，恢复联网后按指纹增量回放
 - **2026-08-02**：Phase 2b candidates 读路径增加 30 秒后台增量拉取，并在轮询时自动回放候选人离线写队列
+- **2026-08-02**：完成代码基础收口：workspace_state UI-only 瘦身闸门、Phase 4 搜索/匹配 Repository 与 RPC 契约、AI Edge Function 网关骨架；默认保持回退，待 SQL 和函数部署
 - **2026-08-02**：完成 Phase 2b.2 候选人云端读取切换代码；新增完整字段保真、确定性分页、严格一致性闸门和失败回退
 - **2026-08-02**：读路径启用后，候选人行写入成为整包同步成功的前置条件，避免 workspace_state 显示成功但 candidates 写入失败
 - **2026-07-31**：接入 Supabase 云端后端（`workspace_state` 整包同步 + `resume_texts` 文本分表）

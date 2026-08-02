@@ -28,6 +28,10 @@
   <script src="./src/services/repo/workbench-entity-read-path.js?v=20260802-entityread1"></script>
   <script src="./src/services/repo/workbench-entity-merge.js?v=20260802-entitymerge1"></script>
   <script src="./src/services/repo/offline-sync-queue.js?v=20260802-offlinequeue1"></script>
+  <script src="./src/services/repo/resume-search-repo.js?v=20260802-searchrepo1"></script>
+  <script src="./src/services/repo/candidate-matching-repo.js?v=20260802-matchrepo1"></script>
+  <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
+  <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
@@ -16091,7 +16095,12 @@ ${ocrText}`
       const packed = packData({ stripLargeText: false, includeWorkbenchV2: true, includeKb: true });
       delete packed.kbApiKey;
       if (packed.workbenchV2) stripResumeTextsFromBundle(packed.workbenchV2);
-      return packed;
+      const meta = {
+        candidatesReadEnabledAt: workbenchV2.migrationMeta?.candidateCloud?.readEnabledAt || '',
+        resumeVersionsReadEnabledAt: workbenchV2.migrationMeta?.resumeVersions?.readEnabledAt || '',
+        entitiesReadEnabledAt: workbenchV2.migrationMeta?.phase3Entities?.readEnabledAt || '',
+      };
+      return window.WorkBuddyWorkspaceStateBoundary.prepare(packed, { uiOnly: window.WorkBuddyWorkspaceStateBoundary.canUseUiOnly(meta) });
     }
 
     function hasWorkspaceBusinessData(data) {
