@@ -77,6 +77,7 @@
   <script src="./src/ui/resume-reprocess-actions.js?v=20260803-resumereprocessactions1"></script>
   <script src="./src/ui/talent-intake-actions.js?v=20260803-talentintakeactions1"></script>
   <script src="./src/ui/candidate-profile-actions.js?v=20260803-candidateprofileactions1"></script>
+  <script src="./src/ui/candidate-pipeline-actions.js?v=20260803-candidatepipelineactions1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore2"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
@@ -16397,129 +16398,22 @@ ${ocrText}`
       return window.WorkBuddyPipeline.stageSlaStatus(resume);
     }
 
-    function requestCandidateStageChange(resume, toStage) {
-      if (!resume || !toStage) return;
-      ensureCandidatePipelineDefaults(resume);
-      if (resume.pipelineStage === toStage) return;
-      pipelineTransitionDialog.resume = resume;
-      pipelineTransitionDialog.fromStage = resume.pipelineStage || '';
-      pipelineTransitionDialog.toStage = toStage;
-      pipelineTransitionDialog.occurredAt = new Date().toISOString().slice(0, 10);
-      pipelineTransitionDialog.reasonCode = '';
-      pipelineTransitionDialog.reasonNote = '';
-      pipelineTransitionDialog.show = true;
-    }
+    const candidatePipelineActions = window.WorkBuddyCandidatePipelineActions.createCandidatePipelineActions({
+      dialog: pipelineTransitionDialog, modal, ensureDefaults: ensureCandidatePipelineDefaults,
+      pipeline: window.WorkBuddyPipeline, candidatePipelineLabel, touchEntity, localSave, schedulePush, cloudReady,
+      currentTime: currentTimeFullLabel, showToast,
+    });
+    function requestCandidateStageChange(resume, toStage) { return candidatePipelineActions.requestStageChange(resume, toStage); }
+    function closeCandidateStageTransition() { return candidatePipelineActions.closeStageChange(); }
+    function saveCandidateStageTransition() { return candidatePipelineActions.saveStageChange(); }
+    function saveCandidateBusinessMeta(resume) { return candidatePipelineActions.saveBusinessMeta(resume); }
+    function recordCandidateFollowup(resume, action = '') { return candidatePipelineActions.recordFollowup(resume, action); }
+    function saveCandidateFollowupMeta(resume) { return candidatePipelineActions.saveBusinessMeta(resume, '跟进信息已保存'); }
 
-    function closeCandidateStageTransition() {
-      pipelineTransitionDialog.show = false;
-      pipelineTransitionDialog.resume = null;
-      pipelineTransitionDialog.fromStage = '';
-      pipelineTransitionDialog.toStage = '';
-      pipelineTransitionDialog.occurredAt = '';
-      pipelineTransitionDialog.reasonCode = '';
-      pipelineTransitionDialog.reasonNote = '';
-    }
-
-    function saveCandidateStageTransition() {
-      const resume = pipelineTransitionDialog.resume;
-      if (!resume) return;
-      try {
-        const occurredAt = pipelineTransitionDialog.occurredAt
-          ? new Date(`${pipelineTransitionDialog.occurredAt}T12:00:00`).toISOString()
-          : new Date().toISOString();
-        window.WorkBuddyPipeline.appendStageEvent(resume, {
-          toStage: pipelineTransitionDialog.toStage,
-          occurredAt,
-          reasonCode: pipelineTransitionDialog.reasonCode,
-          reasonNote: pipelineTransitionDialog.reasonNote,
-          actor: modal.assigneeName || '本机顾问',
-        });
-        touchEntity(resume);
-        localSave();
-        if (cloudReady) schedulePush();
-        showToast(`已推进到${candidatePipelineLabel(resume.pipelineStage)}`);
-        closeCandidateStageTransition();
-      } catch (e) {
-        showToast(e.message || '阶段变更失败', 'error');
-      }
-    }
-
-    function saveCandidateBusinessMeta(resume) {
-      if (!resume) return;
-      ensureCandidatePipelineDefaults(resume);
-      touchEntity(resume);
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast('候选人业务数据已保存');
-    }
-
-    function recordCandidateFollowup(resume, action = '') {
-      if (!resume) return;
-      ensureCandidatePipelineDefaults(resume);
-      const content = String(action || resume.followupDraft || '').trim();
-      if (!content && !resume.pipelineStage && !resume.nextFollowupAt) return;
-      resume.followups.unshift({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        stage: resume.pipelineStage || '',
-        note: content || `阶段更新为 ${candidatePipelineLabel(resume.pipelineStage)}`,
-        nextFollowupAt: resume.nextFollowupAt || '',
-        createdAt: currentTimeFullLabel(),
-      });
-      resume.lastFollowupAt = currentTimeFullLabel();
-      resume.followupDraft = '';
-      touchEntity(resume);
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast('跟进记录已保存');
-    }
-
-    function saveCandidateFollowupMeta(resume) {
-      if (!resume) return;
-      ensureCandidatePipelineDefaults(resume);
-      touchEntity(resume);
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast('跟进信息已保存');
-    }
-
-    function startEditCandidateFollowup(resume, followup) {
-      if (!resume || !followup) return;
-      resume.editingFollowupId = followup.id;
-      resume.followupEditDraft = followup.note || '';
-      resume.followupEditDate = followup.nextFollowupAt || '';
-    }
-
-    function cancelCandidateFollowupEdit(resume) {
-      if (!resume) return;
-      resume.editingFollowupId = '';
-      resume.followupEditDraft = '';
-      resume.followupEditDate = '';
-    }
-
-    function saveCandidateFollowupEdit(resume, followup) {
-      if (!resume || !followup) return;
-      ensureCandidatePipelineDefaults(resume);
-      const content = String(resume.followupEditDraft || '').trim();
-      followup.note = content || followup.note || `阶段更新为 ${candidatePipelineLabel(followup.stage)}`;
-      followup.nextFollowupAt = resume.followupEditDate || '';
-      followup.updatedAt = currentTimeFullLabel();
-      cancelCandidateFollowupEdit(resume);
-      touchEntity(resume);
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast('跟进记录已更新');
-    }
-
-    function deleteCandidateFollowup(resume, followupId) {
-      if (!resume || !Array.isArray(resume.followups)) return;
-      resume.followups = resume.followups.filter(fu => fu.id !== followupId);
-      resume.lastFollowupAt = resume.followups[0]?.createdAt || '';
-      if (resume.editingFollowupId === followupId) cancelCandidateFollowupEdit(resume);
-      touchEntity(resume);
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast('跟进记录已删除');
-    }
+    function startEditCandidateFollowup(resume, followup) { return candidatePipelineActions.startFollowupEdit(resume, followup); }
+    function cancelCandidateFollowupEdit(resume) { return candidatePipelineActions.cancelFollowupEdit(resume); }
+    function saveCandidateFollowupEdit(resume, followup) { return candidatePipelineActions.saveFollowupEdit(resume, followup); }
+    function deleteCandidateFollowup(resume, followupId) { return candidatePipelineActions.deleteFollowup(resume, followupId); }
 
     function updateCandidatePipelineStage(resume, toStage = resume?.pipelineStage) {
       requestCandidateStageChange(resume, toStage);
