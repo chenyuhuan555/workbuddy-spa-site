@@ -66,6 +66,7 @@
   <script src="./src/ui/resume-duplicate-text.js?v=20260803-resumeduplicatetext1"></script>
   <script src="./src/ui/trajectory-date-utils.js?v=20260803-trajectorydate1"></script>
   <script src="./src/ui/candidate-network-display.js?v=20260803-candidatenetwork1"></script>
+  <script src="./src/ui/duplicate-matching-helpers.js?v=20260803-duplicatematching1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -21469,33 +21470,9 @@ ${String(resumeText || '').slice(0, 9000)}`
 
     function uniqueList(items, limit = 30) { return window.WorkBuddyUniqueList.uniqueList(items, limit); }
 
-    function normalizeDuplicateText(text) {
-      return String(text || '')
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .replace(/[^\u4e00-\u9fa5a-z0-9+#.]/g, '')
-        .slice(0, 12000);
-    }
-
-    function makeTextShingles(text, size = 4, limit = 900) {
-      const clean = normalizeDuplicateText(text);
-      const set = new Set();
-      if (clean.length < size) return set;
-      const step = clean.length > 4000 ? 2 : 1;
-      for (let i = 0; i <= clean.length - size && set.size < limit; i += step) {
-        set.add(clean.slice(i, i + size));
-      }
-      return set;
-    }
-
-    function setOverlapRatio(a, b) {
-      if (!a || !b || a.size === 0 || b.size === 0) return 0;
-      let overlap = 0;
-      const small = a.size <= b.size ? a : b;
-      const large = a.size <= b.size ? b : a;
-      small.forEach(v => { if (large.has(v)) overlap++; });
-      return overlap / Math.max(small.size, 1);
-    }
+    function normalizeDuplicateText(text) { return window.WorkBuddyDuplicateMatchingHelpers.normalizeDuplicateText(text); }
+    function makeTextShingles(text, size = 4, limit = 900) { return window.WorkBuddyDuplicateMatchingHelpers.makeTextShingles(text, size, limit); }
+    function setOverlapRatio(a, b) { return window.WorkBuddyDuplicateMatchingHelpers.setOverlapRatio(a, b); }
 
     function extractWorkCompanies(text) {
       const raw = String(text || '');
@@ -21529,66 +21506,9 @@ ${String(resumeText || '').slice(0, 9000)}`
       };
     }
 
-    function intersectValues(a, b) {
-      const bs = new Set((b || []).map(v => String(v).toLowerCase()));
-      return (a || []).filter(v => bs.has(String(v).toLowerCase()));
-    }
-
-    function compareDuplicateSignatures(target, other) {
-      const reasons = [];
-      const surnameConflict = target.surname && other.surname && target.surname !== other.surname;
-      const genderConflict = target.gender && other.gender && target.gender !== other.gender;
-      if (surnameConflict || genderConflict) return null;
-      if (target.surname && other.surname) reasons.push(`姓氏相同：${target.surname}`);
-      if (target.gender && other.gender) reasons.push(`性别相同：${target.gender}`);
-
-      if (target.dataKey && other.dataKey && target.dataKey === other.dataKey) {
-        return { score: 99, reasons: [...reasons, '原始简历文件内容一致'] };
-      }
-
-      const nameSame = target.normalizedName && other.normalizedName && target.normalizedName === other.normalizedName;
-      if (nameSame) reasons.push('文件名高度一致');
-
-      const textRatio = setOverlapRatio(target.textShingles, other.textShingles);
-      if (textRatio >= 0.92) reasons.push(`简历正文高度一致：${Math.round(textRatio * 100)}%`);
-
-      const companyOverlap = intersectValues(target.companies, other.companies);
-      if (companyOverlap.length) reasons.push(`工作公司重合：${companyOverlap.slice(0, 3).join('、')}`);
-
-      const tokenOverlap = intersectValues(target.tokens, other.tokens);
-      const tokenBase = Math.min(target.tokens.length, other.tokens.length) || 1;
-      const tokenRatio = tokenOverlap.length / tokenBase;
-      if (tokenRatio >= 0.55 && tokenOverlap.length >= 8) {
-        reasons.push(`经历关键词高度重合：${tokenOverlap.slice(0, 6).join('、')}`);
-      }
-
-      let score = 0;
-      if (textRatio >= 0.98) score = 99;
-      else if (textRatio >= 0.95) score = 98;
-      else if (textRatio >= 0.92) score = 96;
-      else if (nameSame && target.normalizedName.length >= 4) score = 95;
-      else if (nameSame && companyOverlap.length >= 1 && tokenRatio >= 0.5) score = 96;
-      else if (companyOverlap.length >= 2 && tokenRatio >= 0.72) score = 96;
-      else if (companyOverlap.length >= 1 && tokenRatio >= 0.82) score = 95;
-      else if (nameSame && tokenRatio >= 0.75) score = 95;
-      if (score < 95) return null;
-      if (reasons.length === 0) reasons.push('简历内容高度一致');
-      return { score, reasons };
-    }
-
-    function serializeDuplicateMatch(item) {
-      return {
-        resumeId: item.resume?.id || '',
-        resumeName: item.resume?.name || '',
-        jobId: item.job?.id || '',
-        company: item.job?.company || '',
-        posId: item.pos?.id || '',
-        position: item.pos?.name || '',
-        colName: item.col?.name || '',
-        score: item.score,
-        reasons: item.reasons || [],
-      };
-    }
+    function intersectValues(a, b) { return window.WorkBuddyDuplicateMatchingHelpers.intersectValues(a, b); }
+    function compareDuplicateSignatures(target, other) { return window.WorkBuddyDuplicateMatchingHelpers.compareDuplicateSignatures(target, other); }
+    function serializeDuplicateMatch(item) { return window.WorkBuddyDuplicateMatchingHelpers.serializeDuplicateMatch(item); }
 
     function computeDuplicateMatchesForResume(resume, placements) {
       if (!resume) return { signature: null, matches: [] };
