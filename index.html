@@ -43,6 +43,7 @@
   <script src="./src/ui/markdown-safety.js?v=20260803-markdownsafety1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
+  <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
     [v-cloak] { display: none; }
@@ -11125,10 +11126,7 @@ const vueAppConfig = {
         void enqueueResumeAiProcessing(candidateId, versionId).catch(() => {});
       });
     }
-    function resumeAiStageLabel(stage) {
-      return ({ source: '原始文件提取', basic: '基础信息提取', profile: '候选人画像提取', format: '电子简历排版' })[stage]
-        || '简历 AI 处理';
-    }
+    function resumeAiStageLabel(stage) { return window.WorkBuddyResumeStatusLabels.resumeAiStageLabel(stage); }
     async function runCandidateResumeReprocess({ refreshRawText }) {
       if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       const candidate = selectedCandidate.value;
@@ -11157,14 +11155,7 @@ const vueAppConfig = {
     async function reprocessCandidateResumeVersion() {
       return reextractCandidateResumeFromOriginal();
     }
-    function resumeOriginalStatusLabel(version) {
-      if (!version) return '暂无原始文件';
-      if (version.originalFileStatus === 'syncing') return '原件正在同步到私有云端';
-      if (version.originalFileStatus === 'synced') return '原件已同步，可跨设备查看';
-      if (version.originalFileStatus === 'sync-failed') return version.originalFileError || '原件仅在已缓存设备可用，云端同步失败';
-      if (version.originalFileStatus === 'missing') return '原件缺失，可重新上传且不会影响业务记录';
-      return '原件仅在已缓存设备可用';
-    }
+    function resumeOriginalStatusLabel(version) { return window.WorkBuddyResumeStatusLabels.resumeOriginalStatusLabel(version); }
     async function retryCandidateResumeFileSync() {
       if (!requireTalentWritePermission()) return;
       const candidate = selectedCandidate.value;
