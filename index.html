@@ -68,6 +68,7 @@
   <script src="./src/ui/candidate-network-display.js?v=20260803-candidatenetwork1"></script>
   <script src="./src/ui/duplicate-matching-helpers.js?v=20260803-duplicatematching1"></script>
   <script src="./src/ui/candidate-resume-versions.js?v=20260803-candidateresumeversions1"></script>
+  <script src="./src/ui/resume-ai-task-list.js?v=20260803-resumeaitasklist1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -10999,17 +11000,7 @@ const vueAppConfig = {
       void run.finally(() => clearResumeAiPending(pendingKey)).catch(() => {});
       return run;
     }
-    function listResumeAiBatchTasks() {
-      return (workbenchV2.candidates || []).flatMap(candidate => (candidate.resumeVersions || [])
-        .filter(version => version && !version.deletedAt)
-        .map(version => ({
-          candidateId: candidate.id,
-          versionId: version.id,
-          fileName: version.fileName || version.file_name || '未命名简历',
-          formatStatus: version.formatStatus || 'queued',
-          formattedText: version.formattedText || '',
-        })));
-    }
+    function listResumeAiBatchTasks() { return window.WorkBuddyResumeAiTaskList.listResumeAiBatchTasks(workbenchV2.candidates); }
     function openResumeAiBatch() {
       if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       resumeAiBatch.open = true;
