@@ -15488,6 +15488,42 @@ ${ocrText}`
     const resumeVersionOfflineQueue = window.WorkBuddyOfflineSyncQueue.createOfflineSyncQueue({ key: RESUME_VERSION_OFFLINE_QUEUE_KEY });
     const RESUME_VERSION_LARGE_FIELDS = new Set(['rawText', 'formattedText', 'fileData', 'electronicResumeText', 'resumeText', 'bossImportedText']);
     const RESUME_VERSION_VOLATILE_FIELDS = new Set(['candidateId', 'createdAt', 'updatedAt', 'deletedAt']);
+    const RESUME_VERSION_TIMESTAMP_FIELDS = new Set(['uploadedAt', 'originalFileSyncedAt', 'formattedAt']);
+    const RESUME_VERSION_NUMBER_FIELDS = new Set(['fileSize']);
+    const RESUME_VERSION_STRING_FIELDS = new Set(['sourceResumeId', 'fileId', 'fileType', 'fileHash', 'cloudFilePath', 'originalFileStatus', 'originalFileError', 'aiStage', 'formatStatus', 'formatErrorCode', 'formatError']);
+    function normalizeResumeVersionForFingerprint(version = {}) {
+      const normalized = { ...(version && typeof version === 'object' ? version : {}) };
+      RESUME_VERSION_TIMESTAMP_FIELDS.forEach(field => {
+        const value = normalized[field];
+        if (value === null || value === undefined || value === '') {
+          delete normalized[field];
+          return;
+        }
+        const parsed = new Date(String(value).trim());
+        if (!Number.isFinite(parsed.getTime())) delete normalized[field];
+        else normalized[field] = parsed.toISOString();
+      });
+      RESUME_VERSION_NUMBER_FIELDS.forEach(field => {
+        const value = normalized[field];
+        if (value === null || value === undefined || value === '') {
+          delete normalized[field];
+          return;
+        }
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) delete normalized[field];
+        else normalized[field] = parsed;
+      });
+      RESUME_VERSION_STRING_FIELDS.forEach(field => {
+        const value = normalized[field];
+        if (value === null || value === undefined || value === '') {
+          delete normalized[field];
+          return;
+        }
+        normalized[field] = String(value);
+      });
+      if (normalized.extra && typeof normalized.extra === 'object' && !Object.keys(normalized.extra).length) delete normalized.extra;
+      return normalized;
+    }
     function stableResumeVersionValue(value) {
       if (Array.isArray(value)) return value.map(stableResumeVersionValue);
       if (!value || typeof value !== 'object') return value;
@@ -15497,7 +15533,7 @@ ${ocrText}`
       }, {});
     }
     function resumeVersionFingerprint(version) {
-      return resumeTextHash(JSON.stringify(stableResumeVersionValue(version || {})));
+      return resumeTextHash(JSON.stringify(stableResumeVersionValue(normalizeResumeVersionForFingerprint(version || {}))));
     }
     function readResumeVersionFingerprints() {
       try { return JSON.parse(localStorage.getItem(RESUME_VERSION_FP_KEY) || '{}') || {}; } catch { return {}; }

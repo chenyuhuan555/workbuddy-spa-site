@@ -27,3 +27,11 @@ test('Phase 2c 不在迁移完成前切换候选人版本读取来源', () => {
   assert.match(html, /仅双写，不切读/);
   assert.doesNotMatch(html, /loadResumeVersionsFromCloudAsAuthority/);
 });
+
+test('版本一致性指纹会规范化云端映射产生的类型和时间格式', () => {
+  assert.match(html, /normalizeResumeVersionForFingerprint/);
+  assert.match(html, /RESUME_VERSION_TIMESTAMP_FIELDS/);
+  assert.match(html, /RESUME_VERSION_NUMBER_FIELDS/);
+  assert.match(html, /parsed\.toISOString\(\)/);
+  assert.match(html, /const parsed = Number\(value\)/);
+});
