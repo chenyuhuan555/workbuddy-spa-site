@@ -73,6 +73,7 @@
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
+  <script src="./src/ui/resume-original-metadata.js?v=20260803-resumeoriginalmetadata1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11148,17 +11149,13 @@ const vueAppConfig = {
           fileSize: file.size,
           fileHash,
         });
-        Object.assign(version, {
+        Object.assign(version, window.WorkBuddyResumeOriginalMetadata.buildResumeOriginalMetadata({
           fileId,
           fileName: file.name,
           fileType: file.type || '',
           fileSize: file.size,
           fileHash,
-          cloudFilePath: '',
-          originalFileStatus: 'local-only',
-          originalFileError: '',
-          originalFileSyncedAt: '',
-        });
+        }));
         candidate.updatedAt = new Date().toISOString();
         await saveResumeBackgroundState();
         if (cloudReady) schedulePush();
