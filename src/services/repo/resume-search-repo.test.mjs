@@ -22,3 +22,11 @@ test('简历搜索未启用时返回明确错误码', async () => {
   const repo = createResumeSearchRepo({ supabase: mockSupabase({ data: null, error: { code: '42883', message: 'function does not exist' } }), getProfile: () => ({ status: 'active' }) });
   await assert.rejects(() => repo.search({ query: 'Java' }), error => error.code === 'SEARCH_UNAVAILABLE');
 });
+
+test('空关键词不调用云端 RPC', async () => {
+  const supabase = mockSupabase();
+  const repo = createResumeSearchRepo({ supabase, getProfile: () => ({ status: 'active' }) });
+  const result = await repo.search({ query: '   ', limit: 50, offset: 100 });
+  assert.deepEqual(result, { rows: [], total: 0, query: '' });
+  assert.deepEqual(supabase.calls, []);
+});

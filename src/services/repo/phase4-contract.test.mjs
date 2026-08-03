@@ -11,4 +11,10 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(sql, /create or replace function public\.search_resumes/);
   assert.match(sql, /create or replace function public\.match_candidates/);
   assert.match(sql, /pg_trgm/);
+  assert.match(indexHtml, /WorkBuddyResumeSearchRepo/);
+  assert.match(indexHtml, /talentCloudSearch/);
+  assert.match(indexHtml, /云端全文搜索/);
+  assert.match(indexHtml, /runTalentCloudSearch/);
+  assert.match(indexHtml, /changeTalentCloudSearchPage/);
+  assert.match(indexHtml, /已保留本地人才列表/);
 });
