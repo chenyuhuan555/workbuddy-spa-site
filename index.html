@@ -53,6 +53,7 @@
   <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
   <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
   <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
+  <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -11180,7 +11181,7 @@ const vueAppConfig = {
     });
     const selectedApplicationCandidate = computed(() => workbenchV2.candidates.find(c => c.id === selectedApplication.value?.candidateId) || null);
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));
-    const candidateDirections = computed(() => Array.from(new Set(workbenchV2.candidates.flatMap(item => item.directions || []).filter(Boolean))));
+    const candidateDirections = computed(() => WorkBuddyCandidateDirections.collectDirections(workbenchV2.candidates));
     const filteredApplications = computed(() => WorkbenchV2.filterApplications(workbenchV2.applications, applicationFilters));
     const pagedApplications = computed(() => paginate(filteredApplications.value, applicationPage.value, PAGE_SIZE));
     const pagedApplicationStageGroups = computed(() => applicationStageGroups.map(group => ({
