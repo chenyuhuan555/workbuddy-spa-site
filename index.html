@@ -89,6 +89,7 @@
   <script src="./src/ui/workbench-search-actions.js?v=20260803-workbenchsearchactions1"></script>
   <script src="./src/ui/workbench-application-actions.js?v=20260803-workbenchapplicationactions1"></script>
   <script src="./src/ui/todo-actions.js?v=20260803-todoactions1"></script>
+  <script src="./src/ui/member-actions.js?v=20260803-memberactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -10210,6 +10211,18 @@ const vueAppConfig = {
       members: [], loading: false, error: '',
       form: { username: '', displayName: '', role: 'member', password: '' }
     });
+    const memberActions = window.WorkBuddyMemberActions.createMemberActions({
+      state: memberManagement,
+      canManageMembers,
+      invoke: async body => {
+        const { data, error } = await window.WorkBuddySupabase.functions.invoke('manage-member', { body });
+        if (error || data?.error) throw new Error('成员操作失败，请稍后重试');
+        return data;
+      },
+      showToast,
+      confirmAction: message => confirm(message),
+      promptAction: message => prompt(message),
+    });
     const workbenchRoute = reactive({ type: 'list', id: '', parentId: '', tab: 'overview' });
     const globalCreateMenu = ref(false);
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
@@ -11231,79 +11244,12 @@ const vueAppConfig = {
       workbenchMode.value = 'legacy';
       localStorage.setItem(STORAGE_KEY + '_workspace_mode', 'legacy');
     }
-    async function invokeMemberAction(body) {
-      if (!canManageMembers) throw new Error('仅管理员可管理成员');
-      const { data, error } = await window.WorkBuddySupabase.functions.invoke('manage-member', { body });
-      if (error || data?.error) throw new Error('成员操作失败，请稍后重试');
-      return data;
-    }
-    async function loadMembers() {
-      if (!canManageMembers) return;
-      memberManagement.loading = true;
-      memberManagement.error = '';
-      try {
-        const data = await invokeMemberAction({ action: 'list' });
-        memberManagement.members = Array.isArray(data.members) ? data.members : [];
-      } catch (error) {
-        memberManagement.error = error.message;
-      } finally {
-        memberManagement.loading = false;
-      }
-    }
-    async function createMember() {
-      memberManagement.loading = true;
-      memberManagement.error = '';
-      try {
-        await invokeMemberAction({ action: 'create', ...memberManagement.form });
-        memberManagement.form = { username: '', displayName: '', role: 'member', password: '' };
-        await loadMembers();
-        showToast('普通成员创建成功', 'success');
-      } catch (error) {
-        memberManagement.error = error.message;
-        memberManagement.loading = false;
-      }
-    }
-    async function setMemberStatus(member, enabled) {
-      if (!confirm(`确认${enabled ? '启用' : '停用'}成员“${member.display_name}”？`)) return;
-      memberManagement.loading = true;
-      memberManagement.error = '';
-      try {
-        await invokeMemberAction({ action: enabled ? 'enable' : 'disable', userId: member.id });
-        await loadMembers();
-        showToast(enabled ? '成员已启用' : '成员已停用', 'success');
-      } catch (error) {
-        memberManagement.error = error.message;
-        memberManagement.loading = false;
-      }
-    }
-    async function deleteMember(member) {
-      if (!confirm(`确认永久删除已停用成员“${member.display_name}”？该账号将无法恢复。`)) return;
-      memberManagement.loading = true;
-      memberManagement.error = '';
-      try {
-        await invokeMemberAction({ action: 'delete', userId: member.id });
-        await loadMembers();
-        showToast('成员账号已删除', 'success');
-      } catch (error) {
-        memberManagement.error = error.message;
-        memberManagement.loading = false;
-      }
-    }
-    async function resetMemberPassword(member) {
-      const password = prompt(`为“${member.display_name}”设置至少 8 位临时密码：`);
-      if (password === null) return;
-      if (password.length < 8) { memberManagement.error = '临时密码至少需要 8 位'; return; }
-      memberManagement.loading = true;
-      memberManagement.error = '';
-      try {
-        await invokeMemberAction({ action: 'reset-password', userId: member.id, password });
-        await loadMembers();
-        showToast('临时密码已重置', 'success');
-      } catch (error) {
-        memberManagement.error = error.message;
-        memberManagement.loading = false;
-      }
-    }
+    const invokeMemberAction = body => memberActions.invokeMemberAction(body);
+    const loadMembers = () => memberActions.loadMembers();
+    const createMember = () => memberActions.createMember();
+    const setMemberStatus = (member, enabled) => memberActions.setMemberStatus(member, enabled);
+    const deleteMember = member => memberActions.deleteMember(member);
+    const resetMemberPassword = member => memberActions.resetMemberPassword(member);
     function selectWorkbenchNav(key) {
       if (key === 'settings' && !canConfigureAi) return;
       workbenchNav.value = key;
