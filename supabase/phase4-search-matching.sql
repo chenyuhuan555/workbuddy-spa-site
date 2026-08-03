@@ -2,6 +2,10 @@
 -- Run only after reviewing table/RLS state and enabling pg_trgm.
 create extension if not exists pg_trgm;
 
+-- PostgreSQL 不允许 create or replace 修改已有函数的 OUT 参数返回行类型。
+-- 显式按完整参数签名删除旧 RPC，确保后续重复执行脚本可升级返回结构。
+drop function if exists public.search_resumes(text, integer, integer);
+
 create or replace function public.search_resumes(
   search_query text,
   result_limit integer default 50,
@@ -36,6 +40,8 @@ language sql stable security invoker as $$
   limit greatest(1, least(result_limit, 100))
   offset greatest(result_offset, 0);
 $$;
+
+drop function if exists public.match_candidates(text, integer, integer);
 
 create or replace function public.match_candidates(
   position_id text,

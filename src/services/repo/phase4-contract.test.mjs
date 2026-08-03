@@ -9,10 +9,12 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(indexHtml, /resume-search-repo\.js\?v=/);
   assert.match(indexHtml, /candidate-matching-repo\.js\?v=/);
   assert.match(sql, /create or replace function public\.search_resumes/);
+  assert.match(sql, /drop function if exists public\.search_resumes\(text, integer, integer\)/);
   assert.match(sql, /total_count bigint/);
   assert.match(sql, /count\(\*\) over/);
   assert.match(sql, /position\(lower\(search_query\)/);
   assert.match(sql, /create or replace function public\.match_candidates/);
+  assert.match(sql, /drop function if exists public\.match_candidates\(text, integer, integer\)/);
   assert.match(sql, /pg_trgm/);
   assert.match(indexHtml, /WorkBuddyResumeSearchRepo/);
   assert.match(indexHtml, /talentCloudSearch/);
