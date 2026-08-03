@@ -7485,6 +7485,7 @@
               <span class="text-slate-600">云端表 {{ candidateParity.tableCount }} 行 · 本地 {{ candidateParity.localCount }} 人</span>
               <span class="ml-2" :class="candidateParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ candidateParity.ok ? '严格一致' : '存在差异' }}</span>
               <p v-if="!candidateParity.ok" class="mt-1 text-xs text-amber-700">仅本地 {{ candidateParity.missingInCloud.length }} · 仅云端 {{ candidateParity.missingInLocal.length }} · 字段不同 {{ candidateParity.mismatched.length }} · 云端已删除 {{ candidateParity.tombstonedLocal.length }}</p>
+              <details v-if="!candidateParity.ok" class="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-900"><summary class="cursor-pointer font-semibold">查看候选人差异清单</summary><div class="mt-2 space-y-3"><template v-for="section in candidateParityDiffSections" :key="section.key"><section v-if="section.items.length"><h3 class="font-semibold">{{ section.label }}（{{ section.items.length }}）</h3><ul class="mt-1 space-y-1"><li v-for="item in section.items.slice(0, 50)" :key="section.key + ':' + item.id">{{ item.name || '未命名候选人' }} · {{ item.id }}<span v-if="item.currentCompany"> · {{ item.currentCompany }}</span></li><li v-if="section.items.length > 50">其余 {{ section.items.length - 50 }} 条已省略</li></ul></section></template></div></details>
             </template>
           </div>
           <div v-if="candidatePull.pulled" class="mt-2 text-sm text-slate-600">本次拉取 {{ candidatePull.pulled }} 条 · 新增 {{ candidatePull.added }} · 合并 {{ candidatePull.updated }}<template v-if="candidatePull.failed"> · <span class="text-red-600">失败 {{ candidatePull.failed }}</span></template></div>
@@ -16092,8 +16093,18 @@ ${ocrText}`
       missingInLocal: [],
       mismatched: [],
       tombstonedLocal: [],
+      missingInCloudDetails: [],
+      missingInLocalDetails: [],
+      mismatchedDetails: [],
+      tombstonedLocalDetails: [],
       error: '',
     });
+    const candidateParityDiffSections = computed(() => [
+      { key: 'missingInCloud', label: '仅本地', items: candidateParity.missingInCloudDetails },
+      { key: 'missingInLocal', label: '仅云端', items: candidateParity.missingInLocalDetails },
+      { key: 'mismatched', label: '字段不同', items: candidateParity.mismatchedDetails },
+      { key: 'tombstonedLocal', label: '云端已删除但本地仍有', items: candidateParity.tombstonedLocalDetails },
+    ]);
     const candidateReadPathCanEnable = computed(() => CandidateReadPath.canEnableReadPath(
       workbenchV2.migrationMeta?.candidateCloud,
       candidateParity,
@@ -16108,9 +16119,19 @@ ${ocrText}`
         const repo = getCandidateRepo();
         const cloudCandidates = await repo.listAllCandidates();
         const report = CandidateReadPath.buildParityReport(workbenchV2.candidates, cloudCandidates);
+        const localById = new Map(workbenchV2.candidates.filter(candidate => candidate?.id).map(candidate => [candidate.id, candidate]));
+        const cloudById = new Map(cloudCandidates.filter(candidate => candidate?.id).map(candidate => [candidate.id, candidate]));
+        const details = (ids, source) => ids.map(id => {
+          const candidate = source.get(id) || {};
+          return { id, name: candidate.name || '', currentCompany: candidate.currentCompany || '' };
+        });
         Object.assign(candidateParity, report, {
           tableCount: report.cloudCount,
           drift: report.cloudCount - report.localCount,
+          missingInCloudDetails: details(report.missingInCloud, localById),
+          missingInLocalDetails: details(report.missingInLocal, cloudById),
+          mismatchedDetails: details(report.mismatched, cloudById),
+          tombstonedLocalDetails: details(report.tombstonedLocal, localById),
         });
         const candidateCloud = candidateCloudMigrationMeta();
         candidateCloud.parityVerifiedAt = report.ok && candidateCloud.backfilledAt ? new Date().toISOString() : '';
@@ -24385,7 +24406,7 @@ ${clipped}`
       workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       workbenchEntityPull, pullWorkbenchEntitiesFromCloud,
       workbenchEntityOfflineState,
-      candidatePull, pullCandidatesFromCloud, candidateOfflineState, candidateParity, verifyCandidateParity,
+      candidatePull, pullCandidatesFromCloud, candidateOfflineState, candidateParity, candidateParityDiffSections, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
       today, totalJobs, totalCompanies,
       activeNav, scrollToSection, scrollToBackupSection, navigateWorkbench,

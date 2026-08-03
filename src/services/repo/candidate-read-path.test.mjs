@@ -164,6 +164,9 @@ test('严格一致性校验读取全部候选人并阻止仅按数量放行', ()
   assert.match(INDEX_HTML, /candidateParity\.mismatched/);
   assert.match(INDEX_HTML, /candidateParity\.missingInCloud/);
   assert.match(INDEX_HTML, /candidateParity\.missingInLocal/);
+  assert.match(INDEX_HTML, /candidateParityDiffSections/);
+  assert.match(INDEX_HTML, /查看候选人差异清单/);
+  assert.match(INDEX_HTML, /missingInCloudDetails/);
 });
 
 test('启用动作受回填和严格校验闸门保护', () => {
