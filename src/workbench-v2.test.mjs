@@ -806,6 +806,14 @@ test('人才库环形图不会重复计算无推进记录的人才', () => {
   assert.doesNotMatch(source, /buckets\[5\]\s*\+=\s*totalCands\s*-\s*Object\.keys\(candidateStages\)/);
 });
 
+test('顶部新建按钮具备不依赖 Tailwind 的高对比度样式', () => {
+  const start = INDEX_HTML.indexOf('wb-v2-create-button');
+  assert.ok(start >= 0);
+  const source = INDEX_HTML.slice(start, INDEX_HTML.indexOf('</button>', start));
+  assert.match(source, /background:#226647!important/);
+  assert.match(source, /color:#fff!important/);
+});
+
 test('人才列表在筛选后、分页前按最近更新时间降序排列', () => {
   assert.match(INDEX_HTML, /const \{ PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate \} = window\.WorkBuddyListPerformance/);
   assert.match(INDEX_HTML, /const filteredWorkbenchCandidates = computed\(\(\) => sortByRecentUpdate\(WorkbenchV2\.filterCandidatesByCategory\(/);
