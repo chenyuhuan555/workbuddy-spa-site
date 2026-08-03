@@ -20,4 +20,6 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(indexHtml, /runTalentCloudSearch/);
   assert.match(indexHtml, /changeTalentCloudSearchPage/);
   assert.match(indexHtml, /已保留本地人才列表/);
+  assert.match(indexHtml, /cleanResumeSearchSnippet/);
+  assert.match(indexHtml, /搜索完成，共/);
 });
