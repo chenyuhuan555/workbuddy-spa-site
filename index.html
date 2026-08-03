@@ -83,6 +83,7 @@
   <script src="./src/ui/workbench-search-actions.js?v=20260803-workbenchsearchactions1"></script>
   <script src="./src/ui/workbench-application-actions.js?v=20260803-workbenchapplicationactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
+  <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -12558,6 +12559,11 @@ ${ocrText}`
     });
     const companyEdit = reactive({ jobId: null, name: '' });
     const companyProfileEditor = reactive({ show: false, text: '' });
+    const legacyJobActions = window.WorkBuddyLegacyJobActions.createLegacyJobActions({
+      columns, companyEdit, companyProfileEditor, inlineForm, editState, modal, showToast,
+      touchEntity, localSave, schedulePush, cloudReady, currentTimeLabel, currentTimeFullLabel, nextTick,
+      normalizePositionStructuredFields,
+    });
     const deleteDialog = reactive({ show: false, type: 'position', colIdx: 0, jobId: null, posId: null, posName: '', companyName: '' });
     const exportSelected = reactive(new Set()); // 勾选要导出简历的岗位 ID
     const selectedResumeIds = reactive(new Set()); // 岗位详情里批量操作选中的简历
@@ -15821,76 +15827,18 @@ ${ocrText}`
       touchEntity(job);
     }
 
-    function startCompanyNameEdit(job) {
-      if (!job) return;
-      companyEdit.jobId = job.id;
-      companyEdit.name = job.company || '';
-      nextTick(() => {
-        const input = document.querySelector(`input[data-company-edit="${job.id}"]`);
-        if (input) input.focus();
-      });
-    }
-
-    function cancelCompanyNameEdit() {
-      companyEdit.jobId = null;
-      companyEdit.name = '';
-    }
-
-    function saveCompanyName(colIdx, jobId) {
-      if (companyEdit.jobId !== jobId) return;
-      const name = companyEdit.name.trim();
-      if (!name) {
-        showToast('公司名称不能为空', 'error');
-        return;
-      }
-      const job = columns[colIdx]?.jobs?.find(j => j.id === jobId);
-      if (!job) { cancelCompanyNameEdit(); return; }
-      if (job.company !== name) {
-        job.company = name;
-        touchEntity(job);
-        localSave();
-        if (cloudReady) schedulePush();
-        if (modal.show && modal.job && modal.job.id === jobId) {
-          modal.job.company = name;
-        }
-        showToast('公司名称已更新');
-      }
-      cancelCompanyNameEdit();
-    }
+    function startCompanyNameEdit(job) { return legacyJobActions.startCompanyNameEdit(job); }
+    function cancelCompanyNameEdit() { return legacyJobActions.cancelCompanyNameEdit(); }
+    function saveCompanyName(colIdx, jobId) { return legacyJobActions.saveCompanyName(colIdx, jobId); }
 
     function companyProfilePreview(job) {
       const text = String(job?.companyProfileText || '').replace(/\s+/g, ' ').trim();
       return text.length > 90 ? text.slice(0, 90) + '...' : text;
     }
 
-    function openCompanyProfileEditor(job) {
-      if (!job) return;
-      companyProfileEditor.show = true;
-      companyProfileEditor.text = job.companyProfileText || '';
-    }
-
-    function saveCompanyProfile(job) {
-      if (!job) return;
-      job.companyProfileText = companyProfileEditor.text.trim();
-      job.companyProfileUpdatedAt = currentTimeLabel();
-      touchEntity(job);
-      companyProfileEditor.show = false;
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast(job.companyProfileText ? '公司基础信息已保存' : '公司基础信息已清空');
-    }
-
-    function clearCompanyProfile(job) {
-      if (!job) return;
-      companyProfileEditor.text = '';
-      job.companyProfileText = '';
-      job.companyProfileUpdatedAt = currentTimeLabel();
-      touchEntity(job);
-      companyProfileEditor.show = false;
-      localSave();
-      if (cloudReady) schedulePush();
-      showToast('公司基础信息已清空');
-    }
+    function openCompanyProfileEditor(job) { return legacyJobActions.openCompanyProfileEditor(job); }
+    function saveCompanyProfile(job) { return legacyJobActions.saveCompanyProfile(job); }
+    function clearCompanyProfile(job) { return legacyJobActions.clearCompanyProfile(job); }
 
     // -------- 删除整个公司组 (弹出二次确认) --------
     function deleteJob(colIdx, jobId) {
@@ -16043,102 +15991,14 @@ ${ocrText}`
     }
 
     // -------- 卡片内联新增岗位 --------
-    function startInlineAdd(jobId) {
-      inlineForm.jobId = jobId;
-      inlineForm.name = '';
-      inlineForm.detail = '';
-    }
-    function cancelInlineAdd() {
-      inlineForm.jobId = null;
-    }
-    function saveInlineAdd(colIdx, jobId) {
-      const name = inlineForm.name.trim();
-      const detail = inlineForm.detail.trim();
-      if (!name || !detail) {
-        showToast('请填写岗位名称和需求', 'error');
-        return;
-      }
-      const col = columns[colIdx];
-      const job = col.jobs.find(j => j.id === jobId);
-      if (!job || !job.positions) return;
-      job.positions.push({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        name,
-        detail,
-        completed: false,
-        resumes: [],
-        updatedAt: currentTimeFullLabel(),
-      });
-      touchEntity(job);
-      showToast(`已添加「${name}」到「${job.company}」`);
-      inlineForm.jobId = null;
-    }
+    function startInlineAdd(jobId) { return legacyJobActions.startInlineAdd(jobId); }
+    function cancelInlineAdd() { return legacyJobActions.cancelInlineAdd(); }
+    function saveInlineAdd(colIdx, jobId) { return legacyJobActions.saveInlineAdd(colIdx, jobId); }
 
     // -------- 编辑岗位 --------
-    function startEditPosition(colIdx, jobId, posId, posOrName, detail, openModalFlag) {
-      const sourcePos = typeof posOrName === 'object' && posOrName ? posOrName : null;
-      const fields = normalizePositionStructuredFields(sourcePos || {});
-      editState.colIdx = colIdx;
-      editState.jobId = jobId;
-      editState.posId = posId;
-      editState.editName = sourcePos ? (sourcePos.name || '') : (posOrName || '');
-      editState.editDetail = sourcePos ? (sourcePos.detail || '') : (detail || '');
-      editState.editLocation = fields.location;
-      editState.editSalary = fields.salary;
-      editState.editReportLine = fields.reportLine;
-      editState.editMustHave = fields.mustHave;
-      editState.editNiceToHave = fields.niceToHave;
-      editState.editExclusions = fields.exclusions;
-      editState.editClientPreferences = fields.clientPreferences;
-      // 如果从看板卡片触发，同时打开弹窗
-      if (openModalFlag) {
-        const col = columns[colIdx];
-        const job = col.jobs.find(j => j.id === jobId);
-        if (job) {
-          modal.job = job;
-          modal.assigneeName = col.name;
-          modal.colIdx = colIdx;
-          modal.show = true;
-        }
-      }
-    }
-    function saveEditPosition() {
-      const name = editState.editName.trim();
-      const detail = editState.editDetail.trim();
-      if (!name || !detail) {
-        showToast('请填写岗位名称和需求描述', 'error');
-        return;
-      }
-      const col = columns[editState.colIdx];
-      const job = col.jobs.find(j => j.id === editState.jobId);
-      if (!job || !job.positions) return;
-      const pos = job.positions.find(p => p.id === editState.posId);
-      if (!pos) return;
-      pos.name = name;
-      pos.detail = detail;
-      Object.assign(pos, normalizePositionStructuredFields({
-        location: editState.editLocation,
-        salary: editState.editSalary,
-        reportLine: editState.editReportLine,
-        mustHave: editState.editMustHave,
-        niceToHave: editState.editNiceToHave,
-        exclusions: editState.editExclusions,
-        clientPreferences: editState.editClientPreferences,
-      }));
-      touchEntity(pos);
-      touchEntity(job);
-      localSave();
-      if (cloudReady) schedulePush();
-      // ★ 标记匹配过期（JD 变更后推荐可能不准确）
-      if (pos.systemMatches && pos.systemMatches.length > 0) {
-        pos.matchVersion = (pos.matchVersion || 1) + 1;
-      }
-      showToast(`已更新「${name}」`);
-      editState.posId = null;
-    }
-    function cancelEditPosition() {
-      editState.posId = null;
-    }
+    function startEditPosition(...args) { return legacyJobActions.startEditPosition(...args); }
+    function saveEditPosition() { return legacyJobActions.saveEditPosition(); }
+    function cancelEditPosition() { return legacyJobActions.cancelEditPosition(); }
 
     // -------- 简历统计 --------
     function getResumeStats(pos) {

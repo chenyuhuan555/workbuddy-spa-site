@@ -12,6 +12,7 @@ await import('./workbench-v2.js');
 const { WorkbenchV2 } = globalThis;
 
 const INDEX_HTML = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const LEGACY_JOB_ACTIONS = fs.readFileSync(new URL('./ui/legacy-job-actions.js', import.meta.url), 'utf8');
 
 // ---------------------------------------------------------------------------
 // (1) 数据迁移 / 持久化
@@ -148,7 +149,7 @@ test('工作台启动时会持久化回填既有迁移岗位的空职责', () =>
 });
 
 test('旧版岗位编辑会立即保存并安排云端同步，避免薪资刷新后丢失', () => {
-  assert.match(INDEX_HTML, /touchEntity\(pos\);\s*touchEntity\(job\);\s*localSave\(\);\s*if \(cloudReady\) schedulePush\(\);/);
+  assert.match(`${INDEX_HTML}\n${LEGACY_JOB_ACTIONS}`, /touchEntity\(pos\);\s*touchEntity\(job\);\s*localSave\(\);\s*if \(cloudReady\) schedulePush\(\);/);
 });
 
 test('云端初始化不会用旧快照覆盖已有本地岗位资料', () => {
