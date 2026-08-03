@@ -20,6 +20,7 @@
   <script src="./src/services/sync-merge.js"></script>
   <script src="./src/services/save-coordinator.js"></script>
   <script src="./src/services/resume-ai-processing.js?v=20260730-resumeai2"></script>
+  <script src="./src/services/resume-background-save-queue.js?v=20260803-resumebackgroundqueue1"></script>
   <script src="./src/services/resume-ai-batch.js?v=20260803-resumeaibatch1"></script>
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
@@ -10893,12 +10894,8 @@ const vueAppConfig = {
     const resumeAiBatch = reactive(resumeAiBatchRunner.state);
     resumeAiBatch.open = false;
     resumeAiBatch.refreshRawText = false;
-    let resumeBackgroundSaveTail = Promise.resolve(true);
-    function saveResumeBackgroundState() {
-      const current = resumeBackgroundSaveTail.then(() => saveWorkbenchV2());
-      resumeBackgroundSaveTail = current.catch(() => false);
-      return current;
-    }
+    const resumeBackgroundSaveQueue = window.WorkBuddyResumeBackgroundSaveQueue.createSerialSaveQueue(() => saveWorkbenchV2());
+    const saveResumeBackgroundState = () => resumeBackgroundSaveQueue.run();
     const resumeAiPendingStore = window.WorkBuddyResumeAiPendingStore.createResumeAiPendingStore({
       storage: localStorage,
       key: STORAGE_KEY + '_resume_ai_pending_v1',

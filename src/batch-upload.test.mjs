@@ -557,8 +557,8 @@ test('页面在可靠入库后分别排队原件同步和 AI', () => {
 
 test('原件同步和 AI 处理共用串行后台保存，避免并发快照覆盖', () => {
   const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(source, /let resumeBackgroundSaveTail = Promise\.resolve\(true\)/);
-  assert.match(source, /function saveResumeBackgroundState\(\) \{/);
+  assert.match(source, /resumeBackgroundSaveQueue = window\.WorkBuddyResumeBackgroundSaveQueue\.createSerialSaveQueue/);
+  assert.match(source, /const saveResumeBackgroundState = \(\) => resumeBackgroundSaveQueue\.run\(\)/);
   assert.match(source, /processResumeAiVersion[\s\S]*?persist:\s*saveResumeBackgroundState/);
   assert.match(source, /enqueueResumeFileSync[\s\S]*?persist:\s*saveResumeBackgroundState/);
 });
