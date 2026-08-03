@@ -72,6 +72,7 @@
   <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
+  <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore1"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
   <script src="./src/ui/resume-original-metadata.js?v=20260803-resumeoriginalmetadata1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
@@ -10898,36 +10899,14 @@ const vueAppConfig = {
       resumeBackgroundSaveTail = current.catch(() => false);
       return current;
     }
-    const RESUME_AI_PENDING_KEY = STORAGE_KEY + '_resume_ai_pending_v1';
-    function readResumeAiPendingKeys() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(RESUME_AI_PENDING_KEY) || '[]');
-        return Array.from(new Set((Array.isArray(parsed) ? parsed : [])
-          .map(value => String(value || '').trim())
-          .filter(value => value.length <= 200 && value.includes(':'))));
-      } catch {
-        return [];
-      }
-    }
-    function writeResumeAiPendingKeys(keys) {
-      const clean = Array.from(new Set(keys
-        .map(value => String(value || '').trim())
-        .filter(value => value.length <= 200 && value.includes(':'))));
-      try {
-        if (clean.length) localStorage.setItem(RESUME_AI_PENDING_KEY, JSON.stringify(clean));
-        else localStorage.removeItem(RESUME_AI_PENDING_KEY);
-      } catch (error) {
-        console.warn('无法记录简历 AI 待处理任务，刷新恢复将不可用：', error);
-      }
-    }
-    function markResumeAiPending(candidateId, versionId) {
-      const key = `${candidateId}:${versionId}`;
-      writeResumeAiPendingKeys(readResumeAiPendingKeys().concat(key));
-      return key;
-    }
-    function clearResumeAiPending(key) {
-      writeResumeAiPendingKeys(readResumeAiPendingKeys().filter(item => item !== key));
-    }
+    const resumeAiPendingStore = window.WorkBuddyResumeAiPendingStore.createResumeAiPendingStore({
+      storage: localStorage,
+      key: STORAGE_KEY + '_resume_ai_pending_v1',
+    });
+    const readResumeAiPendingKeys = resumeAiPendingStore.read;
+    const writeResumeAiPendingKeys = resumeAiPendingStore.write;
+    const markResumeAiPending = resumeAiPendingStore.mark;
+    const clearResumeAiPending = resumeAiPendingStore.clear;
     async function resumeBlobToDataUrl(blob) { return window.WorkBuddyResumeFileData.resumeBlobToDataUrl(blob); }
     function resumeDataUrlToBlob(dataUrl, fallbackType = 'application/octet-stream') {
       return window.WorkBuddyResumeFileData.resumeDataUrlToBlob(dataUrl, fallbackType);

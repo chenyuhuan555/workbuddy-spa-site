@@ -372,13 +372,13 @@ test('页面加载处理器并为单份和批量入库提供统一后台入口',
 });
 
 test('页面只恢复显式记录的中断任务，不扫描全部历史简历', () => {
-  assert.match(INDEX_HTML, /const RESUME_AI_PENDING_KEY = STORAGE_KEY \+ '_resume_ai_pending_v1'/);
+  assert.match(INDEX_HTML, /resumeAiPendingStore = window\.WorkBuddyResumeAiPendingStore\.createResumeAiPendingStore/);
+  assert.match(INDEX_HTML, /key: STORAGE_KEY \+ '_resume_ai_pending_v1'/);
   assert.match(INDEX_HTML, /function recoverResumeAiProcessing\(\)/);
   assert.match(INDEX_HTML, /ResumeAiProcessing\.recoverInterrupted\(workbenchV2, pendingKeys\)/);
   assert.match(INDEX_HTML, /await recoverResumeAiProcessing\(\);/);
   const recoveryBody = INDEX_HTML.match(/async function recoverResumeAiProcessing\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
   assert.doesNotMatch(recoveryBody, /flatMap|resumeVersions\.forEach|candidates\.forEach/);
-  const readBody = INDEX_HTML.match(/function readResumeAiPendingKeys\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-  const writeBody = INDEX_HTML.match(/function writeResumeAiPendingKeys\(keys\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-  assert.doesNotMatch(`${readBody}\n${writeBody}`, /slice\(0,\s*50\)/);
+  assert.match(INDEX_HTML, /const readResumeAiPendingKeys = resumeAiPendingStore\.read/);
+  assert.doesNotMatch(`${recoveryBody}`, /slice\(0,\s*50\)/);
 });
