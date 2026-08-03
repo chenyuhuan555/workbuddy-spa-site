@@ -79,6 +79,7 @@
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
   <script src="./src/ui/resume-original-metadata.js?v=20260803-resumeoriginalmetadata1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
+  <script src="./src/ui/workbench-entity-actions.js?v=20260803-workbenchentityactions1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -11519,98 +11520,26 @@ const vueAppConfig = {
       globalCreateMenu.value = false;
       if (key === 'settings' && canManageMembers) loadMembers();
     }
-    function openCompanyCreate() {
-      if (!canWrite) return;
-      workbenchNav.value = 'companies';
-      Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
-      Object.assign(companyCreate, { open: true, name: '', industry: '', city: '', owner: '', status: 'potential' });
-      globalCreateMenu.value = false;
-    }
-    async function createWorkbenchCompany(input = null) {
-      const source = input || companyCreate;
-      const name = String(source.name || '').trim();
-      if (!name) { showToast('请填写公司名称', 'error'); return; }
-      const company = WorkbenchV2.createCompany({
-        name,
-        industry: String(source.industry || '').trim(),
-        city: String(source.city || '').trim(),
-        owner: String(source.owner || '').trim(),
-        status: source.status || 'potential',
-      });
-      workbenchV2.companies.push(company);
-      const saved = await saveWorkbenchV2();
-      if (cloudReady) schedulePush();
-      companyCreate.open = false;
-      openCompanyDetail(company.id);
-      showToast(saved ? '公司已创建' : '公司已暂存到浏览器');
-    }
-    function openCompanyPositionCreate() {
-      if (!canWrite || !selectedCompany.value) return;
-      Object.assign(companyPositionCreate, { open: true, title: '', city: '', salary: '', owner: selectedCompany.value.owner || '' });
-    }
-    async function createCompanyPosition() {
-      if (!selectedCompany.value) return;
-      const title = companyPositionCreate.title.trim();
-      if (!title) { showToast('请填写岗位名称', 'error'); return; }
-      const position = WorkbenchV2.createPosition({
-        companyId: selectedCompany.value.id,
-        title,
-        city: companyPositionCreate.city.trim(),
-        salary: companyPositionCreate.salary.trim(),
-        owner: companyPositionCreate.owner.trim(),
-      });
-      workbenchV2.positions.push(position);
-      const saved = await saveWorkbenchV2();
-      if (cloudReady) schedulePush();
-      companyPositionCreate.open = false;
-      openPositionDetail(position.id);
-      showToast(saved ? '岗位已创建' : '岗位已暂存到浏览器');
-    }
-    function openCompanyDetail(id) {
-      workbenchNav.value = 'companies';
-      Object.assign(workbenchRoute, { type: 'company', id, parentId: '', tab: 'overview' });
-    }
-    function openPositionDetail(id) {
-      const position = workbenchV2.positions.find(item => item.id === id);
-      workbenchNav.value = 'companies';
-      Object.assign(workbenchRoute, { type: 'position', id, parentId: position?.companyId || '', tab: 'overview' });
-      if (workbenchMode.value === 'v2') aiToolbox.posId = id;
-    }
+    const workbenchEntityActions = window.WorkBuddyWorkbenchEntityActions.createWorkbenchEntityActions({
+      canWrite, state: workbenchV2, route: workbenchRoute, nav: workbenchNav, companyCreate, companyPositionCreate,
+      selectedCompany, selectedPosition, WorkbenchV2, save: saveWorkbenchV2, schedulePush, cloudReady, showToast,
+      openCompanyDetail: id => workbenchEntityActions.openCompanyDetail(id),
+      openPositionDetail: id => workbenchEntityActions.openPositionDetail(id),
+      workbenchMode, aiToolbox, positionApplications: filteredPositionApplications,
+    });
+    function openCompanyCreate() { globalCreateMenu.value = false; return workbenchEntityActions.openCompanyCreate(); }
+    async function createWorkbenchCompany(input = null) { return workbenchEntityActions.createWorkbenchCompany(input); }
+    function openCompanyPositionCreate() { return workbenchEntityActions.openCompanyPositionCreate(); }
+    async function createCompanyPosition() { return workbenchEntityActions.createCompanyPosition(); }
+    function openCompanyDetail(id) { return workbenchEntityActions.openCompanyDetail(id); }
+    function openPositionDetail(id) { return workbenchEntityActions.openPositionDetail(id); }
     async function persistWorkbenchPosition(message) {
       const saved = await saveWorkbenchV2();
       if (cloudReady) schedulePush();
       showToast(saved ? message : `${message}，已暂存到浏览器`);
     }
-    async function toggleWorkbenchPositionStatus() {
-      if (!canWrite || !selectedPosition.value) return;
-      const nextStatus = selectedPosition.value.status === 'closed' ? 'open' : 'closed';
-      WorkbenchV2.setPositionStatus(workbenchV2, selectedPosition.value.id, nextStatus);
-      await persistWorkbenchPosition(nextStatus === 'closed' ? '岗位已关闭' : '岗位已重新开放');
-    }
-    async function requestWorkbenchPositionDelete() {
-      if (!canWrite || !selectedPosition.value) return;
-      const position = selectedPosition.value;
-      const applicationCount = positionApplications.value.length;
-      if (applicationCount) {
-        const closeNow = position.status !== 'closed'
-          && confirm(`“${position.title}”已有 ${applicationCount} 条候选人推进记录，不能永久删除。是否关闭岗位并保留全部历史？`);
-        if (closeNow) {
-          WorkbenchV2.setPositionStatus(workbenchV2, position.id, 'closed');
-          await persistWorkbenchPosition('岗位已关闭，候选人推进历史已保留');
-        } else if (position.status === 'closed') {
-          showToast(`该岗位已有 ${applicationCount} 条候选人推进记录，不能永久删除`, 'error');
-        }
-        return;
-      }
-      if (!confirm(`确认永久删除岗位“${position.title}”？此操作无法恢复。`)) return;
-      const companyId = position.companyId;
-      WorkbenchV2.deletePosition(workbenchV2, position.id);
-      const saved = await saveWorkbenchV2();
-      if (cloudReady) schedulePush();
-      openCompanyDetail(companyId);
-      workbenchRoute.tab = 'positions';
-      showToast(saved ? '岗位已永久删除' : '岗位已删除并暂存到浏览器');
-    }
+    async function toggleWorkbenchPositionStatus() { return workbenchEntityActions.toggleWorkbenchPositionStatus(); }
+    async function requestWorkbenchPositionDelete() { return workbenchEntityActions.requestWorkbenchPositionDelete(); }
     function openCandidateDetail(id) {
       workbenchNav.value = 'candidates';
       Object.assign(workbenchRoute, { type: 'candidate', id, parentId: '', tab: 'overview' });
