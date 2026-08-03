@@ -50,6 +50,7 @@
   <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
   <script src="./src/ui/company-research-helpers.js?v=20260803-companyresearch1"></script>
   <script src="./src/ui/talent-search-messages.js?v=20260803-talentsearchmessages1"></script>
+  <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -10480,14 +10481,7 @@ const vueAppConfig = {
     const companyApplications = computed(() => applicationsByCompanyId.value.get(selectedCompany.value?.id) || []);
     const positionApplications = computed(() => workbenchV2.applications.filter(item => item.positionId === selectedPosition.value?.id));
     const filteredPositionApplications = computed(() => positionApplications.value.filter(item => item.stage !== SK.CLOSED));
-    const filteredWorkbenchCompanies = computed(() => {
-      const query = companyFilter.query.trim().toLowerCase();
-      return workbenchV2.companies.filter(company => {
-        if (companyFilter.status !== 'all' && company.status !== companyFilter.status) return false;
-        if (companyFilter.owner !== 'all' && company.owner !== companyFilter.owner) return false;
-        return !query || [company.name, company.industry, company.city, company.owner].some(value => String(value || '').toLowerCase().includes(query));
-      }).sort((a, b) => (Date.parse(b.updatedAt || b.createdAt || '') || 0) - (Date.parse(a.updatedAt || a.createdAt || '') || 0));
-    });
+    const filteredWorkbenchCompanies = computed(() => WorkBuddyCompanyListFilter.filterCompanies(workbenchV2.companies, companyFilter));
     const pagedWorkbenchCompanies = computed(() => paginate(filteredWorkbenchCompanies.value, companyPage.value, PAGE_SIZE));
     const companyCountMaps = computed(() => WorkBuddyCompanyCountMaps.buildCompanyCountMaps(workbenchV2, {
       closedStage: SK.CLOSED,
