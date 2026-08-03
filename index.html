@@ -76,6 +76,7 @@
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
   <script src="./src/ui/resume-reprocess-actions.js?v=20260803-resumereprocessactions1"></script>
   <script src="./src/ui/talent-intake-actions.js?v=20260803-talentintakeactions1"></script>
+  <script src="./src/ui/candidate-profile-actions.js?v=20260803-candidateprofileactions1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore2"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
@@ -10466,29 +10467,13 @@ const vueAppConfig = {
       if (candidateCoreEdit.saving) return;
       resetCandidateCoreEdit();
     }
-    async function saveCandidateCoreEdit() {
-      if (!requireTalentWritePermission() || !selectedCandidate.value || candidateCoreEdit.saving) return;
-      candidateCoreEdit.saving = true;
-      candidateCoreEdit.error = '';
-      try {
-        await CandidateCoreEditor.save({
-          canWrite,
-          bundle: workbenchV2,
-          candidateId: selectedCandidate.value.id,
-          draft: candidateCoreEdit.draft,
-          skillInput: candidateCoreEdit.skillInput,
-          directionInput: candidateCoreEdit.directionInput,
-          updateTalent: WorkbenchV2.updateTalent,
-          persist: saveWorkbenchV2,
-        });
-        resetCandidateCoreEdit();
-        schedulePush();
-        showToast('核心信息已保存');
-      } catch (error) {
-        candidateCoreEdit.saving = false;
-        candidateCoreEdit.error = error?.message || '核心信息保存失败，请重试';
-      }
-    }
+    const candidateProfileActions = window.WorkBuddyCandidateProfileActions.createCandidateProfileActions({
+      selectedCandidate, editState: candidateCoreEdit, bundle: workbenchV2, canWrite,
+      requireWritePermission: requireTalentWritePermission, editor: CandidateCoreEditor,
+      updateTalent: WorkbenchV2.updateTalent, persist: saveWorkbenchV2,
+      reset: resetCandidateCoreEdit, schedulePush, showToast,
+    });
+    async function saveCandidateCoreEdit() { return candidateProfileActions.saveCore(); }
     watch(
       () => [workbenchRoute.type, workbenchRoute.id, workbenchRoute.tab],
       ([type, id, tab]) => {
