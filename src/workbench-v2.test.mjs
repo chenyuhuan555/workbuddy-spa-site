@@ -13,6 +13,7 @@ const { WorkbenchV2 } = globalThis;
 
 const INDEX_HTML = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const LEGACY_JOB_ACTIONS = fs.readFileSync(new URL('./ui/legacy-job-actions.js', import.meta.url), 'utf8');
+const RESUME_REPROCESS_ACTIONS = fs.readFileSync(new URL('./ui/resume-reprocess-actions.js', import.meta.url), 'utf8');
 
 // ---------------------------------------------------------------------------
 // (1) 数据迁移 / 持久化
@@ -113,8 +114,8 @@ test('人才详情优先展示排版文本并提供可见失败与重新处理�
   assert.match(INDEX_HTML, /从原始文件重新提取并处理/);
   assert.match(INDEX_HTML, /v-if="activeCandidateResumeVersion\?\.formattedText"[^>]*v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
   assert.match(INDEX_HTML, /<section v-if="!activeCandidateResumeVersion\?\.formattedText && activeCandidateResumeVersion\?\.formatStatus === 'failed' && activeCandidateResumeVersion\?\.rawText"[\s\S]*?<h3[^>]*>原始提取文本</);
-  assert.match(INDEX_HTML, /refreshRawText:\s*false/);
-  assert.match(INDEX_HTML, /refreshRawText:\s*true/);
+  assert.match(RESUME_REPROCESS_ACTIONS, /refreshRawText:\s*false/);
+  assert.match(RESUME_REPROCESS_ACTIONS, /refreshRawText:\s*true/);
 });
 
 test('迁移旧岗位时保留 detail 岗位职责，并只为既有空职责安全回填', () => {

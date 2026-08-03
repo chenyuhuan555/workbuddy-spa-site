@@ -74,6 +74,7 @@
   <script src="./src/ui/resume-ai-task-list.js?v=20260803-resumeaitasklist1"></script>
   <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
+  <script src="./src/ui/resume-reprocess-actions.js?v=20260803-resumereprocessactions1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore2"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
@@ -11016,31 +11017,17 @@ const vueAppConfig = {
       });
     }
     function resumeAiStageLabel(stage) { return window.WorkBuddyResumeStatusLabels.resumeAiStageLabel(stage); }
-    async function runCandidateResumeReprocess({ refreshRawText }) {
-      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
-      const candidate = selectedCandidate.value;
-      const version = activeCandidateResumeVersion.value;
-      const validation = window.WorkBuddyResumeReprocessGuard.validateResumeReprocessRequest(version, refreshRawText);
-      if (!validation.ok) {
-        showToast(validation.reason, 'error');
-        return;
-      }
-      try {
-        await enqueueResumeAiProcessing(candidate.id, version.id, { refreshRawText });
-        showToast(window.WorkBuddyResumeReprocessGuard.reprocessSuccessMessage(refreshRawText));
-      } catch (error) {
-        showToast(error.message || '简历重新处理失败，请重试', 'error');
-      }
-    }
-    async function reprocessCandidateResumeFromText() {
-      return runCandidateResumeReprocess({ refreshRawText: false });
-    }
-    async function reextractCandidateResumeFromOriginal() {
-      return runCandidateResumeReprocess({ refreshRawText: true });
-    }
-    async function reprocessCandidateResumeVersion() {
-      return reextractCandidateResumeFromOriginal();
-    }
+    const resumeReprocessActions = window.WorkBuddyResumeReprocessActions.createResumeReprocessActions({
+      selectedCandidate, activeVersion: activeCandidateResumeVersion,
+      requireWritePermission: requireTalentWritePermission, requireAiPermission: requireTalentAiPermission,
+      validateRequest: (version, refreshRawText) => window.WorkBuddyResumeReprocessGuard.validateResumeReprocessRequest(version, refreshRawText),
+      successMessage: refreshRawText => window.WorkBuddyResumeReprocessGuard.reprocessSuccessMessage(refreshRawText),
+      enqueue: enqueueResumeAiProcessing, showToast,
+    });
+    function runCandidateResumeReprocess(options) { return resumeReprocessActions.run(options); }
+    function reprocessCandidateResumeFromText() { return resumeReprocessActions.fromText(); }
+    function reextractCandidateResumeFromOriginal() { return resumeReprocessActions.fromOriginal(); }
+    function reprocessCandidateResumeVersion() { return resumeReprocessActions.fromOriginal(); }
     function resumeOriginalStatusLabel(version) { return window.WorkBuddyResumeStatusLabels.resumeOriginalStatusLabel(version); }
     async function retryCandidateResumeFileSync() {
       if (!requireTalentWritePermission()) return;

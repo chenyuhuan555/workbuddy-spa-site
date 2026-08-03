@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const ORIGINAL_GUARDS = readFileSync(new URL('./resume-original-guards.js', import.meta.url), 'utf8');
+const REPROCESS_ACTIONS = readFileSync(new URL('./resume-reprocess-actions.js', import.meta.url), 'utf8');
 
 test('简历页提供文本重试、原件重提取和原件恢复动作', () => {
   assert.match(INDEX_HTML, /使用现有文本重新处理/);
@@ -15,10 +16,8 @@ test('简历页提供文本重试、原件重提取和原件恢复动作', () =>
 });
 
 test('文本重试不强制刷新原件，原件重提取明确 refreshRawText', () => {
-  const textBody = INDEX_HTML.match(/async function reprocessCandidateResumeFromText\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-  const sourceBody = INDEX_HTML.match(/async function reextractCandidateResumeFromOriginal\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-  assert.match(textBody, /refreshRawText:\s*false/);
-  assert.match(sourceBody, /refreshRawText:\s*true/);
+  assert.match(REPROCESS_ACTIONS, /fromText:\s*\(\)\s*=>\s*run\(\{ refreshRawText: false \}\)/);
+  assert.match(REPROCESS_ACTIONS, /fromOriginal:\s*\(\)\s*=>\s*run\(\{ refreshRawText: true \}\)/);
 });
 
 test('跨设备原件读取通过本机、私有云端和旧来源统一解析', () => {
