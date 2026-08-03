@@ -75,6 +75,7 @@
   <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
   <script src="./src/ui/resume-reprocess-actions.js?v=20260803-resumereprocessactions1"></script>
+  <script src="./src/ui/talent-intake-actions.js?v=20260803-talentintakeactions1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore2"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
@@ -10327,11 +10328,15 @@ const vueAppConfig = {
       persist: saveWorkbenchV2,
       afterTalentSaved: ({ candidateId, versionId }) => scheduleResumePostSaveTasks(candidateId, versionId),
     };
-    function openBatchUpload() {
-      if (!requireTalentWritePermission()) return;
-      batchUpload.open = true;
-      globalCreateMenu.value = false;
-    }
+    const talentIntakeActions = window.WorkBuddyTalentIntakeActions.createTalentIntakeActions({
+      batchUpload, candidateUpload, directForm: talentIntakeDirectForm,
+      directEntryOpen: talentIntakeDirectEntryOpen, directExtracting: talentIntakeDirectExtracting, directError: talentIntakeDirectError,
+      requireWritePermission: requireTalentWritePermission, resetCandidateUploadForm, resetDirectForm: resetTalentIntakeDirectForm,
+      saveCandidateOnly, batchAddFiles: files => WorkbenchV2.batchAddFiles(batchUpload, files),
+      batchPump: () => WorkbenchV2.batchPump(batchUpload, batchDeps),
+      batchRetryFailed: () => WorkbenchV2.batchRetryFailed(batchUpload),
+      showCreateMenu: value => { globalCreateMenu.value = value; },
+    });
     function resetCandidateUploadForm() {
       Object.assign(candidateUpload, {
         open: false, step: 'form', loading: false, error: '', duplicates: [], createdId: '', selectedPositionIds: [], autoPositionId: '', extracting: false, batchTaskId: '',
@@ -10343,31 +10348,12 @@ const vueAppConfig = {
       talentIntakeDirectExtracting.value = false;
       talentIntakeDirectError.value = '';
     }
-    function openTalentIntake() {
-      if (!requireTalentWritePermission()) return;
-      if (!candidateUpload.batchTaskId) resetCandidateUploadForm();
-      resetTalentIntakeDirectForm();
-      talentIntakeDirectEntryOpen.value = false;
-      openBatchUpload();
-    }
-    async function saveTalentIntakeDirectEntry() {
-      if (!requireTalentWritePermission()) return;
-      Object.assign(candidateUpload.form, talentIntakeDirectForm);
-      candidateUpload.error = '';
-      candidateUpload.open = true;
-      await saveCandidateOnly(false);
-      if (candidateUpload.step === 'form' && candidateUpload.error) {
-        talentIntakeDirectError.value = candidateUpload.error;
-        candidateUpload.open = false;
-      }
-    }
-    function addBatchFiles(fileList) {
-      if (!requireTalentWritePermission()) return;
-      WorkbenchV2.batchAddFiles(batchUpload, Array.from(fileList || []));
-      WorkbenchV2.batchPump(batchUpload, batchDeps); // 拖入/选择后立即开始处理；"全部开始"可再次触发续跑
-    }
-    function startBatchAll() { if (!requireTalentWritePermission()) return; batchUpload.running = true; WorkbenchV2.batchPump(batchUpload, batchDeps); }
-    function retryBatchFailed() { if (!requireTalentWritePermission()) return; WorkbenchV2.batchRetryFailed(batchUpload); WorkbenchV2.batchPump(batchUpload, batchDeps); }
+    function openBatchUpload() { return talentIntakeActions.openBatchUpload(); }
+    function openTalentIntake() { return talentIntakeActions.openTalentIntake(); }
+    async function saveTalentIntakeDirectEntry() { return talentIntakeActions.saveDirectEntry(); }
+    function addBatchFiles(fileList) { return talentIntakeActions.addFiles(fileList); }
+    function startBatchAll() { return talentIntakeActions.startAll(); }
+    function retryBatchFailed() { return talentIntakeActions.retryFailed(); }
     function retryBatchTask(id) {
       if (!requireTalentWritePermission()) return;
       const t = batchUpload.tasks.find(x => x.id === id);
