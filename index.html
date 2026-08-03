@@ -65,6 +65,7 @@
   <script src="./src/ui/candidate-identity-parser.js?v=20260803-candidateidentity1"></script>
   <script src="./src/ui/resume-duplicate-text.js?v=20260803-resumeduplicatetext1"></script>
   <script src="./src/ui/trajectory-date-utils.js?v=20260803-trajectorydate1"></script>
+  <script src="./src/ui/candidate-network-display.js?v=20260803-candidatenetwork1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -20843,32 +20844,14 @@ ${String(resumeText || '').slice(0, 9000)}`
       return list;
     }
 
-    function normalizeTrajectoryName(name) {
-      return String(name || '')
-        .toLowerCase()
-        .replace(/[｜|/\\]+/g, '-')
-        .replace(/\s+/g, '')
-        .replace(/[-_]{2,}/g, '-')
-        .trim();
-    }
+    function normalizeTrajectoryName(name) { return window.WorkBuddyCandidateNetworkDisplay.normalizeTrajectoryName(name); }
 
     function parseTrajectoryDate(value, fallback = 'start') { return window.WorkBuddyTrajectoryDateUtils.parseTrajectoryDate(value, fallback); }
     function monthsOverlap(a, b) { return window.WorkBuddyTrajectoryDateUtils.monthsOverlap(a, b); }
     function trajectoryPeriodLabel(a, b) { return window.WorkBuddyTrajectoryDateUtils.trajectoryPeriodLabel(a, b); }
 
-    function relationLabel(edge) {
-      if (!edge) return '';
-      const typeLabel = edge.type === 'edu' ? '校友' : '前同事';
-      const period = edge.period ? `${edge.period} ` : '';
-      return `${period}${edge.name}${typeLabel}`;
-    }
-
-    function networkNodeColor(resume) {
-      const state = resume?.evaluation || 'pending';
-      if (state === 'match') return '#10b981';
-      if (!state || state === 'pending') return '#ef4444';
-      return '#94a3b8';
-    }
+    function relationLabel(edge) { return window.WorkBuddyCandidateNetworkDisplay.relationLabel(edge); }
+    function networkNodeColor(resume) { return window.WorkBuddyCandidateNetworkDisplay.networkNodeColor(resume); }
 
     function buildCandidateRelationshipIndex() {
       const candidateMap = new Map();
