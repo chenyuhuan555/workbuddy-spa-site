@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const html = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const resumeVersionsModule = fs.readFileSync(new URL('../ui/candidate-resume-versions.js', import.meta.url), 'utf8');
 
 test('Phase 2c 版本同步具备双写、迁移和一致性校验入口', () => {
   assert.match(html, /src\/services\/repo\/resume-version-repo\.js\?v=/);
@@ -20,7 +21,7 @@ test('Phase 2c 版本同步具备双写、迁移和一致性校验入口', () =>
   assert.match(html, /查看简历版本差异清单/);
   assert.match(html, /archiveExtraResumeVersions/);
   assert.match(html, /归档本地多出版本/);
-  assert.match(html, /filter\(version => !version\?\.deletedAt\)/);
+  assert.match(resumeVersionsModule, /filter\(version => !version\?\.deletedAt\)/);
 });
 
 test('Phase 2c 只有回填后通过版本集合校验才允许切换云端读取', () => {

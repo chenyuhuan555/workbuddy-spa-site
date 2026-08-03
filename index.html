@@ -67,6 +67,7 @@
   <script src="./src/ui/trajectory-date-utils.js?v=20260803-trajectorydate1"></script>
   <script src="./src/ui/candidate-network-display.js?v=20260803-candidatenetwork1"></script>
   <script src="./src/ui/duplicate-matching-helpers.js?v=20260803-duplicatematching1"></script>
+  <script src="./src/ui/candidate-resume-versions.js?v=20260803-candidateresumeversions1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -10843,18 +10844,7 @@ const vueAppConfig = {
     const candidateLastUpdated = (candidate) => WorkbenchV2.candidateLastUpdated(candidate || {});
     const selectedCandidateApplications = computed(() => workbenchV2.applications.filter(item => item.candidateId === selectedCandidate.value?.id));
     // 按候选人获取简历版本列表（resumeVersions 优先，否则用电子简历文本兜底构造一份）
-    function getCandidateResumeVersions(candidate) {
-      if (!candidate) return [];
-      const versions = (Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions : []).filter(version => !version?.deletedAt);
-      if (versions.length) return versions;
-      const rawText = String(candidate.electronicResumeText || candidate.profileText || '').trim();
-      return rawText ? [{
-        id: `${candidate.id}_electronic_resume`,
-        fileName: `${candidate.name || '候选人'}-电子简历`,
-        uploadedAt: candidate.updatedAt || candidate.createdAt || '',
-        rawText,
-      }] : [];
-    }
+    function getCandidateResumeVersions(candidate) { return window.WorkBuddyCandidateResumeVersions.getCandidateResumeVersions(candidate); }
     const selectedCandidateResumeVersions = computed(() => getCandidateResumeVersions(selectedCandidate.value));
     const candidateResumeView = reactive({
       mode: 'text',
