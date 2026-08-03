@@ -11120,7 +11120,7 @@ const vueAppConfig = {
         const result = await getResumeSearchRepo().search({ query, limit: talentCloudSearch.pageSize, offset });
         if (requestId !== talentCloudSearch.requestId) return;
         talentCloudSearch.items = result.rows || [];
-        talentCloudSearch.total = offset + talentCloudSearch.items.length;
+        talentCloudSearch.total = Number.isFinite(Number(result.total)) ? Number(result.total) : offset + talentCloudSearch.items.length;
         talentCloudSearch.hasMore = talentCloudSearch.items.length === talentCloudSearch.pageSize;
       } catch (error) {
         if (requestId !== talentCloudSearch.requestId) return;

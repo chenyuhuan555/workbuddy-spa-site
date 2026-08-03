@@ -13,12 +13,14 @@ returns table(
   file_name text,
   candidate_name text,
   snippet text,
-  score real
+  score real,
+  total_count bigint
 )
 language sql stable security invoker as $$
   select c.id, rv.id, rv.file_name, c.name,
          left(coalesce(rt.raw_text, ''), 500),
-         similarity(coalesce(rt.raw_text, ''), search_query)
+         similarity(coalesce(rt.raw_text, ''), search_query),
+         count(*) over ()
   from public.resume_texts rt
   join public.resume_versions rv on rv.id = rt.resume_version_id
   join public.candidates c on c.id = rv.candidate_id

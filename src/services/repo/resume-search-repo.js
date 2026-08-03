@@ -31,7 +31,9 @@
       });
       if (error) throw appError('SEARCH_UNAVAILABLE', error);
       const rows = Array.isArray(data) ? data : [];
-      return Object.freeze({ rows, total: rows.length, query: searchQuery });
+      const reportedTotal = Number(rows[0]?.total_count);
+      const total = Number.isFinite(reportedTotal) && reportedTotal >= 0 ? reportedTotal : rows.length;
+      return Object.freeze({ rows, total, query: searchQuery });
     }
 
     return Object.freeze({ search });
