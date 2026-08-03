@@ -59,6 +59,7 @@
   <script src="./src/ui/resume-name-helpers.js?v=20260803-resumename1"></script>
   <script src="./src/ui/candidate-direction-normalizer.js?v=20260803-directionnormalizer1"></script>
   <script src="./src/ui/candidate-resume-text.js?v=20260803-candidateresumetext1"></script>
+  <script src="./src/ui/string-list-normalizer.js?v=20260803-stringlistnormalizer1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -19368,12 +19369,7 @@ ${ocrText}`
       return order.includes(v) ? v : order[idx] || 'strong95';
     }
 
-    function normalizeStringList(value) {
-      if (Array.isArray(value)) return value.map(v => String(v || '').trim()).filter(Boolean);
-      const text = String(value || '').trim();
-      if (!text) return [];
-      return text.split(/[;；、\n]/).map(v => v.replace(/^[-*]\s*/, '').trim()).filter(Boolean);
-    }
+    function normalizeStringList(value) { return window.WorkBuddyStringListNormalizer.normalizeStringList(value); }
 
     function escapeHtml(text) {
       return String(text || '')
