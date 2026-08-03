@@ -70,6 +70,7 @@
   <script src="./src/ui/candidate-resume-versions.js?v=20260803-candidateresumeversions1"></script>
   <script src="./src/ui/resume-ai-task-list.js?v=20260803-resumeaitasklist1"></script>
   <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
+  <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11086,17 +11087,14 @@ const vueAppConfig = {
       if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
       const candidate = selectedCandidate.value;
       const version = activeCandidateResumeVersion.value;
-      if (!candidate || !version) {
-        showToast('当前没有可处理的简历版本', 'error');
-        return;
-      }
-      if (!refreshRawText && String(version.rawText || '').trim().length < 40) {
-        showToast('现有原始文本不足，请从原始文件重新提取', 'error');
+      const validation = window.WorkBuddyResumeReprocessGuard.validateResumeReprocessRequest(version, refreshRawText);
+      if (!validation.ok) {
+        showToast(validation.reason, 'error');
         return;
       }
       try {
         await enqueueResumeAiProcessing(candidate.id, version.id, { refreshRawText });
-        showToast(refreshRawText ? '已从原始文件重新提取并处理' : '已使用现有文本重新处理');
+        showToast(window.WorkBuddyResumeReprocessGuard.reprocessSuccessMessage(refreshRawText));
       } catch (error) {
         showToast(error.message || '简历重新处理失败，请重试', 'error');
       }
