@@ -20,6 +20,7 @@
   <script src="./src/services/sync-merge.js"></script>
   <script src="./src/services/save-coordinator.js"></script>
   <script src="./src/services/resume-ai-processing.js?v=20260730-resumeai2"></script>
+  <script src="./src/services/resume-ai-batch.js?v=20260803-resumeaibatch1"></script>
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
@@ -4588,6 +4589,14 @@
         </div>
 
         <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
+          <div v-if="canWrite && canConfigureAi" class="flex justify-end -mt-1"><button type="button" @click="openResumeAiBatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">批量重新处理</button></div>
+          <section v-if="resumeAiBatch.open" class="bg-white border border-emerald-200 rounded-xl p-4 space-y-3" aria-label="简历 AI 批量处理">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><h2 class="font-bold text-slate-900">简历 AI 批量处理</h2><p class="text-xs text-slate-500 mt-1">默认只处理未完成或失败版本，不会覆盖已成功排版的版本。</p></div><button type="button" @click="resumeAiBatch.open = false" class="text-sm text-slate-500 hover:text-slate-700">关闭</button></div>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-600"><input v-model="resumeAiBatch.refreshRawText" type="checkbox" :disabled="resumeAiBatch.running">从原始文件重新提取文本</label>
+            <div class="flex flex-wrap items-center gap-2 text-sm text-slate-600"><span>总数 {{ resumeAiBatch.total }}</span><span>已完成 {{ resumeAiBatch.completed }}</span><span class="text-red-600">失败 {{ resumeAiBatch.failed }}</span><span v-if="resumeAiBatch.current">当前：{{ resumeAiBatch.current.fileName || '正在处理' }}</span></div>
+            <div v-if="resumeAiBatch.errors.length" class="rounded-lg bg-red-50 border border-red-100 p-3 text-xs text-red-700 space-y-1"><p v-for="item in resumeAiBatch.errors" :key="`${item.candidateId}:${item.versionId}`">{{ item.fileName || item.versionId }}：{{ item.message }}</p></div>
+            <div class="flex flex-wrap gap-2"><button v-if="!resumeAiBatch.running && !resumeAiBatch.completed" type="button" @click="startResumeAiBatch" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">开始处理</button><button v-if="resumeAiBatch.running" type="button" @click="cancelResumeAiBatch" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold">取消处理</button><button v-if="!resumeAiBatch.running && resumeAiBatch.failed" type="button" @click="retryResumeAiBatch" class="px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold">重试失败项</button></div>
+          </section>
           <div class="flex flex-col sm:flex-row sm:items-end gap-3"><div><h1 class="text-2xl font-bold">人才库</h1><p class="text-sm text-slate-500 mt-1">独立管理长期人才资产、画像和多岗位推进。</p></div><div class="flex flex-wrap gap-2 sm:ml-auto"><button type="button" @click="openTalentCategoryManager" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">分类管理</button><button type="button" @click="openTalentJobMatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">岗位匹配</button><button v-if="canConfigureAi" type="button" @click="openTalentCompanyResearch" class="px-4 py-2 rounded-lg border border-violet-200 text-violet-700 text-sm font-semibold hover:bg-violet-50">目标公司挖掘</button><button v-if="canWrite && canConfigureAi" type="button" @click="runCandidateSmartOrganize" :disabled="batchSmartOrganizing" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 flex items-center gap-1.5">{{ batchSmartOrganizing ? '智能整理中…' : '一键智能整理' }}<span v-if="batchSmartOrganizing" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span></button><button v-if="canWrite" @click="openTalentIntake" class="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-semibold" type="button">上传简历</button></div></div>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">人才总数</p><p class="text-2xl font-bold mt-2">{{ workbenchV2.candidates.length }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">当前推进中</p><p class="text-2xl font-bold mt-2">{{ candidateSummaryCounts.active }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">可看机会</p><p class="text-2xl font-bold mt-2">{{ candidateSummaryCounts.open }}</p></div><div class="bg-white border border-slate-200 rounded-xl p-4"><p class="text-xs text-slate-500">已入职</p><p class="text-2xl font-bold mt-2">{{ candidateSummaryCounts.onboarded }}</p></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 grid sm:grid-cols-2 lg:grid-cols-6 gap-2"><input aria-label="搜索人才姓名、公司或技能" v-model="candidateFilters.query" type="search" placeholder="搜索姓名、公司或技能" class="lg:col-span-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><select v-model="candidateFilters.category" aria-label="按分类筛选人才" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部分类</option><optgroup v-for="category in talentCategories" :key="category.id" :label="category.name"><option :value="category.id">{{ category.name }}（全部）</option><option v-for="subCategory in category.subCategories || []" :key="subCategory.id" :value="subCategory.id">{{ subCategory.name }}</option></optgroup></select><select aria-label="按人才方向筛选" v-model="candidateFilters.direction" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部人才方向</option><option v-for="direction in candidateDirections" :key="direction" :value="direction">{{ direction }}</option></select><select aria-label="按人才负责人筛选" v-model="candidateFilters.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select aria-label="按人才求职状态筛选" v-model="candidateFilters.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select></div>
@@ -11538,6 +11547,12 @@ const vueAppConfig = {
     });
     const resumeAiQueue = ResumeAiProcessing.createQueue();
     const resumeFileQueue = ResumeFileSync.createQueue();
+    const resumeAiBatchRunner = WorkBuddyResumeAiBatch.createBatchRunner({
+      enqueue: task => enqueueResumeAiProcessing(task.candidateId, task.versionId, { refreshRawText: task.refreshRawText === true }),
+    });
+    const resumeAiBatch = reactive(resumeAiBatchRunner.state);
+    resumeAiBatch.open = false;
+    resumeAiBatch.refreshRawText = false;
     let resumeBackgroundSaveTail = Promise.resolve(true);
     function saveResumeBackgroundState() {
       const current = resumeBackgroundSaveTail.then(() => saveWorkbenchV2());
@@ -11663,6 +11678,48 @@ const vueAppConfig = {
       );
       void run.finally(() => clearResumeAiPending(pendingKey)).catch(() => {});
       return run;
+    }
+    function listResumeAiBatchTasks() {
+      return (workbenchV2.candidates || []).flatMap(candidate => (candidate.resumeVersions || [])
+        .filter(version => version && !version.deletedAt)
+        .map(version => ({
+          candidateId: candidate.id,
+          versionId: version.id,
+          fileName: version.fileName || version.file_name || '未命名简历',
+          formatStatus: version.formatStatus || 'queued',
+          formattedText: version.formattedText || '',
+        })));
+    }
+    function openResumeAiBatch() {
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
+      resumeAiBatch.open = true;
+    }
+    async function startResumeAiBatch() {
+      if (resumeAiBatch.running) return;
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
+      const tasks = listResumeAiBatchTasks();
+      if (!tasks.length) { showToast('库内暂无可处理的简历版本', 'error'); return; }
+      try {
+        await resumeAiBatchRunner.start(tasks, { refreshRawText: resumeAiBatch.refreshRawText });
+        showToast(resumeAiBatch.failed ? `批量处理完成，失败 ${resumeAiBatch.failed} 份` : '批量简历处理完成', resumeAiBatch.failed ? 'error' : 'success');
+      } catch (error) {
+        showToast(error.message || '批量简历处理失败', 'error');
+      }
+    }
+    function cancelResumeAiBatch() {
+      resumeAiBatchRunner.cancel();
+    }
+    async function retryResumeAiBatch() {
+      if (resumeAiBatch.running || !resumeAiBatch.errors.length) return;
+      if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
+      const failedKeys = new Set(resumeAiBatch.errors.map(item => `${item.candidateId}:${item.versionId}`));
+      const tasks = listResumeAiBatchTasks().filter(task => failedKeys.has(`${task.candidateId}:${task.versionId}`));
+      try {
+        await resumeAiBatchRunner.start(tasks, { refreshRawText: resumeAiBatch.refreshRawText, includeCompleted: true });
+        showToast(resumeAiBatch.failed ? `失败项重试完成，仍失败 ${resumeAiBatch.failed} 份` : '失败项重试完成', resumeAiBatch.failed ? 'error' : 'success');
+      } catch (error) {
+        showToast(error.message || '失败项重试失败', 'error');
+      }
     }
     function enqueueResumeFileSync(candidateId, versionId) {
       return ResumeFileSync.enqueue(resumeFileQueue, { candidateId, versionId }, async task => {
@@ -24568,6 +24625,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
+      resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
       candidateResumeView, candidateResumeEdit, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       startCandidateResumeEdit, saveCandidateResumeEdit, cancelCandidateResumeEdit,
       reprocessCandidateResumeVersion, reprocessCandidateResumeFromText, reextractCandidateResumeFromOriginal, resumeAiStageLabel,
