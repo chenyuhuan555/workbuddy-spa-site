@@ -24,4 +24,7 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(indexHtml, /搜索完成，共/);
   assert.match(indexHtml, /topbar-search-results/);
   assert.match(indexHtml, /openSearchResult\(item\)/);
+  assert.match(indexHtml, /cloud-search-highlight/);
+  assert.match(indexHtml, /extractCloudSearchHighlights/);
+  assert.match(indexHtml, /@submit\.prevent="createWorkbenchCompany\(\)"/);
 });
