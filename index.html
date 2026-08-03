@@ -69,6 +69,7 @@
   <script src="./src/ui/duplicate-matching-helpers.js?v=20260803-duplicatematching1"></script>
   <script src="./src/ui/candidate-resume-versions.js?v=20260803-candidateresumeversions1"></script>
   <script src="./src/ui/resume-ai-task-list.js?v=20260803-resumeaitasklist1"></script>
+  <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11023,8 +11024,7 @@ const vueAppConfig = {
     async function retryResumeAiBatch() {
       if (resumeAiBatch.running || !resumeAiBatch.errors.length) return;
       if (!requireTalentWritePermission() || !requireTalentAiPermission()) return;
-      const failedKeys = new Set(resumeAiBatch.errors.map(item => `${item.candidateId}:${item.versionId}`));
-      const tasks = listResumeAiBatchTasks().filter(task => failedKeys.has(`${task.candidateId}:${task.versionId}`));
+      const tasks = window.WorkBuddyResumeAiRetryTasks.selectFailedResumeAiTasks(listResumeAiBatchTasks(), resumeAiBatch.errors);
       try {
         await resumeAiBatchRunner.start(tasks, { refreshRawText: resumeAiBatch.refreshRawText, includeCompleted: true });
         showToast(resumeAiBatch.failed ? `失败项重试完成，仍失败 ${resumeAiBatch.failed} 份` : '失败项重试完成', resumeAiBatch.failed ? 'error' : 'success');
