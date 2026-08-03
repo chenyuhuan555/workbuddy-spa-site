@@ -84,6 +84,7 @@
   <script src="./src/ui/workbench-application-actions.js?v=20260803-workbenchapplicationactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
+  <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -12389,47 +12390,6 @@ const vueAppConfig = {
       e.target.value = '';
     }
 
-    async function processOcrImage(file) {
-      ocrImage.value = URL.createObjectURL(file);
-      ocrStatus.value = 'loading';
-      ocrError.value = '';
-      try {
-        await ensureTesseractDependency();
-        const result = await window.Tesseract.recognize(file, 'chi_sim+eng', {
-          logger: m => { /* silent */ }
-        });
-        const rawText = result.data.text;
-        if (!rawText || rawText.trim().length < 10) {
-          throw new Error('未能识别到有效文字，请尝试更清晰的截图');
-        }
-        ocrStatus.value = 'ai';
-        const structured = await extractJobInfoWithDeepSeek(rawText);
-        if (structured) {
-          if (structured.company) form.company = structured.company;
-          if (structured.positionName) form.positions[0].name = structured.positionName;
-          if (structured.location) {
-            // 尝试匹配 location 到某个岗位字段（目前放 detail 开头）
-            const locPrefix = structured.location ? `工作地点：${structured.location}\n` : '';
-            const existingDetail = form.positions[0].detail || '';
-            if (!existingDetail.includes(structured.location)) {
-              form.positions[0].detail = locPrefix + structured.detail;
-            } else {
-              form.positions[0].detail = structured.detail || existingDetail;
-            }
-          } else if (structured.detail) {
-            form.positions[0].detail = structured.detail;
-          }
-          ocrStatus.value = 'done';
-        } else {
-          throw new Error('未能提取有效信息');
-        }
-      } catch (e) {
-        ocrStatus.value = 'error';
-        ocrError.value = e.message || '识别失败';
-        console.error('OCR 识别失败:', e);
-      }
-    }
-
     async function extractJobInfoWithDeepSeek(ocrText) {
       return await callDeepSeekWithProgress({
         task: 'job-info-extract',
@@ -12460,81 +12420,8 @@ ${ocrText}`
       });
     }
 
-    function fallbackParseJobText(rawText) {
-      const raw = String(rawText || '').trim();
-      if (!raw) return null;
-      const lines = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
-      const firstLine = lines[0] || raw;
-      const locationMatch = raw.match(/(?:工作地点|地点|城市|base|Base|BASE)[:：\s]*([^\n，,；;。]{2,20})/i)
-        || raw.match(/(?:上海|北京|深圳|广州|杭州|成都|南京|苏州|武汉|西安|重庆|天津|厦门|合肥|长沙|郑州|青岛|宁波|无锡|佛山)/);
-      const location = locationMatch ? (locationMatch[1] || locationMatch[0]).trim() : '';
-      let company = '';
-      let positionName = '';
-      const recruitMatch = firstLine.match(/^(.{2,40}?)(?:招聘|招|急招|诚聘|需要|寻访)(.{2,40}?)(?:，|,|。|；|;|$)/);
-      if (recruitMatch) {
-        company = recruitMatch[1].trim();
-        positionName = recruitMatch[2].trim();
-      } else {
-        const companyMatch = raw.match(/(?:公司|企业|客户)[:：\s]*([^\n，,；;。]{2,40})/);
-        const posMatch = raw.match(/(?:岗位|职位|职务|招聘)[:：\s]*([^\n，,；;。]{2,40})/);
-        company = companyMatch ? companyMatch[1].trim() : '';
-        positionName = posMatch ? posMatch[1].trim() : firstLine.slice(0, 32);
-      }
-      return { company, positionName, location, detail: raw };
-    }
-
-    async function parseJobText() {
-      const raw = textParseRaw.value.trim();
-      if (!raw || raw.length < 10) {
-        textParseStatus.value = 'error';
-        textParseError.value = '请输入至少 10 个字符的岗位描述';
-        return;
-      }
-      textParseStatus.value = 'ai';
-      textParseError.value = '';
-      try {
-        let structured;
-        try {
-          structured = await extractJobInfoWithDeepSeek(raw);
-        } catch (aiError) {
-          console.error('DeepSeek 文本解析失败，已使用本地兜底解析:', aiError);
-          structured = fallbackParseJobText(raw);
-          if (structured) {
-            showToast('AI 解析暂不可用，已使用本地规则填充', 'error');
-          } else {
-            throw aiError;
-          }
-        }
-        if (structured) {
-          if (structured.company) form.company = structured.company;
-          if (structured.positionName) {
-            // 如果第一个岗位已填，追加新行
-            const first = form.positions[0];
-            if (first.name.trim() || first.detail.trim()) {
-              addPositionRow();
-            }
-            form.positions[form.positions.length - 1].name = structured.positionName;
-          }
-          if (structured.location || structured.detail) {
-            const lastIdx = form.positions.length - 1;
-            const locPrefix = structured.location ? `工作地点：${structured.location}\n` : '';
-            const existing = form.positions[lastIdx].detail || '';
-            if (structured.location) form.positions[lastIdx].location = structured.location;
-            if (!existing.includes(structured.detail || '')) {
-              form.positions[lastIdx].detail = locPrefix + (structured.detail || '');
-            }
-          }
-          textParseStatus.value = 'done';
-          showToast('已自动解析并填写 ✓', 'success');
-        } else {
-          throw new Error('未能提取有效信息');
-        }
-      } catch (e) {
-        textParseStatus.value = 'error';
-        textParseError.value = e.message || '解析失败';
-        console.error('文本解析失败:', e);
-      }
-    }
+    function processOcrImage(file) { return legacyJobParseActions.processOcrImage(file); }
+    function parseJobText() { return legacyJobParseActions.parseJobText(); }
 
     // -------- 弹窗 --------
     const modal = reactive({ show: false, job: {}, assigneeName: '', colIdx: 0 });
@@ -16491,6 +16378,10 @@ ${ocrText}`
     const textParseRaw = ref('');
     const textParseStatus = ref('');
     const textParseError = ref('');
+    const legacyJobParseActions = window.WorkBuddyLegacyJobParseActions.createLegacyJobParseActions({
+      form, textParseRaw, textParseStatus, textParseError, ocrImage, ocrStatus, ocrError,
+      ensureTesseractDependency, extractJobInfoWithDeepSeek, addPositionRow, showToast,
+    });
 
     const candidateProfileStats = computed(() => {
       const resumes = collectCandidateResumes();
