@@ -71,6 +71,7 @@
   <script src="./src/ui/resume-ai-task-list.js?v=20260803-resumeaitasklist1"></script>
   <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
+  <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11014,7 +11015,7 @@ const vueAppConfig = {
       if (!tasks.length) { showToast('库内暂无可处理的简历版本', 'error'); return; }
       try {
         await resumeAiBatchRunner.start(tasks, { refreshRawText: resumeAiBatch.refreshRawText });
-        showToast(resumeAiBatch.failed ? `批量处理完成，失败 ${resumeAiBatch.failed} 份` : '批量简历处理完成', resumeAiBatch.failed ? 'error' : 'success');
+        showToast(window.WorkBuddyResumeAiBatchMessages.completionMessage(resumeAiBatch), window.WorkBuddyResumeAiBatchMessages.completionTone(resumeAiBatch));
       } catch (error) {
         showToast(error.message || '批量简历处理失败', 'error');
       }
@@ -11028,7 +11029,7 @@ const vueAppConfig = {
       const tasks = window.WorkBuddyResumeAiRetryTasks.selectFailedResumeAiTasks(listResumeAiBatchTasks(), resumeAiBatch.errors);
       try {
         await resumeAiBatchRunner.start(tasks, { refreshRawText: resumeAiBatch.refreshRawText, includeCompleted: true });
-        showToast(resumeAiBatch.failed ? `失败项重试完成，仍失败 ${resumeAiBatch.failed} 份` : '失败项重试完成', resumeAiBatch.failed ? 'error' : 'success');
+        showToast(window.WorkBuddyResumeAiBatchMessages.completionMessage(resumeAiBatch, true), window.WorkBuddyResumeAiBatchMessages.completionTone(resumeAiBatch));
       } catch (error) {
         showToast(error.message || '失败项重试失败', 'error');
       }
