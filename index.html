@@ -44,6 +44,7 @@
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
   <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
+  <script src="./src/ui/company-research-helpers.js?v=20260803-companyresearch1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
     [v-cloak] { display: none; }
@@ -10650,20 +10651,8 @@ const vueAppConfig = {
       talentCompanyResearch.loading = false;
       talentCompanyResearch.bdLoadingCompanyName = '';
     }
-    function normalizeCompanyName(name) {
-      return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    }
-    function talentCompanyResearchProfiles(candidates) {
-      return candidates.map(candidate => ({
-        id: candidate.id,
-        name: String(candidate.name || '').trim(),
-        currentCompany: String(candidate.currentCompany || '').trim(),
-        currentTitle: String(candidate.currentTitle || '').trim(),
-        city: String(candidate.city || '').trim(),
-        directions: (candidate.directions || []).map(item => String(item || '').trim()).filter(Boolean).slice(0, 6),
-        skills: (candidate.skills || candidate.keywords || []).map(item => String(item || '').trim()).filter(Boolean).slice(0, 12),
-      })).filter(candidate => candidate.id && candidate.name);
-    }
+    function normalizeCompanyName(name) { return window.WorkBuddyCompanyResearchHelpers.normalizeCompanyName(name); }
+    function talentCompanyResearchProfiles(candidates) { return window.WorkBuddyCompanyResearchHelpers.buildCandidateProfiles(candidates); }
     async function runTalentCompanyResearch() {
       if (!requireTalentAiPermission()) return;
       const scopedCandidates = talentCompanyResearchCandidates.value;
