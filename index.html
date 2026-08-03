@@ -37,6 +37,7 @@
   <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
   <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
   <script src="./src/services/metrics-delta.js?v=20260803-metricsdelta1"></script>
+  <script src="./src/services/dashboard-metrics.js?v=20260803-dashboardmetrics1"></script>
   <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
   <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
@@ -11210,13 +11211,10 @@ const vueAppConfig = {
       ...workbenchV2.positions.map(item => item.owner),
       ...workbenchV2.candidates.map(item => item.owner),
     ].filter(Boolean))));
-    const workbenchDashboardMetrics = computed(() => ({
-      companies: workbenchV2.companies.filter(item => item.status !== 'paused').length,
-      positions: workbenchV2.positions.filter(item => item.status === 'open').length,
-      candidates: workbenchV2.candidates.length,
-      applications: workbenchV2.applications.filter(item => item.stage !== SK.CLOSED).length,
-      interviews: workbenchV2.applications.filter(item => SG.INTERVIEW.includes(item.stage)).length,
-      offers: workbenchV2.applications.filter(item => SG.OFFER.includes(item.stage)).length,
+    const workbenchDashboardMetrics = computed(() => WorkBuddyDashboardMetrics.buildDashboardMetrics(workbenchV2, {
+      closedStage: SK.CLOSED,
+      interviewStages: SG.INTERVIEW,
+      offerStages: SG.OFFER,
     }));
 
     // ── 仪表盘：指标日环比（较昨日）──
