@@ -60,6 +60,8 @@
   <script src="./src/ui/candidate-direction-normalizer.js?v=20260803-directionnormalizer1"></script>
   <script src="./src/ui/candidate-resume-text.js?v=20260803-candidateresumetext1"></script>
   <script src="./src/ui/string-list-normalizer.js?v=20260803-stringlistnormalizer1"></script>
+  <script src="./src/ui/resume-name-normalizer.js?v=20260803-resumenamenormalizer1"></script>
+  <script src="./src/ui/unique-list.js?v=20260803-uniquelist1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -19966,9 +19968,7 @@ ${contextItems.join('\n\n')}
       return names;
     }
 
-    function normalizeResumeName(name) {
-      return String(name || '').trim().toLowerCase().replace(/\s+/g, '');
-    }
+    function normalizeResumeName(name) { return window.WorkBuddyResumeNameNormalizer.normalizeResumeName(name); }
 
     function persistAiResult() {
       localSave();
@@ -21542,18 +21542,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       return '';
     }
 
-    function uniqueList(items, limit = 30) {
-      const seen = new Set();
-      const out = [];
-      for (const item of items) {
-        const v = String(item || '').trim();
-        if (!v || seen.has(v)) continue;
-        seen.add(v);
-        out.push(v);
-        if (out.length >= limit) break;
-      }
-      return out;
-    }
+    function uniqueList(items, limit = 30) { return window.WorkBuddyUniqueList.uniqueList(items, limit); }
 
     function normalizeDuplicateText(text) {
       return String(text || '')
