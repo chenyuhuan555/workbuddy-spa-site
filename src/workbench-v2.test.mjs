@@ -788,6 +788,15 @@ test('工作台三个主列表使用分页结果和预构建索引', () => {
   assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
 });
 
+test('人才库环形图不会重复计算无推进记录的人才', () => {
+  const start = INDEX_HTML.indexOf('const talentPoolChart = computed(() => {');
+  const end = INDEX_HTML.indexOf('// ── 仪表盘：业务进展条', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /if \(!s\) \{ buckets\[5\]\+\+; return; \}/);
+  assert.doesNotMatch(source, /buckets\[5\]\s*\+=\s*totalCands\s*-\s*Object\.keys\(candidateStages\)/);
+});
+
 test('人才列表在筛选后、分页前按最近更新时间降序排列', () => {
   assert.match(INDEX_HTML, /const \{ PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate \} = window\.WorkBuddyListPerformance/);
   assert.match(INDEX_HTML, /const filteredWorkbenchCandidates = computed\(\(\) => sortByRecentUpdate\(WorkbenchV2\.filterCandidatesByCategory\(/);

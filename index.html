@@ -12009,8 +12009,6 @@ const vueAppConfig = {
         if (p >= 1 && p <= 5) buckets[p - 1]++;
         else buckets[5]++;
       });
-      // 补齐无任何推进记录的候选人到"其他"
-      buckets[5] += totalCands - Object.keys(candidateStages).filter(k => candidateStages[k]).length;
       const C = 314; // 2 * PI * 50
       const segs = [
         {label:'初步沟通',value:buckets[0],color:'#059669',dash:(buckets[0]/totalCands)*C,pct:pct(buckets[0],totalCands)},
