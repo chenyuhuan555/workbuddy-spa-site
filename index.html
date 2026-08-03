@@ -25,6 +25,7 @@
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
   <script src="./src/services/repo/resume-version-repo.js?v=20260802-resumeversion1"></script>
+  <script src="./src/services/repo/resume-version-read-path.js?v=20260803-resumeread1"></script>
   <script src="./src/services/repo/workbench-entity-repo.js?v=20260802-entityrepo1"></script>
   <script src="./src/services/repo/workbench-entity-read-path.js?v=20260802-entityread1"></script>
   <script src="./src/services/repo/workbench-entity-merge.js?v=20260802-entitymerge1"></script>
@@ -7426,20 +7427,22 @@
         </div>
       </div>
 
-      <!-- Phase 2c：简历版本独立表双写（暂不切读） -->
+      <!-- Phase 2c：简历版本独立表双写与安全切读 -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
         <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
           <div class="min-w-0">
             <div class="flex items-center gap-2">
               <h2 class="font-bold text-slate-800">简历版本云端双写</h2>
-              <span v-if="resumeVersionMigration.finished" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">已完成</span>
-              <span v-else class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold">Phase 2c · 仅双写，不切读</span>
+              <span v-if="resumeVersionReadPathEnabled" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">Phase 2c · 云端读取已启用</span>
+              <span v-else-if="resumeVersionMigration.finished" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">已完成</span>
+              <span v-else class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold">Phase 2c · 双写，待切读</span>
             </div>
-            <p class="text-xs text-slate-400 mt-1">将简历版本元数据写入 resume_versions 表；原文与排版文本继续由 resume_texts 保存，当前候选人读取仍保持兼容，不会改变现有页面数据来源。</p>
+            <p class="text-xs text-slate-400 mt-1">将简历版本元数据写入 resume_versions 表；切换后版本元数据从云端读取，本地原文与排版文本继续保留并优先用于展示。</p>
           </div>
           <div class="lg:ml-auto flex items-center gap-2 flex-wrap">
             <button type="button" @click="runResumeVersionMigration" :disabled="resumeVersionMigration.running" class="px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ resumeVersionMigration.running ? '迁移中…' : resumeVersionMigration.finished ? '重新迁移' : '开始迁移' }}</button>
             <button type="button" @click="verifyResumeVersionParity" :disabled="resumeVersionParity.checking" class="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap">{{ resumeVersionParity.checking ? '校验中…' : '校验一致性' }}</button>
+            <button v-if="canWrite && !resumeVersionReadPathEnabled" type="button" @click="enableResumeVersionCloudReadPath" :disabled="!resumeVersionReadPathCanEnable || resumeVersionReadSwitch.running" class="px-4 py-2.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">{{ resumeVersionReadSwitch.running ? '启用中…' : '启用云端读取' }}</button>
           </div>
         </div>
         <div v-if="resumeVersionMigration.running || resumeVersionMigration.finished" class="px-5 pb-4">
@@ -15872,6 +15875,43 @@ ${ocrText}`
       } catch (error) { resumeVersionParity.ok = false; resumeVersionParity.error = error?.message || '校验失败'; }
       finally { resumeVersionParity.checking = false; }
     }
+    const ResumeVersionReadPath = window.WorkBuddyResumeVersionReadPath;
+    const resumeVersionReadPathEnabled = computed(() => Boolean(workbenchV2.migrationMeta?.resumeVersions?.readEnabledAt));
+    const resumeVersionReadPathCanEnable = computed(() => ResumeVersionReadPath.canEnableReadPath(resumeVersionMigrationMeta(), resumeVersionParity));
+    const resumeVersionReadSwitch = reactive({ running: false, error: '' });
+    async function loadResumeVersionsFromCloudAsAuthority({ persist = true } = {}) {
+      const previous = workbenchV2.candidates.map(candidate => ({ candidate, versions: (candidate.resumeVersions || []).slice() }));
+      try {
+        const cloudVersions = await getResumeVersionRepo().listAllVersions();
+        const grouped = ResumeVersionReadPath.buildAuthoritativeVersions(workbenchV2.candidates, cloudVersions);
+        workbenchV2.candidates.forEach(candidate => {
+          if (grouped.has(String(candidate.id))) candidate.resumeVersions.splice(0, candidate.resumeVersions.length, ...grouped.get(String(candidate.id)));
+        });
+        if (persist && !await saveWorkbenchV2()) throw new Error('简历版本云端读取保存失败');
+        return true;
+      } catch (error) {
+        previous.forEach(({ candidate, versions }) => candidate.resumeVersions.splice(0, candidate.resumeVersions.length, ...versions));
+        throw error;
+      }
+    }
+    async function enableResumeVersionCloudReadPath() {
+      if (resumeVersionReadSwitch.running || resumeVersionReadPathEnabled.value) return;
+      resumeVersionReadSwitch.running = true;
+      resumeVersionReadSwitch.error = '';
+      const meta = resumeVersionMigrationMeta();
+      const previous = meta.readEnabledAt || '';
+      try {
+        meta.readEnabledAt = new Date().toISOString();
+        await loadResumeVersionsFromCloudAsAuthority({ persist: false });
+        if (!await saveWorkbenchV2()) throw new Error('简历版本云端读取开关保存失败');
+        schedulePush();
+        showToast('简历版本云端读取已启用', 'success');
+      } catch (error) {
+        meta.readEnabledAt = previous;
+        resumeVersionReadSwitch.error = error?.message || '启用简历版本云端读取失败';
+        showToast(resumeVersionReadSwitch.error);
+      } finally { resumeVersionReadSwitch.running = false; }
+    }
 
     // -------- Phase 3：公司、岗位、推进记录独立表（兼容双写） --------
     let workbenchEntityRepo = null;
@@ -16648,6 +16688,14 @@ ${ocrText}`
         } else {
           void syncCandidatesWithCloud(); // Phase 2a 双写预览
         }
+        let resumeVersionReadError = '';
+        if (resumeVersionReadPathEnabled.value) {
+          try {
+            await loadResumeVersionsFromCloudAsAuthority();
+          } catch (error) {
+            resumeVersionReadError = '简历版本云端读取失败，已使用 workspace_state 回退';
+          }
+        }
         let workbenchEntityReadError = '';
         if (workbenchEntityReadPathEnabled.value) {
           try {
@@ -16656,8 +16704,8 @@ ${ocrText}`
             workbenchEntityReadError = '业务实体云端读取失败，已使用 workspace_state 回退';
           }
         }
-        syncStatus.value = workbenchEntityReadError ? 'error' : 'synced';
-        syncError.value = workbenchEntityReadError;
+        syncStatus.value = resumeVersionReadError || workbenchEntityReadError ? 'error' : 'synced';
+        syncError.value = resumeVersionReadError || workbenchEntityReadError;
       } catch (e) {
         syncStatus.value = 'error';
         syncError.value = e?.code === 'WORKSPACE_VERSION_CONFLICT' ? '云端版本冲突，请刷新页面' : '云端连接失败，请稍后重试';
@@ -24650,7 +24698,7 @@ ${clipped}`
       textParseRaw, textParseStatus, textParseError, parseJobText,
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
-      resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, resumeVersionParityDiffSections, resumeVersionArchive, archiveExtraResumeVersions, verifyResumeVersionParity,
+      resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, resumeVersionParityDiffSections, resumeVersionArchive, archiveExtraResumeVersions, verifyResumeVersionParity, resumeVersionReadPathEnabled, resumeVersionReadPathCanEnable, resumeVersionReadSwitch, enableResumeVersionCloudReadPath,
       workbenchEntityMigration, runWorkbenchEntityMigration, workbenchEntityParity, verifyWorkbenchEntityParity,
       workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       workbenchEntityPull, pullWorkbenchEntitiesFromCloud,

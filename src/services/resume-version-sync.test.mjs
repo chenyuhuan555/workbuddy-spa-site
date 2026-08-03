@@ -23,9 +23,11 @@ test('Phase 2c 版本同步具备双写、迁移和一致性校验入口', () =>
   assert.match(html, /filter\(version => !version\?\.deletedAt\)/);
 });
 
-test('Phase 2c 不在迁移完成前切换候选人版本读取来源', () => {
-  assert.match(html, /仅双写，不切读/);
-  assert.doesNotMatch(html, /loadResumeVersionsFromCloudAsAuthority/);
+test('Phase 2c 只有回填后通过版本集合校验才允许切换云端读取', () => {
+  assert.match(html, /resume-version-read-path\.js\?v=/);
+  assert.match(html, /resumeVersionReadPathCanEnable/);
+  assert.match(html, /loadResumeVersionsFromCloudAsAuthority/);
+  assert.match(html, /enableResumeVersionCloudReadPath/);
 });
 
 test('版本一致性指纹会规范化云端映射产生的类型和时间格式', () => {
