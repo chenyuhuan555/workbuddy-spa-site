@@ -56,6 +56,7 @@
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
   <script src="./src/ui/position-structured-helpers.js?v=20260803-positionstructured1"></script>
   <script src="./src/ui/application-display.js?v=20260803-applicationdisplay1"></script>
+  <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -12361,7 +12362,7 @@ const vueAppConfig = {
       Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
     }
     function workbenchCompanyCount(companyId, collection, predicate = () => true) {
-      return collection.filter(item => item.companyId === companyId && predicate(item)).length;
+      return window.WorkBuddyCollectionCount.countByCompany(companyId, collection, predicate);
     }
 
     function replaceWorkbenchV2(bundle) {
