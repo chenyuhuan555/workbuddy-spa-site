@@ -58,6 +58,7 @@
   <script src="./src/ui/application-display.js?v=20260803-applicationdisplay1"></script>
   <script src="./src/ui/resume-name-helpers.js?v=20260803-resumename1"></script>
   <script src="./src/ui/candidate-direction-normalizer.js?v=20260803-directionnormalizer1"></script>
+  <script src="./src/ui/candidate-resume-text.js?v=20260803-candidateresumetext1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11811,17 +11812,7 @@ const vueAppConfig = {
       }
     }
     // 从候选人对象取可用于 AI 提取的简历文本（优先 electronicResumeText，否则 resumeVersions 的 rawText）
-    function getCandidateResumeText(candidate) {
-      let text = String(candidate.electronicResumeText || '').trim();
-      if (text.length < 40) {
-        const versions = Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions : [];
-        for (const v of versions) {
-          const t = String(v.rawText || '').trim();
-          if (t.length >= 40) { text = t; break; }
-        }
-      }
-      return text;
-    }
+    function getCandidateResumeText(candidate) { return window.WorkBuddyCandidateResumeText.getCandidateResumeText(candidate); }
     // 针对已存在候选人：从其电子简历/简历版本文本后台提取公司/职位/城市，
     // 只补充空字段（不覆盖用户已填），提取后保存。用于人才库里历史候选人补全资料。
     const candidateInfoExtracting = ref(false);
