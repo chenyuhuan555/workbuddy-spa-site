@@ -57,6 +57,7 @@
   <script src="./src/ui/position-structured-helpers.js?v=20260803-positionstructured1"></script>
   <script src="./src/ui/application-display.js?v=20260803-applicationdisplay1"></script>
   <script src="./src/ui/resume-name-helpers.js?v=20260803-resumename1"></script>
+  <script src="./src/ui/candidate-direction-normalizer.js?v=20260803-directionnormalizer1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11825,11 +11826,7 @@ const vueAppConfig = {
     // 只补充空字段（不覆盖用户已填），提取后保存。用于人才库里历史候选人补全资料。
     const candidateInfoExtracting = ref(false);
     const candidateDirectionRecognizing = ref(false);
-    function normalizeCandidateDirections(values) {
-      return Array.from(new Set((Array.isArray(values) ? values : [])
-        .map(value => String(value || '').trim())
-        .filter(Boolean))).slice(0, 3);
-    }
+    function normalizeCandidateDirections(values) { return window.WorkBuddyCandidateDirectionNormalizer.normalize(values); }
     async function extractCandidateDirectionsWithDeepSeek(candidate, resumeText) {
       const parsed = await callDeepSeekWithProgress({
         task: 'candidate-direction-recognition',
