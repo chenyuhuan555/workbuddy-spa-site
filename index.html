@@ -31,6 +31,7 @@
   <script src="./src/services/repo/offline-sync-queue.js?v=20260802-offlinequeue1"></script>
   <script src="./src/services/repo/resume-search-repo.js?v=20260802-searchrepo1"></script>
   <script src="./src/services/repo/candidate-matching-repo.js?v=20260802-matchrepo1"></script>
+  <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
   <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
   <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
@@ -18076,15 +18077,14 @@ ${ocrText}`
     const CORS_PROXY_BASE = 'https://api.allorigins.win/raw?url=';
 
     const RADAR_DEFAULT_RSS_KEY = '1vbo0nxwc6cfisvbgitdsqmwisbqatple2aepjh7';
+    const radarRssKeyStore = window.WorkBuddyRadarRssConfig.createRadarRssKeyStore({
+      storage: window.localStorage,
+      storageKey: STORAGE_KEY,
+      defaultKey: RADAR_DEFAULT_RSS_KEY,
+    });
 
     function getRadarRssApiKey() {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY + '_rss2json_key');
-        if (saved) return saved;
-      } catch {}
-      // 首次使用自动保存默认Key
-      localStorage.setItem(STORAGE_KEY + '_rss2json_key', RADAR_DEFAULT_RSS_KEY);
-      return RADAR_DEFAULT_RSS_KEY;
+      return radarRssKeyStore.get();
     }
 
     function loadRadarCache() {
@@ -18460,10 +18460,10 @@ ${ocrText}`
     function saveRadarRssApiKey() {
       const key = radarRssApiKeyInput.value.trim();
       if (!key) {
-        localStorage.removeItem(STORAGE_KEY + '_rss2json_key');
+        radarRssKeyStore.clear();
         showToast('API Key 已清除，将使用手动输入模式');
       } else {
-        localStorage.setItem(STORAGE_KEY + '_rss2json_key', key);
+        radarRssKeyStore.set(key);
         showToast('API Key 已保存，刷新分析将自动拉取新闻');
       }
       radarSettingsOpen.value = false;
