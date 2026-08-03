@@ -81,6 +81,8 @@
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/workbench-entity-actions.js?v=20260803-workbenchentityactions1"></script>
   <script src="./src/ui/workbench-search-actions.js?v=20260803-workbenchsearchactions1"></script>
+  <script src="./src/ui/workbench-application-actions.js?v=20260803-workbenchapplicationactions1"></script>
+  <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -10529,48 +10531,15 @@ const vueAppConfig = {
     )));
     const pagedWorkbenchCandidates = computed(() => paginate(filteredWorkbenchCandidates.value, candidatePage.value, PAGE_SIZE));
     function talentCloudSearchErrorMessage(error) { return window.WorkBuddyTalentSearchMessages.errorMessage(error); }
-    async function loadTalentCloudSearchPage(page = 1) {
-      const query = String(talentCloudSearch.query || '').trim();
-      const requestId = talentCloudSearch.requestId + 1;
-      talentCloudSearch.requestId = requestId;
-      talentCloudSearch.error = '';
-      talentCloudSearch.fallback = false;
-      talentCloudSearch.page = Math.max(1, Number(page) || 1);
-      if (!query) {
-        talentCloudSearch.items = [];
-        talentCloudSearch.total = 0;
-        talentCloudSearch.hasMore = false;
-        talentCloudSearch.running = false;
-        return;
-      }
-      talentCloudSearch.running = true;
-      try {
-        if (!window.WorkBuddySupabase || !window.WorkBuddyAccess?.profile) {
-          const error = new Error('AUTH_REQUIRED');
-          error.code = 'AUTH_REQUIRED';
-          throw error;
-        }
-        const offset = (talentCloudSearch.page - 1) * talentCloudSearch.pageSize;
-        const result = await getResumeSearchRepo().search({ query, limit: talentCloudSearch.pageSize, offset });
-        if (requestId !== talentCloudSearch.requestId) return;
-        talentCloudSearch.items = result.rows || [];
-        talentCloudSearch.total = Number.isFinite(Number(result.total)) ? Number(result.total) : offset + talentCloudSearch.items.length;
-        talentCloudSearch.hasMore = talentCloudSearch.items.length === talentCloudSearch.pageSize;
-      } catch (error) {
-        if (requestId !== talentCloudSearch.requestId) return;
-        talentCloudSearch.error = talentCloudSearchErrorMessage(error);
-        talentCloudSearch.fallback = true;
-        talentCloudSearch.hasMore = false;
-      } finally {
-        if (requestId === talentCloudSearch.requestId) talentCloudSearch.running = false;
-      }
-    }
-    function runTalentCloudSearch() {
-      return loadTalentCloudSearchPage(1);
-    }
-    function changeTalentCloudSearchPage(page) {
-      return loadTalentCloudSearchPage(page);
-    }
+    const talentCloudSearchActions = window.WorkBuddyTalentCloudSearchActions.createTalentCloudSearchActions({
+      state: talentCloudSearch,
+      isReady: () => Boolean(window.WorkBuddySupabase && window.WorkBuddyAccess?.profile),
+      search: params => getResumeSearchRepo().search(params),
+      errorMessage: talentCloudSearchErrorMessage,
+    });
+    function loadTalentCloudSearchPage(page = 1) { return talentCloudSearchActions.loadPage(page); }
+    function runTalentCloudSearch() { return talentCloudSearchActions.run(); }
+    function changeTalentCloudSearchPage(page) { return talentCloudSearchActions.changePage(page); }
     const activeApplicationCountByCandidateId = computed(() => {
       const counts = new Map();
       for (const application of workbenchV2.applications) {
@@ -11528,6 +11497,12 @@ const vueAppConfig = {
       openPositionDetail: id => workbenchEntityActions.openPositionDetail(id),
       workbenchMode, aiToolbox, positionApplications: filteredPositionApplications,
     });
+    const workbenchApplicationActions = window.WorkBuddyWorkbenchApplicationActions.createWorkbenchApplicationActions({
+      state: { applications: workbenchV2.applications, nav: workbenchNav, route: workbenchRoute },
+      findApplication: id => workbenchV2.applications.find(item => item.id === id),
+      showToast, saveWorkbenchV2, requireWritePermission: requireTalentWritePermission,
+      stages: SK, workbenchV2Api: WorkbenchV2,
+    });
     function openCompanyCreate() { globalCreateMenu.value = false; return workbenchEntityActions.openCompanyCreate(); }
     async function createWorkbenchCompany(input = null) { return workbenchEntityActions.createWorkbenchCompany(input); }
     function openCompanyPositionCreate() { return workbenchEntityActions.openCompanyPositionCreate(); }
@@ -11548,35 +11523,9 @@ const vueAppConfig = {
       // Phase 1：跨设备场景文本可能不在内存，从 resume_texts 表补拉
       void ensureResumeTexts(activeCandidateResumeVersion.value);
     }
-    function openApplicationDetail(id) {
-      const app = workbenchV2.applications.find(item => item.id === id);
-      if (!app) { showToast('推进记录不存在', 'error'); return; }
-      if (typeof app.progressNote !== 'string') app.progressNote = '';
-      if (typeof app.communicationLog !== 'string') app.communicationLog = '';
-      workbenchNav.value = 'companies';
-      Object.assign(workbenchRoute, { type: 'application', id, parentId: app.companyId || '', tab: 'overview' });
-    }
-    async function saveApplicationDetail() {
-      if (await saveWorkbenchV2()) showToast('推进记录已保存');
-    }
-    function deletePipelineEvent(application, eventId) {
-      if (!application || !Array.isArray(application.pipelineEvents)) return;
-      const idx = application.pipelineEvents.findIndex(e => e.id === eventId);
-      if (idx < 0) return;
-      application.pipelineEvents.splice(idx, 1);
-      // 删除后同步当前阶段：取剩余事件的最后一条 toStage，没有则回退到 discovered
-      if (application.pipelineEvents.length > 0) {
-        const last = application.pipelineEvents[application.pipelineEvents.length - 1];
-        application.stage = last.toStage || SK.DISCOVERED;
-        application.stageEnteredAt = last.occurredAt || application.createdAt || new Date().toISOString();
-      } else {
-        application.stage = SK.DISCOVERED;
-        application.stageEnteredAt = application.createdAt || new Date().toISOString();
-      }
-      application.updatedAt = new Date().toISOString();
-      saveWorkbenchV2();
-      showToast('已删除该条时间线事件');
-    }
+    function openApplicationDetail(id) { return workbenchApplicationActions.openApplicationDetail(id); }
+    async function saveApplicationDetail() { return workbenchApplicationActions.saveApplicationDetail(); }
+    function deletePipelineEvent(application, eventId) { return workbenchApplicationActions.deletePipelineEvent(application, eventId); }
     function openDashboardTodo(todo) {
       if (todo?.candidateId) return openCandidateDetail(todo.candidateId);
       if (todo?.positionId) openPositionDetail(todo.positionId);
@@ -12167,30 +12116,10 @@ const vueAppConfig = {
       if (created && await saveWorkbenchV2()) showToast(`已创建 ${created} 条推进记录`);
     }
     async function createApplicationFromMatch(candidateId, positionId, match = {}) {
-      if (!requireTalentWritePermission()) return null;
-      try {
-        const application = WorkbenchV2.createApplication(workbenchV2, {
-          candidateId, positionId, matchScore: match.score ?? null, matchReason: match.reason || '',
-          matchHighlights: match.highlights || [], matchGaps: match.gaps || [], matchRisks: match.risks || [],
-        });
-        if (await saveWorkbenchV2()) showToast('已创建推进记录');
-        return application;
-      } catch (error) {
-        showToast(error.message, 'error');
-        return null;
-      }
+      return workbenchApplicationActions.createApplicationFromMatch(candidateId, positionId, match);
     }
     function changeWorkbenchApplicationStage(application, toStage) {
-      try {
-        WorkbenchV2.changeApplicationStage(application, {
-          toStage,
-          reasonCode: toStage === SK.CLOSED ? 'other' : '',
-          reasonNote: toStage === SK.CLOSED ? '从推进中心结束' : '',
-        });
-        saveWorkbenchV2();
-      } catch (error) {
-        showToast(error.message, 'error');
-      }
+      return workbenchApplicationActions.changeWorkbenchApplicationStage(application, toStage);
     }
     function formatBeijingDateTime(value) { return window.WorkBuddyApplicationDisplay.formatBeijingDateTime(value); }
     function getApplicationStageStatus(application) {
