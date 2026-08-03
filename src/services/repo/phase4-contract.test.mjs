@@ -34,4 +34,6 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(indexHtml, /globalSearchResults/);
   assert.match(indexHtml, /openGlobalSearchResult\(item\)/);
   assert.match(indexHtml, />搜索<\/span>/);
+  assert.match(indexHtml, /\.wb-v2-workspace \.wb-v2-global-search-button span/);
+  assert.match(indexHtml, /color:\s*#fff\s*!important/);
 });
