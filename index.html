@@ -36,6 +36,7 @@
   <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
   <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
   <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
+  <script src="./src/services/metrics-delta.js?v=20260803-metricsdelta1"></script>
   <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
   <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
@@ -11252,25 +11253,10 @@ const vueAppConfig = {
       _writeMetricsSnapshot(workbenchDashboardMetrics.value);
     }
 
-    const workbenchDashboardDeltaView = computed(() => {
-      const base = metricsBaseline.value;
-      const m = workbenchDashboardMetrics.value;
-      const build = (cur, key) => {
-        if (!base || base[key] === undefined) return { text: '较昨日 —', cls: 'text-slate-400' };
-        const d = cur - base[key];
-        if (d === 0) return { text: '较昨日 0 —', cls: 'text-slate-400' };
-        if (d > 0) return { text: `较昨日 +${d} ↑`, cls: 'text-emerald-600' };
-        return { text: `较昨日 ${d} ↓`, cls: 'text-rose-600' };
-      };
-      return {
-        companies: build(m.companies, 'companies'),
-        positions: build(m.positions, 'positions'),
-        candidates: build(m.candidates, 'candidates'),
-        applications: build(m.applications, 'applications'),
-        interviews: build(m.interviews, 'interviews'),
-        offers: build(m.offers, 'offers'),
-      };
-    });
+    const workbenchDashboardDeltaView = computed(() => WorkBuddyMetricsDelta.buildDashboardDelta(
+      workbenchDashboardMetrics.value,
+      metricsBaseline.value,
+    ));
 
     // ── 仪表盘：我的待办（仅展示手动新增，不再自动生成占位待办）──
     const dashboardTodos = computed(() => {
