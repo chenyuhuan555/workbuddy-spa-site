@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const ORIGINAL_GUARDS = readFileSync(new URL('./resume-original-guards.js', import.meta.url), 'utf8');
 
 test('简历页提供文本重试、原件重提取和原件恢复动作', () => {
   assert.match(INDEX_HTML, /使用现有文本重新处理/);
@@ -31,7 +32,8 @@ test('跨设备原件读取通过本机、私有云端和旧来源统一解析',
 test('原件恢复产生的状态更新也进入简历后台串行保存', () => {
   assert.match(INDEX_HTML, /if \(createdFileId\) await saveResumeBackgroundState\(\)/);
   assert.doesNotMatch(INDEX_HTML, /if \(createdFileId\) await saveWorkbenchV2\(\)/);
-  assert.match(INDEX_HTML, /version\.originalFileError = '当前设备和云端均没有原始文件';\s+await saveResumeBackgroundState\(\)/);
+  assert.match(ORIGINAL_GUARDS, /MISSING_ORIGINAL_ERROR = '当前设备和云端均没有原始文件'/);
+  assert.match(INDEX_HTML, /markOriginalMissing\(version\)/);
   assert.match(INDEX_HTML, /candidate\.updatedAt = new Date\(\)\.toISOString\(\);\s+await saveResumeBackgroundState\(\)/);
 });
 

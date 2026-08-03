@@ -72,6 +72,7 @@
   <script src="./src/ui/resume-ai-retry-tasks.js?v=20260803-resumeairetry1"></script>
   <script src="./src/ui/resume-reprocess-guard.js?v=20260803-resumereprocessguard1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
+  <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11121,8 +11122,7 @@ const vueAppConfig = {
         showToast('原始文件已同步，可在其他设备查看');
       } catch (error) {
         if (error?.code === 'ORIGINAL_NOT_FOUND') {
-          version.originalFileStatus = 'missing';
-          version.originalFileError = '当前设备和云端均没有原始文件';
+          window.WorkBuddyResumeOriginalGuards.markOriginalMissing(version);
           await saveResumeBackgroundState();
         }
         showToast(error.message || '原始文件同步失败，请重试', 'error');
@@ -11169,10 +11169,7 @@ const vueAppConfig = {
         showToast(error.message || '原始文件保存失败', 'error');
       }
     }
-    const hasCandidateResumeOriginal = computed(() => {
-      const v = activeCandidateResumeVersion.value;
-      return !!(v && v.originalFileStatus !== 'missing' && (v.fileId || v.cloudFilePath || v.fileData || v.sourceResumeId));
-    });
+    const hasCandidateResumeOriginal = computed(() => window.WorkBuddyResumeOriginalGuards.hasResumeOriginalReference(activeCandidateResumeVersion.value));
     const selectedApplicationCandidate = computed(() => workbenchV2.candidates.find(c => c.id === selectedApplication.value?.candidateId) || null);
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));
     const candidateDirections = computed(() => WorkBuddyCandidateDirections.collectDirections(workbenchV2.candidates));
@@ -12242,8 +12239,7 @@ const vueAppConfig = {
         else candidateResumeView.blobUrl = url;
       } catch (e) {
         if (e?.code === 'ORIGINAL_NOT_FOUND') {
-          version.originalFileStatus = 'missing';
-          version.originalFileError = '当前设备和云端均没有原始文件';
+          window.WorkBuddyResumeOriginalGuards.markOriginalMissing(version);
           candidateResumeView.error = '当前设备和云端均没有原始文件，可重新上传原件';
           await saveResumeBackgroundState();
         } else {
