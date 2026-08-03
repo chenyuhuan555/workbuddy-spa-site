@@ -54,6 +54,7 @@
   <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
   <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
+  <script src="./src/ui/position-structured-helpers.js?v=20260803-positionstructured1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -12569,49 +12570,10 @@ const vueAppConfig = {
       };
     }
 
-    function normalizePositionStructuredFields(pos = {}) {
-      return {
-        location: String(pos.location || '').trim(),
-        salary: String(pos.salary || '').trim(),
-        reportLine: String(pos.reportLine || '').trim(),
-        mustHave: String(pos.mustHave || '').trim(),
-        niceToHave: String(pos.niceToHave || '').trim(),
-        exclusions: String(pos.exclusions || '').trim(),
-        clientPreferences: String(pos.clientPreferences || '').trim(),
-      };
-    }
-
-    function getPositionCompleteness(pos = {}) {
-      const fields = normalizePositionStructuredFields(pos);
-      const requiredKeys = ['location', 'salary', 'mustHave'];
-      const optionalKeys = ['reportLine', 'niceToHave', 'exclusions', 'clientPreferences'];
-      const filledRequired = requiredKeys.filter(key => fields[key]).length;
-      const filledOptional = optionalKeys.filter(key => fields[key]).length;
-      const score = Math.round(((filledRequired * 2) + filledOptional) / ((requiredKeys.length * 2) + optionalKeys.length) * 100);
-      const missing = requiredKeys.filter(key => !fields[key]);
-      return { score, missing, fields };
-    }
-
-    function structuredPositionSummary(pos = {}) {
-      const fields = normalizePositionStructuredFields(pos);
-      return [
-        fields.location ? `地点：${fields.location}` : '',
-        fields.salary ? `薪资：${fields.salary}` : '',
-        fields.reportLine ? `汇报线：${fields.reportLine}` : '',
-        fields.mustHave ? `硬性条件：${fields.mustHave}` : '',
-        fields.niceToHave ? `加分项：${fields.niceToHave}` : '',
-        fields.exclusions ? `排除项：${fields.exclusions}` : '',
-        fields.clientPreferences ? `客户偏好：${fields.clientPreferences}` : '',
-      ].filter(Boolean).join('\n');
-    }
-
-    function mustHaveItems(pos = {}) {
-      const text = String(pos.mustHave || '').trim();
-      if (!text) return [];
-      return text.split(/\n/)
-        .map(line => line.replace(/^\s*[\d一二三四五六七八九十]+[、.．,，\s]+/, '').trim())
-        .filter(Boolean);
-    }
+    function normalizePositionStructuredFields(pos = {}) { return window.WorkBuddyPositionStructuredHelpers.normalizePositionStructuredFields(pos); }
+    function getPositionCompleteness(pos = {}) { return window.WorkBuddyPositionStructuredHelpers.getPositionCompleteness(pos); }
+    function structuredPositionSummary(pos = {}) { return window.WorkBuddyPositionStructuredHelpers.structuredPositionSummary(pos); }
+    function mustHaveItems(pos = {}) { return window.WorkBuddyPositionStructuredHelpers.mustHaveItems(pos); }
 
     const form = reactive({
       company: '',
