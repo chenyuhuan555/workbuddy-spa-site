@@ -36,6 +36,7 @@
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
+  <script src="./src/ui/markdown-safety.js?v=20260803-markdownsafety1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
   <script data-workbuddy-pipeline-core>
@@ -14293,8 +14294,12 @@ ${ocrText}`
       html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>');
       html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
       // Links
-      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener" class="text-teal-600 hover:text-teal-800 underline decoration-dotted underline-offset-2">$1</a>');
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+        const safeUrl = WorkBuddyMarkdownSafety.sanitizeUrl(url);
+        const safeLabel = WorkBuddyMarkdownSafety.escapeAttribute(label);
+        const href = WorkBuddyMarkdownSafety.escapeAttribute(safeUrl);
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-teal-600 hover:text-teal-800 underline decoration-dotted underline-offset-2">${safeLabel}</a>`;
+      });
       // Horizontal rules
       html = html.replace(/^---$/gm, '<hr class="my-4 border-slate-200">');
       // Unordered lists
