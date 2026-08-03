@@ -26,6 +26,7 @@
   <script src="./src/services/repo/candidate-repo.js?v=20260731-candidates1"></script>
   <script src="./src/services/repo/resume-version-repo.js?v=20260802-resumeversion1"></script>
   <script src="./src/services/repo/resume-version-read-path.js?v=20260803-resumeread1"></script>
+  <script src="./src/services/migration-meta.js?v=20260803-migrationmeta1"></script>
   <script src="./src/services/repo/workbench-entity-repo.js?v=20260802-entityrepo1"></script>
   <script src="./src/services/repo/workbench-entity-read-path.js?v=20260802-entityread1"></script>
   <script src="./src/services/repo/workbench-entity-merge.js?v=20260802-entitymerge1"></script>
@@ -15770,11 +15771,8 @@ ${ocrText}`
       resumeVersionSyncPromise = run;
       try { return await run; } finally { if (resumeVersionSyncPromise === run) resumeVersionSyncPromise = null; }
     }
-    function resumeVersionMigrationMeta() {
-      if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') workbenchV2.migrationMeta = {};
-      if (!workbenchV2.migrationMeta.resumeVersions || typeof workbenchV2.migrationMeta.resumeVersions !== 'object') workbenchV2.migrationMeta.resumeVersions = {};
-      return workbenchV2.migrationMeta.resumeVersions;
-    }
+    const migrationMeta = window.WorkBuddyMigrationMeta.createMigrationMetaAccessor(() => workbenchV2);
+    function resumeVersionMigrationMeta() { return migrationMeta.resumeVersions(); }
     const resumeVersionMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0, error: '' });
     async function runResumeVersionMigration() {
       if (resumeVersionMigration.running) return;
@@ -16056,11 +16054,7 @@ ${ocrText}`
         if (!automatic) console.warn('公司、岗位和推进记录增量拉取失败：', error);
       } finally { workbenchEntityPull.running = false; }
     }
-    function workbenchEntityMigrationMeta() {
-      if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') workbenchV2.migrationMeta = {};
-      if (!workbenchV2.migrationMeta.phase3Entities || typeof workbenchV2.migrationMeta.phase3Entities !== 'object') workbenchV2.migrationMeta.phase3Entities = {};
-      return workbenchV2.migrationMeta.phase3Entities;
-    }
+    function workbenchEntityMigrationMeta() { return migrationMeta.phase3Entities(); }
     const workbenchEntityMigration = reactive({ running: false, finished: false, total: 0, done: 0, synced: 0, failed: 0 });
     async function runWorkbenchEntityMigration() {
       if (workbenchEntityMigration.running) return;
@@ -16243,15 +16237,7 @@ ${ocrText}`
       return result;
     }
 
-    function candidateCloudMigrationMeta() {
-      if (!workbenchV2.migrationMeta || typeof workbenchV2.migrationMeta !== 'object') {
-        workbenchV2.migrationMeta = {};
-      }
-      if (!workbenchV2.migrationMeta.candidateCloud || typeof workbenchV2.migrationMeta.candidateCloud !== 'object') {
-        workbenchV2.migrationMeta.candidateCloud = {};
-      }
-      return workbenchV2.migrationMeta.candidateCloud;
-    }
+    function candidateCloudMigrationMeta() { return migrationMeta.candidateCloud(); }
 
     const candidateReadPathEnabled = computed(() => Boolean(workbenchV2.migrationMeta?.candidateCloud?.readEnabledAt));
 
