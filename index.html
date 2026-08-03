@@ -38,6 +38,7 @@
   <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
   <script src="./src/services/metrics-delta.js?v=20260803-metricsdelta1"></script>
   <script src="./src/services/dashboard-metrics.js?v=20260803-dashboardmetrics1"></script>
+  <script src="./src/services/company-count-maps.js?v=20260803-companycountmaps1"></script>
   <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
   <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
@@ -10488,27 +10489,13 @@ const vueAppConfig = {
       }).sort((a, b) => (Date.parse(b.updatedAt || b.createdAt || '') || 0) - (Date.parse(a.updatedAt || a.createdAt || '') || 0));
     });
     const pagedWorkbenchCompanies = computed(() => paginate(filteredWorkbenchCompanies.value, companyPage.value, PAGE_SIZE));
-    const openPositionCountByCompanyId = computed(() => {
-      const counts = new Map();
-      for (const position of workbenchV2.positions) {
-        if (position.companyId && position.status === 'open') counts.set(position.companyId, (counts.get(position.companyId) || 0) + 1);
-      }
-      return counts;
-    });
-    const activeApplicationCountByCompanyId = computed(() => {
-      const counts = new Map();
-      for (const application of workbenchV2.applications) {
-        if (application.companyId && application.stage !== SK.CLOSED) counts.set(application.companyId, (counts.get(application.companyId) || 0) + 1);
-      }
-      return counts;
-    });
-    const interviewApplicationCountByCompanyId = computed(() => {
-      const counts = new Map();
-      for (const application of workbenchV2.applications) {
-        if (application.companyId && SG.INTERVIEW.includes(application.stage)) counts.set(application.companyId, (counts.get(application.companyId) || 0) + 1);
-      }
-      return counts;
-    });
+    const companyCountMaps = computed(() => WorkBuddyCompanyCountMaps.buildCompanyCountMaps(workbenchV2, {
+      closedStage: SK.CLOSED,
+      interviewStages: SG.INTERVIEW,
+    }));
+    const openPositionCountByCompanyId = computed(() => companyCountMaps.value.openPositions);
+    const activeApplicationCountByCompanyId = computed(() => companyCountMaps.value.activeApplications);
+    const interviewApplicationCountByCompanyId = computed(() => companyCountMaps.value.interviews);
     const talentCategories = computed(() => WorkbenchV2.getTalentCategories(workbenchV2));
     const talentCategoryPaths = computed(() => WorkbenchV2.getTalentCategoryPaths(workbenchV2));
     const filteredWorkbenchCandidates = computed(() => sortByRecentUpdate(WorkbenchV2.filterCandidatesByCategory(
