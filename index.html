@@ -56,6 +56,7 @@
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
   <script src="./src/ui/position-structured-helpers.js?v=20260803-positionstructured1"></script>
   <script src="./src/ui/application-display.js?v=20260803-applicationdisplay1"></script>
+  <script src="./src/ui/resume-name-helpers.js?v=20260803-resumename1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -11768,9 +11769,7 @@ const vueAppConfig = {
       }
     }
     // 从文件名推断候选人姓名（仅在电子简历无法识别姓名时的兜底）
-    function fallbackNameFromFileName(fileName) {
-      return String(fileName || '').replace(/\.[^.]+$/, '').replace(/[-_（(].*$/, '').trim();
-    }
+    function fallbackNameFromFileName(fileName) { return window.WorkBuddyResumeNameHelpers.fallbackNameFromFileName(fileName); }
     // 从电子简历文本后台识别姓名/公司/职位/城市，自动填入上传表单的空字段（不覆盖用户已填）。
     // 候选人姓名优先取自电子简历中识别到的姓名；无 DeepSeek Key、识别失败或文本不足时，才回退到文件名。
     async function autoFillCandidateInfoFromResume(form, extractingRef = null) {
@@ -11979,14 +11978,7 @@ const vueAppConfig = {
     // 判断一个字符串是否"疑似文件名"（而非真实姓名）。
     // 真实中文姓名通常为 2-4 个汉字（可带少量英文）；纯英文姓名也视为真实姓名。
     // 含文件名标记词、数字、标点或过长的，视为文件名。
-    function looksLikeFileName(name) {
-      const n = String(name || '').trim();
-      if (!n) return false;
-      if (/简历|附件|个人|候选|cv|resume|[-_]|（|\(|\)|）|@|\.|\d/i.test(n)) return true;
-      if (/^[\u4e00-\u9fa5]{2,4}([A-Za-z]{1,20})?$/.test(n)) return false;
-      if (/^[A-Za-z]{1,20}([ -][A-Za-z]{1,20}){0,2}$/.test(n)) return false;
-      return true;
-    }
+    function looksLikeFileName(name) { return window.WorkBuddyResumeNameHelpers.looksLikeFileName(name); }
     // 批量回填候选人姓名：对"姓名疑似文件名"的候选人，用其电子简历/简历文本中识别到的姓名覆盖。
     // 仅覆盖疑似文件名者，干净的姓名不会被改动；识别失败或无可提取文本则跳过。
     const batchNameRefilling = ref(false);
