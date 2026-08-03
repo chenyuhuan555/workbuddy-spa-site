@@ -78,6 +78,7 @@
   <script src="./src/ui/talent-intake-actions.js?v=20260803-talentintakeactions1"></script>
   <script src="./src/ui/candidate-profile-actions.js?v=20260803-candidateprofileactions1"></script>
   <script src="./src/ui/candidate-pipeline-actions.js?v=20260803-candidatepipelineactions1"></script>
+  <script src="./src/ui/candidate-resume-actions.js?v=20260803-candidateresumeactions1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore2"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
@@ -11953,63 +11954,18 @@ const vueAppConfig = {
     }
 
     // —— 候选人详情页简历内联查看（免弹窗，直接在 tab 内展示 + 切换电子/原始）——
-    function switchCandidateResumeVersion(versionId) {
-      if (candidateResumeEdit.active) resetCandidateResumeEdit();
-      candidateResumeView.versionId = versionId;
-      if (candidateResumeView.blobUrl) { URL.revokeObjectURL(candidateResumeView.blobUrl); candidateResumeView.blobUrl = ''; }
-      candidateResumeView.imageSrc = '';
-      candidateResumeView.error = '';
-      // Phase 1：跨设备场景文本可能不在内存，从 resume_texts 表补拉
-      void ensureResumeTexts(activeCandidateResumeVersion.value);
-      if (candidateResumeView.mode === 'original') loadCandidateResumeOriginal();
-    }
-    function switchCandidateResumeMode(mode) {
-      if (mode !== 'text' && candidateResumeEdit.active) resetCandidateResumeEdit();
-      candidateResumeView.mode = mode;
-      if (mode === 'original' && !candidateResumeView.blobUrl && !candidateResumeView.imageSrc && !candidateResumeView.error) {
-        loadCandidateResumeOriginal();
-      }
-    }
-    function startCandidateResumeEdit() {
-      const candidate = selectedCandidate.value;
-      const version = activeCandidateResumeVersion.value;
-      if (!requireTalentWritePermission() || !candidate || !version) return;
-      if (version.formatStatus === 'processing') {
-        showToast('AI 正在处理该简历，请完成后再编辑', 'warning');
-        return;
-      }
-      resetCandidateResumeEdit();
-      candidateResumeView.mode = 'text';
-      candidateResumeEdit.candidateId = candidate.id;
-      candidateResumeEdit.versionId = version.id;
-      candidateResumeEdit.draft = ResumeFormattedTextEditor.createDraft(version);
-      candidateResumeEdit.active = true;
-    }
-    function cancelCandidateResumeEdit() {
-      if (candidateResumeEdit.saving) return;
-      resetCandidateResumeEdit();
-    }
-    async function saveCandidateResumeEdit() {
-      if (!requireTalentWritePermission() || candidateResumeEdit.saving) return;
-      candidateResumeEdit.saving = true;
-      candidateResumeEdit.error = '';
-      try {
-        await ResumeFormattedTextEditor.save({
-          canWrite,
-          bundle: workbenchV2,
-          candidateId: candidateResumeEdit.candidateId,
-          versionId: candidateResumeEdit.versionId,
-          draft: candidateResumeEdit.draft,
-          persist: saveWorkbenchV2,
-        });
-        resetCandidateResumeEdit();
-        schedulePush();
-        showToast('电子简历已保存');
-      } catch (error) {
-        candidateResumeEdit.saving = false;
-        candidateResumeEdit.error = error?.message || '电子简历保存失败，请重试';
-      }
-    }
+    const candidateResumeActions = window.WorkBuddyCandidateResumeActions.createCandidateResumeActions({
+      view: candidateResumeView, edit: candidateResumeEdit, selectedCandidate,
+      activeVersion: activeCandidateResumeVersion, requireWritePermission: requireTalentWritePermission,
+      resetEdit: resetCandidateResumeEdit, ensureResumeTexts: version => ensureResumeTexts(version),
+      loadOriginal: () => loadCandidateResumeOriginal(), editor: ResumeFormattedTextEditor,
+      bundle: workbenchV2, canWrite, persist: saveWorkbenchV2, schedulePush, showToast,
+    });
+    function switchCandidateResumeVersion(versionId) { return candidateResumeActions.switchVersion(versionId); }
+    function switchCandidateResumeMode(mode) { return candidateResumeActions.switchMode(mode); }
+    function startCandidateResumeEdit() { return candidateResumeActions.startEdit(); }
+    function cancelCandidateResumeEdit() { return candidateResumeActions.cancelEdit(); }
+    async function saveCandidateResumeEdit() { return candidateResumeActions.saveEdit(); }
     watch(
       () => [workbenchRoute.type, workbenchRoute.id, workbenchRoute.tab],
       ([type, id, tab]) => {
