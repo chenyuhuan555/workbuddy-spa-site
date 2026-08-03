@@ -788,6 +788,15 @@ test('工作台三个主列表使用分页结果和预构建索引', () => {
   assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
 });
 
+test('filterCandidates 默认隐藏已归档候选人，显式 includeArchived 才展示', () => {
+  const candidates = [
+    { id: 'active', name: '正常候选人' },
+    { id: 'archived', name: '历史候选人', deletedAt: '2026-08-03T00:00:00Z' },
+  ];
+  assert.deepEqual(WorkbenchV2.filterCandidates(candidates).map(item => item.id), ['active']);
+  assert.deepEqual(WorkbenchV2.filterCandidates(candidates, { includeArchived: true }).map(item => item.id), ['active', 'archived']);
+});
+
 test('人才库环形图不会重复计算无推进记录的人才', () => {
   const start = INDEX_HTML.indexOf('const talentPoolChart = computed(() => {');
   const end = INDEX_HTML.indexOf('// ── 仪表盘：业务进展条', start);

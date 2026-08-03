@@ -419,6 +419,7 @@
     const text = value => String(value || '').trim().toLowerCase();
     const includes = (value, query) => text(value).includes(text(query));
     return (candidates || []).filter(candidate => {
+      if (candidate.deletedAt && !filters.includeArchived) return false;
       if (filters.query) {
         const haystack = [candidate.name, candidate.currentCompany, candidate.currentTitle, candidate.city]
           .concat(candidate.skills || [], candidate.tags || [], candidate.directions || []).join(' ');
