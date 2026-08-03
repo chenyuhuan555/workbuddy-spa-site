@@ -47,6 +47,7 @@
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
   <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
   <script src="./src/ui/company-research-helpers.js?v=20260803-companyresearch1"></script>
+  <script src="./src/ui/talent-search-messages.js?v=20260803-talentsearchmessages1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -10515,12 +10516,7 @@ const vueAppConfig = {
       candidateFilters.category
     )));
     const pagedWorkbenchCandidates = computed(() => paginate(filteredWorkbenchCandidates.value, candidatePage.value, PAGE_SIZE));
-    function talentCloudSearchErrorMessage(error) {
-      if (error?.code === 'AUTH_REQUIRED') return '请先登录后使用云端全文搜索';
-      if (error?.code === 'SEARCH_UNAVAILABLE' || error?.code === 'RPC_NOT_DEPLOYED') return '云端全文搜索暂不可用，请确认 search_resumes RPC 已部署';
-      if (error?.code === 'BACKEND_REQUEST_FAILED') return '云端全文搜索请求失败，已保留本地人才列表';
-      return '云端全文搜索请求失败，已保留本地人才列表';
-    }
+    function talentCloudSearchErrorMessage(error) { return window.WorkBuddyTalentSearchMessages.errorMessage(error); }
     async function loadTalentCloudSearchPage(page = 1) {
       const query = String(talentCloudSearch.query || '').trim();
       const requestId = talentCloudSearch.requestId + 1;

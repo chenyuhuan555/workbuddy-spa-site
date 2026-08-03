@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const indexHtml = fs.readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
+const talentSearchMessages = fs.readFileSync(new URL('../../ui/talent-search-messages.js', import.meta.url), 'utf8');
 const sql = fs.readFileSync(new URL('../../../supabase/phase4-search-matching.sql', import.meta.url), 'utf8');
 
 test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC 契约', () => {
@@ -21,7 +22,7 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(indexHtml, /云端全文搜索/);
   assert.match(indexHtml, /runTalentCloudSearch/);
   assert.match(indexHtml, /changeTalentCloudSearchPage/);
-  assert.match(indexHtml, /已保留本地人才列表/);
+  assert.match(`${indexHtml}\n${talentSearchMessages}`, /已保留本地人才列表/);
   assert.match(indexHtml, /cleanResumeSearchSnippet/);
   assert.match(indexHtml, /搜索完成，共/);
   assert.match(indexHtml, /topbar-search-results/);
