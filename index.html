@@ -64,6 +64,7 @@
   <script src="./src/ui/unique-list.js?v=20260803-uniquelist1"></script>
   <script src="./src/ui/candidate-identity-parser.js?v=20260803-candidateidentity1"></script>
   <script src="./src/ui/resume-duplicate-text.js?v=20260803-resumeduplicatetext1"></script>
+  <script src="./src/ui/trajectory-date-utils.js?v=20260803-trajectorydate1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -20851,42 +20852,9 @@ ${String(resumeText || '').slice(0, 9000)}`
         .trim();
     }
 
-    function parseTrajectoryDate(value, fallback = 'start') {
-      const raw = String(value || '').trim().toLowerCase();
-      if (!raw) return null;
-      if (/至今|现在|present|current/.test(raw)) {
-        const now = new Date();
-        return { year: now.getFullYear(), month: now.getMonth() + 1, value: now.getFullYear() * 12 + now.getMonth() + 1 };
-      }
-      const match = raw.match(/((?:19|20)\d{2})(?:[-./年](\d{1,2}))?/);
-      if (!match) return null;
-      const year = Number(match[1]);
-      const month = match[2] ? Math.min(12, Math.max(1, Number(match[2]))) : (fallback === 'end' ? 12 : 1);
-      return { year, month, value: year * 12 + month };
-    }
-
-    function monthsOverlap(a, b) {
-      const startA = parseTrajectoryDate(a.start, 'start');
-      const endA = parseTrajectoryDate(a.end || a.start, 'end');
-      const startB = parseTrajectoryDate(b.start, 'start');
-      const endB = parseTrajectoryDate(b.end || b.start, 'end');
-      if (!startA || !endA || !startB || !endB) return 0;
-      return Math.max(0, Math.min(endA.value, endB.value) - Math.max(startA.value, startB.value) + 1);
-    }
-
-    function trajectoryPeriodLabel(a, b) {
-      const starts = [parseTrajectoryDate(a.start, 'start'), parseTrajectoryDate(b.start, 'start')].filter(Boolean);
-      const ends = [parseTrajectoryDate(a.end || a.start, 'end'), parseTrajectoryDate(b.end || b.start, 'end')].filter(Boolean);
-      if (!starts.length || !ends.length) return '';
-      const start = Math.max(...starts.map(x => x.value));
-      const end = Math.min(...ends.map(x => x.value));
-      const fmt = value => {
-        const year = Math.floor((value - 1) / 12);
-        const month = ((value - 1) % 12) + 1;
-        return `${year}-${String(month).padStart(2, '0')}`;
-      };
-      return start <= end ? `${fmt(start)} 至 ${fmt(end)}` : '';
-    }
+    function parseTrajectoryDate(value, fallback = 'start') { return window.WorkBuddyTrajectoryDateUtils.parseTrajectoryDate(value, fallback); }
+    function monthsOverlap(a, b) { return window.WorkBuddyTrajectoryDateUtils.monthsOverlap(a, b); }
+    function trajectoryPeriodLabel(a, b) { return window.WorkBuddyTrajectoryDateUtils.trajectoryPeriodLabel(a, b); }
 
     function relationLabel(edge) {
       if (!edge) return '';
