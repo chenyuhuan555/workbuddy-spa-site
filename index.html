@@ -32,6 +32,7 @@
   <script src="./src/services/repo/resume-search-repo.js?v=20260802-searchrepo1"></script>
   <script src="./src/services/repo/candidate-matching-repo.js?v=20260802-matchrepo1"></script>
   <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
+  <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
   <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
   <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
@@ -14122,6 +14123,10 @@ ${ocrText}`
       ? 'http://127.0.0.1:8787/api/last30days'
       : '/api/last30days';
     const RADAR_CACHE_KEY = STORAGE_KEY + '_radar_cache';
+    const radarCache = window.WorkBuddyRadarCache.createRadarCache({
+      storage: window.localStorage,
+      storageKey: RADAR_CACHE_KEY,
+    });
     const radarSources = [
       { name: '36氪', url: 'https://36kr.com/feed', category: 'tech' },
       { name: '虎嗅', url: 'https://www.huxiu.com/rss/0.xml', category: 'tech' },
@@ -18088,23 +18093,15 @@ ${ocrText}`
     }
 
     function loadRadarCache() {
-      try {
-        const raw = localStorage.getItem(RADAR_CACHE_KEY);
-        if (!raw) return null;
-        const cache = JSON.parse(raw);
-        const age = Date.now() - (cache.timestamp || 0);
-        const MAX_AGE = 30 * 60 * 1000; // 30分钟
-        if (age < MAX_AGE) {
-          radarNews.splice(0, radarNews.length, ...(cache.news || []));
-          radarSignals.splice(0, radarSignals.length, ...(cache.signals || []));
-          radarInsight.value = cache.insight || '';
-          radarHotSectors.splice(0, radarHotSectors.length, ...(cache.hotSectors || []));
-          radarTrend.value = cache.trend || '';
-          radarLastUpdated.value = cache.lastUpdated || '';
-          return cache;
-        }
-        return null;
-      } catch { return null; }
+      const cache = radarCache.load();
+      if (!cache) return null;
+      radarNews.splice(0, radarNews.length, ...(cache.news || []));
+      radarSignals.splice(0, radarSignals.length, ...(cache.signals || []));
+      radarInsight.value = cache.insight || '';
+      radarHotSectors.splice(0, radarHotSectors.length, ...(cache.hotSectors || []));
+      radarTrend.value = cache.trend || '';
+      radarLastUpdated.value = cache.lastUpdated || '';
+      return cache;
     }
 
     function saveRadarCache() {
@@ -18117,7 +18114,7 @@ ${ocrText}`
         lastUpdated: radarLastUpdated.value,
         timestamp: Date.now()
       };
-      try { localStorage.setItem(RADAR_CACHE_KEY, JSON.stringify(cache)); } catch {}
+      radarCache.save(cache);
     }
 
     async function fetchRadarFromSource(source) {
