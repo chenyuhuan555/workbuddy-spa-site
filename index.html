@@ -22,6 +22,7 @@
   <script src="./src/services/resume-ai-processing.js?v=20260730-resumeai2"></script>
   <script src="./src/services/resume-background-save-queue.js?v=20260803-resumebackgroundqueue1"></script>
   <script src="./src/services/resume-original-text-loader.js?v=20260803-resumeoriginaltextloader1"></script>
+  <script src="./src/services/resume-original-record-loader.js?v=20260803-resumeoriginalrecordloader1"></script>
   <script src="./src/services/resume-ai-batch.js?v=20260803-resumeaibatch1"></script>
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
@@ -10909,38 +10910,23 @@ const vueAppConfig = {
     function resumeDataUrlToBlob(dataUrl, fallbackType = 'application/octet-stream') {
       return window.WorkBuddyResumeFileData.resumeDataUrlToBlob(dataUrl, fallbackType);
     }
-    async function loadCandidateOriginalRecord(version) {
-      if (!version) throw Object.assign(new Error('当前没有可用的简历版本'), { code: 'ORIGINAL_NOT_FOUND' });
-      const createdFileId = !version.fileId;
-      if (createdFileId) version.fileId = `fid_${version.id || Date.now().toString(36)}`;
-      try {
-        const record = await ResumeFileSync.loadOriginal(version, {
-          getLocal: getResumeBlob,
-          download: path => getWorkspaceStateClient().downloadFile(path),
-          saveLocal: saveResumeBlob,
-          loadLegacy: async current => {
-            let data = String(current.fileData || '');
-            if (!data && (current.sourceResumeId || current.id)) {
-              const legacyResume = {
-                id: current.id,
-                sourceResumeId: current.sourceResumeId || current.id,
-                name: current.fileName || '简历',
-                data: '',
-              };
-              await ensureResumeData(legacyResume);
-              data = String(legacyResume.data || '');
-            }
-            const blob = resumeDataUrlToBlob(data, current.fileType || 'application/pdf');
-            return blob ? { blob, fileType: current.fileType || blob.type } : null;
-          },
-        });
-        if (createdFileId) await saveResumeBackgroundState();
-        return record;
-      } catch (error) {
-        if (createdFileId) version.fileId = '';
-        throw error;
-      }
-    }
+    const loadCandidateOriginalRecord = window.WorkBuddyResumeOriginalRecordLoader.createResumeOriginalRecordLoader({
+      loadOriginal: (version, deps) => ResumeFileSync.loadOriginal(version, deps),
+      getLocal: getResumeBlob,
+      download: path => getWorkspaceStateClient().downloadFile(path),
+      saveLocal: saveResumeBlob,
+      loadLegacy: async current => {
+        let data = String(current.fileData || '');
+        if (!data && (current.sourceResumeId || current.id)) {
+          const legacyResume = { id: current.id, sourceResumeId: current.sourceResumeId || current.id, name: current.fileName || '简历', data: '' };
+          await ensureResumeData(legacyResume);
+          data = String(legacyResume.data || '');
+        }
+        const blob = resumeDataUrlToBlob(data, current.fileType || 'application/pdf');
+        return blob ? { blob, fileType: current.fileType || blob.type } : null;
+      },
+      persist: saveResumeBackgroundState,
+    });
     const loadCandidateResumeRawText = window.WorkBuddyResumeOriginalTextLoader.createResumeOriginalTextLoader({
       ensureTexts: version => ensureResumeTexts(version),
       loadOriginal: version => loadCandidateOriginalRecord(version),

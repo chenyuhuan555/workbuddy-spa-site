@@ -22,7 +22,7 @@ test('文本重试不强制刷新原件，原件重提取明确 refreshRawText',
 });
 
 test('跨设备原件读取通过本机、私有云端和旧来源统一解析', () => {
-  assert.match(INDEX_HTML, /async function loadCandidateOriginalRecord\(version\)/);
+  assert.match(INDEX_HTML, /loadCandidateOriginalRecord = window\.WorkBuddyResumeOriginalRecordLoader\.createResumeOriginalRecordLoader/);
   assert.match(INDEX_HTML, /ResumeFileSync\.loadOriginal\(version/);
   assert.match(INDEX_HTML, /download:\s*path => getWorkspaceStateClient\(\)\.downloadFile\(path\)/);
   assert.match(INDEX_HTML, /saveLocal:\s*saveResumeBlob/);
@@ -30,7 +30,7 @@ test('跨设备原件读取通过本机、私有云端和旧来源统一解析',
 });
 
 test('原件恢复产生的状态更新也进入简历后台串行保存', () => {
-  assert.match(INDEX_HTML, /if \(createdFileId\) await saveResumeBackgroundState\(\)/);
+  assert.match(INDEX_HTML, /persist: saveResumeBackgroundState/);
   assert.doesNotMatch(INDEX_HTML, /if \(createdFileId\) await saveWorkbenchV2\(\)/);
   assert.match(ORIGINAL_GUARDS, /MISSING_ORIGINAL_ERROR = '当前设备和云端均没有原始文件'/);
   assert.match(INDEX_HTML, /markOriginalMissing\(version\)/);
