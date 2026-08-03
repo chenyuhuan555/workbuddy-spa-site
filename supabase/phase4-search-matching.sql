@@ -26,7 +26,12 @@ language sql stable security invoker as $$
   join public.candidates c on c.id = rv.candidate_id
   where c.workspace_id = 'main'
     and c.deleted_at is null
-    and coalesce(rt.raw_text, '') % search_query
+    and (
+      position(lower(search_query) in lower(
+        coalesce(rt.raw_text, '') || ' ' || coalesce(rv.file_name, '') || ' ' || coalesce(c.name, '')
+      )) > 0
+      or coalesce(rt.raw_text, '') % search_query
+    )
   order by similarity(coalesce(rt.raw_text, ''), search_query) desc, c.id
   limit greatest(1, least(result_limit, 100))
   offset greatest(result_offset, 0);

@@ -422,7 +422,9 @@
       if (candidate.deletedAt && !filters.includeArchived) return false;
       if (filters.query) {
         const haystack = [candidate.name, candidate.currentCompany, candidate.currentTitle, candidate.city]
-          .concat(candidate.skills || [], candidate.tags || [], candidate.directions || []).join(' ');
+          .concat(candidate.skills || [], candidate.tags || [], candidate.directions || [])
+          .concat((candidate.resumeVersions || []).flatMap(version => [version?.fileName, version?.fileHash, version?.rawText]))
+          .join(' ');
         if (!includes(haystack, filters.query)) return false;
       }
       if (filters.direction && filters.direction !== 'all' && !(candidate.directions || []).some(item => includes(item, filters.direction))) return false;

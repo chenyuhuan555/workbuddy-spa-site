@@ -225,6 +225,14 @@ test('filterCandidates 支持 关键词/方向/负责人/状态 过滤', () => {
   assert.equal(WorkbenchV2.filterCandidates(candidates, { status: 'all' }).length, 3);
 });
 
+test('filterCandidates 关键词可命中简历文件名', () => {
+  const candidate = WorkbenchV2.createCandidate({
+    name: '未提取姓名',
+    resumeVersions: [{ id: 'rv1', fileName: '贝壳产品经理.pdf' }],
+  });
+  assert.equal(WorkbenchV2.filterCandidates([candidate], { query: '贝壳' }).length, 1);
+});
+
 test('findDuplicateCandidates 命中硬冲突（手机/邮箱）与待复核冲突（姓名+公司）', () => {
   const existing = [
     WorkbenchV2.createCandidate({ name: 'Anna', currentCompany: '腾讯', phone: '13800000000', email: 'a@x.com' }),

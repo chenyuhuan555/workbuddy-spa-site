@@ -11,6 +11,7 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(sql, /create or replace function public\.search_resumes/);
   assert.match(sql, /total_count bigint/);
   assert.match(sql, /count\(\*\) over/);
+  assert.match(sql, /position\(lower\(search_query\)/);
   assert.match(sql, /create or replace function public\.match_candidates/);
   assert.match(sql, /pg_trgm/);
   assert.match(indexHtml, /WorkBuddyResumeSearchRepo/);
