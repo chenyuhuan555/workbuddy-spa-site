@@ -45,6 +45,7 @@
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
   <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
   <script src="./src/ui/company-research-helpers.js?v=20260803-companyresearch1"></script>
+  <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
     [v-cloak] { display: none; }
@@ -10934,22 +10935,9 @@ const vueAppConfig = {
     function clearResumeAiPending(key) {
       writeResumeAiPendingKeys(readResumeAiPendingKeys().filter(item => item !== key));
     }
-    async function resumeBlobToDataUrl(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(reader.error || new Error('原始简历文件读取失败'));
-        reader.readAsDataURL(blob);
-      });
-    }
+    async function resumeBlobToDataUrl(blob) { return window.WorkBuddyResumeFileData.resumeBlobToDataUrl(blob); }
     function resumeDataUrlToBlob(dataUrl, fallbackType = 'application/octet-stream') {
-      const match = String(dataUrl || '').match(/^data:([^;,]+)?(;base64)?,([\s\S]*)$/);
-      if (!match) return null;
-      const mime = match[1] || fallbackType;
-      const bytes = match[2]
-        ? Uint8Array.from(atob(match[3]), char => char.charCodeAt(0))
-        : new TextEncoder().encode(decodeURIComponent(match[3]));
-      return new Blob([bytes], { type: mime });
+      return window.WorkBuddyResumeFileData.resumeDataUrlToBlob(dataUrl, fallbackType);
     }
     async function loadCandidateOriginalRecord(version) {
       if (!version) throw Object.assign(new Error('当前没有可用的简历版本'), { code: 'ORIGINAL_NOT_FOUND' });
