@@ -4088,7 +4088,7 @@
     <section class="min-w-0 flex-1 flex flex-col">
       <header class="wb-v2-topbar h-16 flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4">
         <h2 class="text-lg font-bold text-slate-900">{{ workbenchNavItems.find(item => item.key === workbenchNav)?.label || '工作台' }}</h2>
-        <div class="hidden lg:flex w-full items-center gap-2 justify-center">
+        <div class="hidden lg:flex w-full items-center gap-2 justify-center relative">
           <div class="relative flex-1">
             <input v-model="searchFilters.query" @keyup.enter="runWorkbenchGlobalSearch" type="search" aria-label="全局搜索" placeholder="搜索公司、职位、人才…" class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-sm placeholder:text-slate-400">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -4096,6 +4096,24 @@
           <button type="button" @click="runWorkbenchGlobalSearch" aria-label="搜索工作台" title="搜索" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 inline-flex items-center justify-center transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           </button>
+          <div v-if="searchActive && String(searchFilters.query || '').trim()" id="topbar-search-results" class="absolute left-0 right-0 top-12 z-40 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <span class="text-sm font-semibold text-slate-800">搜索结果 · {{ searchResults.length }} 条</span>
+              <button type="button" @click="resetSearchFilters" class="text-xs font-semibold text-slate-500 hover:text-emerald-700">清除</button>
+            </div>
+            <div v-if="searchResults.length" class="max-h-96 overflow-y-auto p-2">
+              <button v-for="item in searchResults.slice(0, 20)" :key="`${item.type}-${item.resume?.id || item.pos?.id || item.job?.id || item.title}`" type="button" @click="openSearchResult(item)" class="block w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-emerald-50">
+                <div class="flex items-center gap-2">
+                  <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">{{ item.type === 'resume' ? '简历' : item.type === 'position' ? '岗位' : '公司' }}</span>
+                  <span class="truncate text-sm font-semibold text-slate-900">{{ item.title }}</span>
+                </div>
+                <p v-if="item.subtitle" class="mt-1 truncate text-xs text-slate-500">{{ item.subtitle }}</p>
+                <p v-if="item.snippet" class="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{{ cleanResumeSearchSnippet(item.snippet) }}</p>
+              </button>
+              <p v-if="searchResults.length > 20" class="px-3 py-2 text-center text-xs text-slate-400">已显示前 20 条，完整结果请查看搜索区域。</p>
+            </div>
+            <p v-else class="px-4 py-5 text-sm text-slate-500">没有找到匹配结果</p>
+          </div>
         </div>
         <div class="ml-auto flex items-center gap-3">
           <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
