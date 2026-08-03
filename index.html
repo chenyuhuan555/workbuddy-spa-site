@@ -35,6 +35,7 @@
   <script src="./src/services/repo/candidate-matching-repo.js?v=20260802-matchrepo1"></script>
   <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
   <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
+  <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
   <script src="./src/services/repo/workspace-state-boundary.js?v=20260802-stateboundary1"></script>
   <script src="./src/services/ai-gateway.js?v=20260802-aigateway1"></script>
   <script src="./src/services/repo/candidate-read-path.js?v=20260802-candidateread1"></script>
@@ -11226,26 +11227,12 @@ const vueAppConfig = {
     // 启动时读一次作为昨日基准（baseline），之后固定在内存里；
     // 每次 saveWorkbenchV2 时刷新快照，供次日对比。这样"较昨日"反映的是
     // 当前值与上次记录日收盘值的真实差值，而不是写死的占位数字。
-    const METRICS_SNAPSHOT_KEY = STORAGE_KEY + '_workbench_v2_metrics_snapshot';
+    const metricsSnapshot = window.WorkBuddyMetricsSnapshot.createMetricsSnapshot({ storage: window.localStorage, key: STORAGE_KEY });
     const metricsBaseline = ref(null); // { companies, positions, ... }，null 表示首次使用尚无对比
 
-    function _todayDateStr() {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-    function _readMetricsSnapshot() {
-      try {
-        const raw = localStorage.getItem(METRICS_SNAPSHOT_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        return (parsed && typeof parsed === 'object') ? parsed : null;
-      } catch { return null; }
-    }
-    function _writeMetricsSnapshot(metrics) {
-      try {
-        localStorage.setItem(METRICS_SNAPSHOT_KEY, JSON.stringify({ date: _todayDateStr(), metrics }));
-      } catch {}
-    }
+    function _todayDateStr() { return metricsSnapshot.todayDateStr(); }
+    function _readMetricsSnapshot() { return metricsSnapshot.read(); }
+    function _writeMetricsSnapshot(metrics) { metricsSnapshot.write(metrics); }
     // 启动时调用：把存储里的快照读出来作为"昨日基准"。
     // - 跨天打开：stored 是上次保存那天的值 → 作为昨日基准，今天的增量都会体现为 delta。
     // - 同天多次打开：stored 是今天早些时候的值 → 同样作为基准，今天内的操作仍会实时反映。
