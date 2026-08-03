@@ -1,0 +1,113 @@
+(function () {
+  var authRoot = document.getElementById('wb-auth');
+  var loginShell = document.getElementById('wb-login-shell');
+  var passwordShell = document.getElementById('wb-password-shell');
+  var configShell = document.getElementById('wb-config-shell');
+  var appRoot = document.getElementById('app');
+  var accountBar = document.getElementById('wb-account-bar');
+  var booted = false;
+  var config = window.WorkBuddySupabaseConfig;
+  if (!config || !config.url || !config.publishableKey || !window.supabase || !window.WorkBuddyAuth) {
+    loginShell.style.display = 'none';
+    configShell.style.display = 'block';
+    return;
+  }
+
+  var client = window.supabase.createClient(config.url, config.publishableKey, {
+    auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+  });
+  window.WorkBuddySupabase = client;
+
+  function clearBusinessState() {
+    appRoot.style.display = 'none';
+    accountBar.style.display = 'none';
+    window.WorkBuddyAccess = null;
+  }
+
+  function dockAccountBar() {
+    var sidebar = document.querySelector('.wb-v2-sidebar');
+    if (!sidebar) return;
+    sidebar.appendChild(accountBar);
+    accountBar.style.position = 'static';
+    accountBar.style.right = 'auto';
+    accountBar.style.top = 'auto';
+    accountBar.style.margin = '0 12px 12px';
+    accountBar.style.boxShadow = 'none';
+    accountBar.style.display = 'flex';
+    accountBar.style.alignItems = 'center';
+    accountBar.style.justifyContent = 'space-between';
+  }
+
+  async function onStateChange(state) {
+    loginShell.style.display = state.status === 'anonymous' || state.status === 'authenticating' ? 'block' : 'none';
+    passwordShell.style.display = state.status === 'must-change-password' ? 'block' : 'none';
+    if (state.status !== 'authenticated') return;
+    window.WorkBuddyAccess = Object.freeze({
+      profile: state.profile,
+      canWrite: state.profile.role === 'admin' || state.profile.role === 'editor',
+      canConfigureAi: state.profile.role === 'admin' || state.profile.role === 'editor',
+      canManageMembers: state.profile.role === 'admin'
+    });
+    document.getElementById('wb-account-name').textContent = state.profile.display_name || state.profile.username;
+    document.getElementById('wb-account-role').textContent = state.profile.role === 'admin'
+      ? '管理员'
+      : state.profile.role === 'editor' ? '高级成员' : '普通成员 · 只读';
+    authRoot.style.display = 'none';
+    appRoot.style.display = 'block';
+    if (!booted) {
+      booted = true;
+      await window.WorkBuddyBootApp();
+    }
+    dockAccountBar();
+  }
+
+  var controller = window.WorkBuddyAuth.createAuthController({
+    supabase: client,
+    sessionStorage: window.sessionStorage,
+    clearBusinessState: clearBusinessState,
+    onStateChange: function (state) { onStateChange(state).catch(showAuthFailure); }
+  });
+  window.WorkBuddyAuthController = controller;
+
+  function showAuthFailure() {
+    clearBusinessState();
+    authRoot.style.display = 'flex';
+    loginShell.style.display = 'block';
+    document.getElementById('wb-login-error').textContent = '用户名或密码错误';
+    document.getElementById('wb-login-error').style.display = 'block';
+  }
+
+  document.getElementById('wb-login-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    var error = document.getElementById('wb-login-error');
+    error.style.display = 'none';
+    try {
+      await controller.login(document.getElementById('wb-login-username').value, document.getElementById('wb-login-password').value);
+      document.getElementById('wb-login-password').value = '';
+    } catch (_) { showAuthFailure(); }
+  });
+
+  document.getElementById('wb-password-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    var password = document.getElementById('wb-new-password').value;
+    var confirm = document.getElementById('wb-confirm-password').value;
+    var error = document.getElementById('wb-password-error');
+    if (password.length < 8 || password !== confirm) {
+      error.textContent = password.length < 8 ? '新密码至少需要 8 位' : '两次输入的密码不一致';
+      error.style.display = 'block';
+      return;
+    }
+    var update = await client.auth.updateUser({ password: password });
+    if (update.error) { error.textContent = '密码修改失败，请重试'; error.style.display = 'block'; return; }
+    var completed = await client.rpc('complete_password_change');
+    if (completed.error) { error.textContent = '账号状态更新失败，请联系管理员'; error.style.display = 'block'; return; }
+    await controller.refreshProfile();
+  });
+
+  document.getElementById('wb-logout').addEventListener('click', async function () {
+    await controller.logout();
+    window.location.reload();
+  });
+
+  controller.restore().catch(showAuthFailure);
+})();

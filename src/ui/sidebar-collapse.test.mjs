@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { parse } from 'parse5';
 
 const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const AUTH_BOOTSTRAP = readFileSync(new URL('../auth-bootstrap.js', import.meta.url), 'utf8');
+const SCRIPT_SOURCES = `${INDEX_HTML}\n${AUTH_BOOTSTRAP}`;
 const DOCUMENT = parse(INDEX_HTML);
 
 function descendants(node) {
@@ -46,16 +48,16 @@ function cssBlock(header) {
 }
 
 function functionBody(name) {
-  const declaration = new RegExp(String.raw`\bfunction\s+${name}\s*\([^)]*\)\s*\{`).exec(INDEX_HTML);
+  const declaration = new RegExp(String.raw`\bfunction\s+${name}\s*\([^)]*\)\s*\{`).exec(SCRIPT_SOURCES);
   assert.ok(declaration, `缺少函数：${name}`);
   const openIndex = declaration.index + declaration[0].lastIndexOf('{');
 
   let depth = 0;
-  for (let index = openIndex; index < INDEX_HTML.length; index++) {
-    if (INDEX_HTML[index] === '{') depth++;
-    if (INDEX_HTML[index] === '}') {
+  for (let index = openIndex; index < SCRIPT_SOURCES.length; index++) {
+    if (SCRIPT_SOURCES[index] === '{') depth++;
+    if (SCRIPT_SOURCES[index] === '}') {
       depth--;
-      if (depth === 0) return INDEX_HTML.slice(openIndex + 1, index);
+      if (depth === 0) return SCRIPT_SOURCES.slice(openIndex + 1, index);
     }
   }
   assert.fail(`函数没有结束花括号：${name}`);
