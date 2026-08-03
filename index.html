@@ -7418,6 +7418,9 @@
             <span class="text-slate-600">云端 {{ resumeVersionParity.cloudCount }} 个 · 本地 {{ resumeVersionParity.localCount }} 个</span>
             <span class="ml-2" :class="resumeVersionParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ resumeVersionParity.ok ? '严格一致' : '存在差异' }}</span>
             <span v-if="!resumeVersionParity.ok" class="ml-2 text-amber-700">缺失 {{ resumeVersionParity.missingInCloud.length }} · 多出 {{ resumeVersionParity.missingInLocal.length }} · 不一致 {{ resumeVersionParity.mismatched.length }}</span>
+            <button v-if="canWrite && !resumeVersionParity.ok && resumeVersionParity.missingInCloud.length" type="button" @click="archiveExtraResumeVersions" :disabled="resumeVersionArchive.running" class="ml-3 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold disabled:opacity-50">{{ resumeVersionArchive.running ? '归档中…' : '归档本地多出版本（' + resumeVersionParity.missingInCloud.length + '）' }}</button>
+            <p v-if="resumeVersionArchive.error" class="mt-2 text-xs text-red-600" role="alert">{{ resumeVersionArchive.error }}</p>
+            <p v-if="resumeVersionArchive.archived" class="mt-2 text-xs text-emerald-700" role="status">已归档 {{ resumeVersionArchive.archived }} 个本地多出版本{{ resumeVersionArchive.failed ? '，失败 ' + resumeVersionArchive.failed + ' 个' : '' }}；原始文件和历史记录均保留。</p>
             <details v-if="!resumeVersionParity.ok" class="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-900"><summary class="cursor-pointer font-semibold">查看简历版本差异清单</summary><div class="mt-2 space-y-3"><template v-for="section in resumeVersionParityDiffSections" :key="section.key"><section v-if="section.items.length"><h3 class="font-semibold">{{ section.label }}（{{ section.items.length }}）</h3><ul class="mt-1 space-y-1"><li v-for="item in section.items.slice(0, 50)" :key="section.key + ':' + item.key">{{ item.candidateName || '未命名候选人' }} · {{ item.fileName || '未命名简历' }} · {{ item.versionId }}</li><li v-if="section.items.length > 50">其余 {{ section.items.length - 50 }} 条已省略</li></ul></section></template></div></details>
           </template>
         </div>
@@ -11433,7 +11436,7 @@ const vueAppConfig = {
     // 按候选人获取简历版本列表（resumeVersions 优先，否则用电子简历文本兜底构造一份）
     function getCandidateResumeVersions(candidate) {
       if (!candidate) return [];
-      const versions = Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions : [];
+      const versions = (Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions : []).filter(version => !version?.deletedAt);
       if (versions.length) return versions;
       const rawText = String(candidate.electronicResumeText || candidate.profileText || '').trim();
       return rawText ? [{
@@ -15612,11 +15615,51 @@ ${ocrText}`
       finally { resumeVersionMigration.running = false; }
     }
     const resumeVersionParity = reactive({ checking: false, checked: false, ok: false, cloudCount: 0, localCount: 0, missingInCloud: [], missingInLocal: [], mismatched: [], missingInCloudDetails: [], missingInLocalDetails: [], mismatchedDetails: [], error: '' });
+    const resumeVersionArchive = reactive({ running: false, archived: 0, failed: 0, error: '' });
     const resumeVersionParityDiffSections = computed(() => [
       { key: 'missingInCloud', label: '仅本地', items: resumeVersionParity.missingInCloudDetails },
       { key: 'missingInLocal', label: '仅云端', items: resumeVersionParity.missingInLocalDetails },
       { key: 'mismatched', label: '字段不同', items: resumeVersionParity.mismatchedDetails },
     ]);
+    async function archiveExtraResumeVersions() {
+      if (resumeVersionArchive.running || !resumeVersionParity.missingInCloud.length) return;
+      const count = resumeVersionParity.missingInCloud.length;
+      if (!window.confirm(`确认归档这 ${count} 个本地多出简历版本吗？归档后默认隐藏，原始文件和历史记录保留。`)) return;
+      resumeVersionArchive.running = true;
+      resumeVersionArchive.archived = 0;
+      resumeVersionArchive.failed = 0;
+      resumeVersionArchive.error = '';
+      try {
+        const extraKeys = new Set(resumeVersionParity.missingInCloud);
+        const archivedAt = new Date().toISOString();
+        workbenchV2.candidates.forEach(candidate => {
+          (candidate.resumeVersions || []).forEach(version => {
+            if (!version?.id || !extraKeys.has(`${candidate.id}:${version.id}`) || version.deletedAt) return;
+            version.deletedAt = archivedAt;
+            resumeVersionArchive.archived += 1;
+          });
+        });
+        if (!resumeVersionArchive.archived) throw new Error('未找到可归档的本地多出版本');
+        if (!await saveWorkbenchV2()) throw new Error('归档状态保存失败');
+        const result = await syncResumeVersionsWithCloud({ forceAll: true });
+        resumeVersionArchive.failed = result.failed || 0;
+        if (resumeVersionArchive.failed) throw new Error(`归档版本云端同步失败 ${resumeVersionArchive.failed} 个`);
+        resumeVersionParity.checked = false;
+        resumeVersionParity.ok = false;
+        resumeVersionParity.missingInCloud = [];
+        resumeVersionParity.missingInLocal = [];
+        resumeVersionParity.mismatched = [];
+        resumeVersionParity.missingInCloudDetails = [];
+        resumeVersionParity.missingInLocalDetails = [];
+        resumeVersionParity.mismatchedDetails = [];
+        resumeVersionMigrationMeta().parityVerifiedAt = '';
+        if (cloudReady) schedulePush();
+      } catch (error) {
+        resumeVersionArchive.error = error?.message || '归档失败';
+      } finally {
+        resumeVersionArchive.running = false;
+      }
+    }
     async function verifyResumeVersionParity() {
       if (!cloudReady || resumeVersionParity.checking) return;
       resumeVersionParity.checking = true;
@@ -24416,7 +24459,7 @@ ${clipped}`
       textParseRaw, textParseStatus, textParseError, parseJobText,
       syncStatus, syncLabel, syncTooltip, initCloud, saveState, retryLocalSave,
       resumeTextMigration, runResumeTextMigration, candidateMigration, runCandidateMigration,
-      resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, resumeVersionParityDiffSections, verifyResumeVersionParity,
+      resumeVersionMigration, runResumeVersionMigration, resumeVersionParity, resumeVersionParityDiffSections, resumeVersionArchive, archiveExtraResumeVersions, verifyResumeVersionParity,
       workbenchEntityMigration, runWorkbenchEntityMigration, workbenchEntityParity, verifyWorkbenchEntityParity,
       workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       workbenchEntityPull, pullWorkbenchEntitiesFromCloud,

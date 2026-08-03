@@ -17,6 +17,10 @@ test('Phase 2c 版本同步具备双写、迁移和一致性校验入口', () =>
   assert.match(html, /逐条重试/);
   assert.match(html, /resumeVersionMigration\.error/);
   assert.match(html, /runResumeVersionMigration\(\)[\s\S]*hydrateResumeVersionsFromCandidateCloud\(\)[\s\S]*syncResumeVersionsWithCloud/);
+  assert.match(html, /查看简历版本差异清单/);
+  assert.match(html, /archiveExtraResumeVersions/);
+  assert.match(html, /归档本地多出版本/);
+  assert.match(html, /filter\(version => !version\?\.deletedAt\)/);
 });
 
 test('Phase 2c 不在迁移完成前切换候选人版本读取来源', () => {
