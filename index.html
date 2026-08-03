@@ -51,6 +51,7 @@
   <script src="./src/ui/company-research-helpers.js?v=20260803-companyresearch1"></script>
   <script src="./src/ui/talent-search-messages.js?v=20260803-talentsearchmessages1"></script>
   <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
+  <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -11187,11 +11188,7 @@ const vueAppConfig = {
     })));
     const candidatePositionMatches = computed(() => selectedCandidate.value ? WorkbenchV2.matchPositions(selectedCandidate.value, workbenchV2.positions).slice(0, 10) : []);
     const positionCandidateMatches = computed(() => selectedPosition.value ? WorkbenchV2.matchCandidates(selectedPosition.value, workbenchV2.candidates).slice(0, 10) : []);
-    const workbenchOwners = computed(() => Array.from(new Set([
-      ...workbenchV2.companies.map(item => item.owner),
-      ...workbenchV2.positions.map(item => item.owner),
-      ...workbenchV2.candidates.map(item => item.owner),
-    ].filter(Boolean))));
+    const workbenchOwners = computed(() => WorkBuddyWorkbenchOwners.collectOwners(workbenchV2));
     const workbenchDashboardMetrics = computed(() => WorkBuddyDashboardMetrics.buildDashboardMetrics(workbenchV2, {
       closedStage: SK.CLOSED,
       interviewStages: SG.INTERVIEW,
