@@ -34,7 +34,7 @@ test('原件恢复产生的状态更新也进入简历后台串行保存', () =>
   assert.doesNotMatch(INDEX_HTML, /if \(createdFileId\) await saveWorkbenchV2\(\)/);
   assert.match(ORIGINAL_GUARDS, /MISSING_ORIGINAL_ERROR = '当前设备和云端均没有原始文件'/);
   assert.match(INDEX_HTML, /markOriginalMissing\(version\)/);
-  assert.match(INDEX_HTML, /candidate\.updatedAt = new Date\(\)\.toISOString\(\);\s+await saveResumeBackgroundState\(\)/);
+  assert.match(ORIGINAL_FILE_ACTIONS, /candidate\.updatedAt = new Date\(\)\.toISOString\(\);\s*await saveBackground\(\)/);
 });
 
 test('失败时保留既有排版，只有没有排版时才降级显示原始文本', () => {
