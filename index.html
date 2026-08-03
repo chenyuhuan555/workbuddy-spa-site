@@ -79,6 +79,7 @@
   <script src="./src/ui/candidate-profile-actions.js?v=20260803-candidateprofileactions1"></script>
   <script src="./src/ui/candidate-pipeline-actions.js?v=20260803-candidatepipelineactions1"></script>
   <script src="./src/ui/candidate-resume-actions.js?v=20260803-candidateresumeactions1"></script>
+  <script src="./src/ui/candidate-original-file-actions.js?v=20260803-candidateoriginalfileactions1"></script>
   <script src="./src/ui/resume-ai-batch-messages.js?v=20260803-resumeaibatchmessages1"></script>
   <script src="./src/ui/resume-ai-pending-store.js?v=20260803-resumeaipendingstore2"></script>
   <script src="./src/ui/resume-original-guards.js?v=20260803-resumeoriginalguards1"></script>
@@ -11002,60 +11003,18 @@ const vueAppConfig = {
     function reextractCandidateResumeFromOriginal() { return resumeReprocessActions.fromOriginal(); }
     function reprocessCandidateResumeVersion() { return resumeReprocessActions.fromOriginal(); }
     function resumeOriginalStatusLabel(version) { return window.WorkBuddyResumeStatusLabels.resumeOriginalStatusLabel(version); }
-    async function retryCandidateResumeFileSync() {
-      if (!requireTalentWritePermission()) return;
-      const candidate = selectedCandidate.value;
-      const version = activeCandidateResumeVersion.value;
-      if (!candidate || !version) return;
-      try {
-        await loadCandidateOriginalRecord(version);
-        await enqueueResumeFileSync(candidate.id, version.id);
-        showToast('原始文件已同步，可在其他设备查看');
-      } catch (error) {
-        if (error?.code === 'ORIGINAL_NOT_FOUND') {
-          window.WorkBuddyResumeOriginalGuards.markOriginalMissing(version);
-          await saveResumeBackgroundState();
-        }
-        showToast(error.message || '原始文件同步失败，请重试', 'error');
-      }
-    }
-    async function replaceCandidateResumeOriginal(event) {
-      if (!requireTalentWritePermission()) return;
-      const file = event.target.files?.[0];
-      event.target.value = '';
-      const candidate = selectedCandidate.value;
-      const version = activeCandidateResumeVersion.value;
-      if (!file || !candidate || !version) return;
-      const classification = WorkbenchV2.classifyResumeFile(file.name, file.type);
-      if (!classification.ok) return showToast('仅支持 PDF、Word、图片或 TXT 简历', 'error');
-      if (file.size > 20 * 1024 * 1024) return showToast('原始文件不能超过 20MB', 'error');
-      try {
-        const fileData = await resumeBlobToDataUrl(file);
-        const fileId = (crypto.randomUUID && crypto.randomUUID()) || `fid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
-        const fileHash = await hashResumeData(fileData);
-        await saveResumeBlob(fileId, file, {
-          fileName: file.name,
-          fileType: file.type || '',
-          fileSize: file.size,
-          fileHash,
-        });
-        Object.assign(version, window.WorkBuddyResumeOriginalMetadata.buildResumeOriginalMetadata({
-          fileId,
-          fileName: file.name,
-          fileType: file.type || '',
-          fileSize: file.size,
-          fileHash,
-        }));
-        candidate.updatedAt = new Date().toISOString();
-        await saveResumeBackgroundState();
-        if (cloudReady) schedulePush();
-        void enqueueResumeFileSync(candidate.id, version.id).catch(error => showToast(error.message, 'error'));
-        if (candidateResumeView.mode === 'original') await loadCandidateResumeOriginal();
-        showToast('原始文件已补充，业务记录和历史版本保持不变');
-      } catch (error) {
-        showToast(error.message || '原始文件保存失败', 'error');
-      }
-    }
+    const candidateOriginalFileActions = window.WorkBuddyCandidateOriginalFileActions.createCandidateOriginalFileActions({
+      selectedCandidate, activeVersion: activeCandidateResumeVersion, view: candidateResumeView,
+      requireWritePermission: requireTalentWritePermission, loadRecord: loadCandidateOriginalRecord,
+      enqueueSync: enqueueResumeFileSync, saveBackground: saveResumeBackgroundState,
+      markMissing: version => window.WorkBuddyResumeOriginalGuards.markOriginalMissing(version),
+      buildMetadata: metadata => window.WorkBuddyResumeOriginalMetadata.buildResumeOriginalMetadata(metadata),
+      saveBlob: saveResumeBlob, toDataUrl: resumeBlobToDataUrl, hashData: hashResumeData,
+      classify: (name, type) => WorkbenchV2.classifyResumeFile(name, type), cloudReady, schedulePush,
+      loadOriginal: () => loadCandidateResumeOriginal(), showToast,
+    });
+    async function retryCandidateResumeFileSync() { return candidateOriginalFileActions.retrySync(); }
+    async function replaceCandidateResumeOriginal(event) { return candidateOriginalFileActions.replace(event); }
     const hasCandidateResumeOriginal = computed(() => window.WorkBuddyResumeOriginalGuards.hasResumeOriginalReference(activeCandidateResumeVersion.value));
     const selectedApplicationCandidate = computed(() => workbenchV2.candidates.find(c => c.id === selectedApplication.value?.candidateId) || null);
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));

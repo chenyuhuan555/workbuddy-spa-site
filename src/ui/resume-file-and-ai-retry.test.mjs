@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const ORIGINAL_GUARDS = readFileSync(new URL('./resume-original-guards.js', import.meta.url), 'utf8');
 const REPROCESS_ACTIONS = readFileSync(new URL('./resume-reprocess-actions.js', import.meta.url), 'utf8');
+const ORIGINAL_FILE_ACTIONS = readFileSync(new URL('./candidate-original-file-actions.js', import.meta.url), 'utf8');
 
 test('简历页提供文本重试、原件重提取和原件恢复动作', () => {
   assert.match(INDEX_HTML, /使用现有文本重新处理/);
@@ -44,10 +45,10 @@ test('失败时保留既有排版，只有没有排版时才降级显示原始�
 });
 
 test('原件替换保留当前版本并只更新文件元数据', () => {
-  const body = INDEX_HTML.match(/async function replaceCandidateResumeOriginal\(event\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  const body = ORIGINAL_FILE_ACTIONS;
   assert.match(body, /Object\.assign\(version/);
-  assert.match(body, /saveResumeBlob/);
-  assert.match(body, /enqueueResumeFileSync\(candidate\.id, version\.id\)/);
+  assert.match(body, /saveBlob/);
+  assert.match(body, /enqueueSync\(candidate\.id, version\.id\)/);
   assert.doesNotMatch(body, /createTalent|appendTalentResumeVersion|createApplication/);
 });
 
