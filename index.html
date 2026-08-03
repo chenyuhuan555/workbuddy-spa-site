@@ -55,6 +55,7 @@
   <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
   <script src="./src/ui/position-structured-helpers.js?v=20260803-positionstructured1"></script>
+  <script src="./src/ui/application-display.js?v=20260803-applicationdisplay1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -12342,21 +12343,9 @@ const vueAppConfig = {
         showToast(error.message, 'error');
       }
     }
-    function formatBeijingDateTime(value) {
-      const time = Date.parse(String(value || ''));
-      if (!Number.isFinite(time)) return String(value || '');
-      const parts = new Intl.DateTimeFormat('zh-CN', {
-        timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-      }).formatToParts(new Date(time));
-      const fields = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
-      return `${fields.year}-${fields.month}-${fields.day} ${fields.hour}:${fields.minute}`;
-    }
+    function formatBeijingDateTime(value) { return window.WorkBuddyApplicationDisplay.formatBeijingDateTime(value); }
     function getApplicationStageStatus(application) {
-      if (!application) return { enteredAt: '', elapsedDays: 0, overdue: false, overdueDays: 0 };
-      const enteredAt = [...(application.pipelineEvents || [])].reverse()
-        .find(event => event.toStage === application.stage)?.occurredAt || application.updatedAt || '';
-      return { ...window.WorkBuddyPipeline.stageSlaStatus({ pipelineStage: application.stage, pipelineStageEnteredAt: enteredAt }), enteredAt };
+      return window.WorkBuddyApplicationDisplay.getApplicationStageStatus(application, window.WorkBuddyPipeline.stageSlaStatus);
     }
     function backToWorkbenchList() {
       if (workbenchRoute.type === 'position' && workbenchRoute.parentId) {
