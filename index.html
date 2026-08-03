@@ -80,6 +80,7 @@
   <script src="./src/ui/resume-original-metadata.js?v=20260803-resumeoriginalmetadata1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/workbench-entity-actions.js?v=20260803-workbenchentityactions1"></script>
+  <script src="./src/ui/workbench-search-actions.js?v=20260803-workbenchsearchactions1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -13518,27 +13519,11 @@ ${ocrText}`
       filteredJobsByColumn,
       resetSearchFilters,
     } = window.WorkBuddyFilters.createSearchFilters({ reactive, computed, columns });
-    const globalSearchResults = computed(() => {
-      if (!searchActive.value) return [];
-      const query = String(globalSearchQuery.value || '').trim().toLowerCase();
-      if (!query) return [];
-      const matches = value => String(value || '').toLowerCase().includes(query);
-      const results = [...searchResults.value];
-      workbenchV2.companies.forEach(company => {
-        if (!company || ![company.name, company.industry, company.city, company.owner].some(matches)) return;
-        results.push({ type: 'company', title: company.name || '未命名公司', subtitle: `${company.industry || '行业待补充'} · ${company.owner || '未分配负责人'}`, snippet: company.city || '', company });
-      });
-      workbenchV2.positions.forEach(position => {
-        const company = workbenchV2.companies.find(item => item.id === position.companyId);
-        if (!position || ![position.title, position.detail, position.city, position.salary, company?.name].some(matches)) return;
-        results.push({ type: 'position-v2', title: position.title || '未命名岗位', subtitle: `${company?.name || '未关联公司'} · ${position.city || '地点待补充'}`, snippet: position.detail || '', position, company });
-      });
-      workbenchV2.candidates.forEach(candidate => {
-        if (!candidate || ![candidate.name, candidate.currentCompany, candidate.currentTitle, candidate.profileText, ...(candidate.directions || []), ...(candidate.skills || [])].some(matches)) return;
-        results.push({ type: 'candidate', title: candidate.name || '未命名人才', subtitle: `${candidate.currentCompany || '公司待补充'} · ${candidate.currentTitle || '职位待补充'}`, snippet: candidate.profileText || '', candidate });
-      });
-      return results.slice(0, 80);
+    const workbenchSearchActions = window.WorkBuddySearchActions.createWorkbenchSearchActions({
+      state: workbenchV2, searchResults, query: globalSearchQuery,
+      applyFilters: applySearchFilters, resetFilters: resetSearchFilters,
     });
+    const globalSearchResults = computed(() => searchActive.value ? workbenchSearchActions.buildGlobalSearchResults(globalSearchQuery.value) : []);
     const selectedSearchResumeId = ref('');
     const searchResultIndex = ref(-1); // 当前在搜索结果的第几条，-1 表示未通过搜索结果打开
     // 公共岗始终排在个人承接方之后，新增承接方卡片紧跟公共列右侧。
@@ -23480,17 +23465,10 @@ ${clipped}`
 
     function runWorkbenchGlobalSearch() {
       searchFilters.query = String(globalSearchQuery.value || '').trim();
-      applySearchFilters();
-      nextTick(() => {
-        const query = String(globalSearchQuery.value || '').trim();
-        showToast(query ? `搜索完成，共 ${globalSearchResults.value.length} 条结果` : '请输入搜索内容', query ? 'success' : 'error');
-      });
+      return workbenchSearchActions.runGlobalSearch({ nextTick, showToast });
     }
 
-    function resetGlobalSearch() {
-      globalSearchQuery.value = '';
-      resetSearchFilters();
-    }
+    function resetGlobalSearch() { return workbenchSearchActions.resetGlobalSearch(); }
 
     function updateActiveNavFromScroll() {
       const sections = [
