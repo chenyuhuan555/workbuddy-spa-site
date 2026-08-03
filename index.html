@@ -3520,8 +3520,8 @@
     }
 
     .wb-v2-workspace .wb-v2-global-search-button {
-      width: 48px !important;
-      min-width: 48px !important;
+      width: 78px !important;
+      min-width: 78px !important;
       height: 48px;
       border-radius: 12px;
       background: linear-gradient(135deg, #2d7b58, #226647) !important;
@@ -4094,24 +4094,24 @@
             <input v-model="globalSearchQuery" @keyup.enter="runWorkbenchGlobalSearch" type="search" aria-label="全局搜索" placeholder="搜索公司、职位、人才…" class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-sm placeholder:text-slate-400">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           </div>
-          <button type="button" @click="runWorkbenchGlobalSearch" aria-label="搜索工作台" title="搜索" class="wb-v2-global-search-button w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 inline-flex items-center justify-center transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <button type="button" @click="runWorkbenchGlobalSearch" aria-label="搜索工作台" title="搜索" class="wb-v2-global-search-button w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-50 text-white hover:text-white inline-flex items-center justify-center gap-1.5 px-3 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>搜索</span>
           </button>
           <div v-if="searchActive && String(globalSearchQuery || '').trim()" id="topbar-search-results" class="absolute left-0 right-0 top-12 z-40 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <span class="text-sm font-semibold text-slate-800">搜索结果 · {{ searchResults.length }} 条</span>
+              <span class="text-sm font-semibold text-slate-800">搜索结果 · {{ globalSearchResults.length }} 条</span>
               <button type="button" @click="resetGlobalSearch" class="text-xs font-semibold text-slate-500 hover:text-emerald-700">清除</button>
             </div>
-            <div v-if="searchResults.length" class="max-h-96 overflow-y-auto p-2">
-              <button v-for="item in searchResults.slice(0, 20)" :key="`${item.type}-${item.resume?.id || item.pos?.id || item.job?.id || item.title}`" type="button" @click="openSearchResult(item)" class="block w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-emerald-50">
+            <div v-if="globalSearchResults.length" class="max-h-96 overflow-y-auto p-2">
+              <button v-for="item in globalSearchResults.slice(0, 20)" :key="`${item.type}-${item.resume?.id || item.pos?.id || item.job?.id || item.company?.id || item.position?.id || item.candidate?.id || item.title}`" type="button" @click="openGlobalSearchResult(item)" class="block w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-emerald-50">
                 <div class="flex items-center gap-2">
-                  <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">{{ item.type === 'resume' ? '简历' : item.type === 'position' ? '岗位' : '公司' }}</span>
+                  <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">{{ item.type === 'resume' || item.type === 'candidate' ? '人才' : item.type === 'position' || item.type === 'position-v2' ? '岗位' : '公司' }}</span>
                   <span class="truncate text-sm font-semibold text-slate-900">{{ item.title }}</span>
                 </div>
                 <p v-if="item.subtitle" class="mt-1 truncate text-xs text-slate-500">{{ item.subtitle }}</p>
                 <p v-if="item.snippet" class="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{{ cleanResumeSearchSnippet(item.snippet) }}</p>
               </button>
-              <p v-if="searchResults.length > 20" class="px-3 py-2 text-center text-xs text-slate-400">已显示前 20 条，完整结果请查看搜索区域。</p>
+              <p v-if="globalSearchResults.length > 20" class="px-3 py-2 text-center text-xs text-slate-400">已显示前 20 条，完整结果请查看搜索区域。</p>
             </div>
             <p v-else class="px-4 py-5 text-sm text-slate-500">没有找到匹配结果</p>
           </div>
@@ -14378,6 +14378,27 @@ ${ocrText}`
       filteredJobsByColumn,
       resetSearchFilters,
     } = window.WorkBuddyFilters.createSearchFilters({ reactive, computed, columns });
+    const globalSearchResults = computed(() => {
+      if (!searchActive.value) return [];
+      const query = String(globalSearchQuery.value || '').trim().toLowerCase();
+      if (!query) return [];
+      const matches = value => String(value || '').toLowerCase().includes(query);
+      const results = [...searchResults.value];
+      workbenchV2.companies.forEach(company => {
+        if (!company || ![company.name, company.industry, company.city, company.owner].some(matches)) return;
+        results.push({ type: 'company', title: company.name || '未命名公司', subtitle: `${company.industry || '行业待补充'} · ${company.owner || '未分配负责人'}`, snippet: company.city || '', company });
+      });
+      workbenchV2.positions.forEach(position => {
+        const company = workbenchV2.companies.find(item => item.id === position.companyId);
+        if (!position || ![position.title, position.detail, position.city, position.salary, company?.name].some(matches)) return;
+        results.push({ type: 'position-v2', title: position.title || '未命名岗位', subtitle: `${company?.name || '未关联公司'} · ${position.city || '地点待补充'}`, snippet: position.detail || '', position, company });
+      });
+      workbenchV2.candidates.forEach(candidate => {
+        if (!candidate || ![candidate.name, candidate.currentCompany, candidate.currentTitle, candidate.profileText, ...(candidate.directions || []), ...(candidate.skills || [])].some(matches)) return;
+        results.push({ type: 'candidate', title: candidate.name || '未命名人才', subtitle: `${candidate.currentCompany || '公司待补充'} · ${candidate.currentTitle || '职位待补充'}`, snippet: candidate.profileText || '', candidate });
+      });
+      return results.slice(0, 80);
+    });
     const selectedSearchResumeId = ref('');
     const searchResultIndex = ref(-1); // 当前在搜索结果的第几条，-1 表示未通过搜索结果打开
     // 公共岗始终排在个人承接方之后，新增承接方卡片紧跟公共列右侧。
@@ -24343,6 +24364,14 @@ ${clipped}`
       openModal(item.job, item.colName, item.colIdx, item.pos?.id, item.resume?.id);
     }
 
+    function openGlobalSearchResult(item) {
+      if (!item) return;
+      if (item.type === 'company' && item.company?.id) return openCompanyDetail(item.company.id);
+      if (item.type === 'position-v2' && item.position?.id) return openPositionDetail(item.position.id);
+      if (item.type === 'candidate' && item.candidate?.id) return openCandidateDetail(item.candidate.id);
+      openSearchResult(item);
+    }
+
     function navigateSearchResult(delta) {
       const results = searchResults.value;
       const idx = searchResultIndex.value + delta;
@@ -24471,7 +24500,7 @@ ${clipped}`
       applySearchFilters();
       nextTick(() => {
         const query = String(globalSearchQuery.value || '').trim();
-        showToast(query ? `搜索完成，共 ${searchResults.value.length} 条结果` : '请输入搜索内容', query ? 'success' : 'error');
+        showToast(query ? `搜索完成，共 ${globalSearchResults.value.length} 条结果` : '请输入搜索内容', query ? 'success' : 'error');
       });
     }
 
@@ -24573,9 +24602,9 @@ ${clipped}`
       isImage, isPdf, previewImage, previewResume, openCandidateResumeVersion, previewCandidateResume, resumeVersionPicker, pickResumeVersion, downloadResume, imagePreview, resumePreview, resumeContrastEnabled, toggleResumeContrast,
       dragOverId, dragDropPreview, dragResumeId, dragOverResumeId, modalScrollRef,
       onResumeDragStart, onResumeDragOver, onResumeDragLeave, onResumeDrop, onResumeDragEnd,
-      searchFilters, globalSearchQuery, searchActive, searchDirty, searchResultStats, searchResults,
+      searchFilters, globalSearchQuery, globalSearchResults, searchActive, searchDirty, searchResultStats, searchResults,
       applySearchFilters, filteredJobsByColumn, resetSearchFilters, openSearchResult,
-      selectedSearchResumeId, searchInputRef, searchResultIndex, navigateSearchResult, runWorkbenchGlobalSearch, resetGlobalSearch,
+      selectedSearchResumeId, searchInputRef, searchResultIndex, navigateSearchResult, runWorkbenchGlobalSearch, resetGlobalSearch, openGlobalSearchResult,
       getKanbanOrder,
       dragJobId, dragOverJobId, dragSourceColIdx, onJobDragStart, onJobDragOver, onJobDragLeave, onJobDrop, onJobDragEnd, sortByPriority, toggleAllJobs, isAllJobsExpanded,
       newColName, addColumnCollapsed, addColumn, deleteColumn, columnColor, kanbanCols,

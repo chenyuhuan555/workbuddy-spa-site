@@ -31,4 +31,7 @@ test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC �
   assert.match(indexHtml, /v-model="globalSearchQuery"/);
   assert.match(indexHtml, /resetGlobalSearch/);
   assert.match(indexHtml, /function runWorkbenchGlobalSearch\(\) \{[\s\S]*?applySearchFilters\(\);\s*nextTick/s);
+  assert.match(indexHtml, /globalSearchResults/);
+  assert.match(indexHtml, /openGlobalSearchResult\(item\)/);
+  assert.match(indexHtml, />搜索<\/span>/);
 });
