@@ -62,6 +62,8 @@
   <script src="./src/ui/string-list-normalizer.js?v=20260803-stringlistnormalizer1"></script>
   <script src="./src/ui/resume-name-normalizer.js?v=20260803-resumenamenormalizer1"></script>
   <script src="./src/ui/unique-list.js?v=20260803-uniquelist1"></script>
+  <script src="./src/ui/candidate-identity-parser.js?v=20260803-candidateidentity1"></script>
+  <script src="./src/ui/resume-duplicate-text.js?v=20260803-resumeduplicatetext1"></script>
   <script src="./src/ui/workbench-collection-count.js?v=20260803-collectioncount1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
@@ -21510,37 +21512,9 @@ ${String(resumeText || '').slice(0, 9000)}`
       }
     }
 
-    function duplicateTextOfResume(resume) {
-      return [
-        resume?.name,
-        resume?.candidateSummary,
-        Array.isArray(resume?.candidateKeywords) ? resume.candidateKeywords.join(' ') : '',
-        resume?.candidateProfileText,
-        resume?.electronicResumeText,
-        resume?.bossImportedText,
-        resume?.note,
-      ].filter(Boolean).join('\n');
-    }
-
-    function extractCandidateName(text, fileName) {
-      const raw = `${text || ''}\n${fileName || ''}`;
-      const explicit = raw.match(/(?:姓名|候选人|名字)[:：\s]+([\u4e00-\u9fa5]{2,4})/);
-      if (explicit) return explicit[1];
-      const cleanName = String(fileName || '')
-        .replace(/\.[^.]+$/, '')
-        .replace(/简历|候选人|附件|个人|resume|cv/ig, '')
-        .replace(/[（(].*?[）)]/g, ' ')
-        .trim();
-      const fileMatch = cleanName.match(/[\u4e00-\u9fa5]{2,4}/);
-      return fileMatch ? fileMatch[0] : '';
-    }
-
-    function extractCandidateGender(text) {
-      const raw = String(text || '').replace(/\s+/g, ' ');
-      if (/性别[:：\s]*男|(?:^|[，,；;\s])男(?:性|士)?(?:[，,；;\s]|$)/.test(raw)) return '男';
-      if (/性别[:：\s]*女|(?:^|[，,；;\s])女(?:性|士)?(?:[，,；;\s]|$)/.test(raw)) return '女';
-      return '';
-    }
+    function duplicateTextOfResume(resume) { return window.WorkBuddyResumeDuplicateText.duplicateTextOfResume(resume); }
+    function extractCandidateName(text, fileName) { return window.WorkBuddyCandidateIdentityParser.extractCandidateName(text, fileName); }
+    function extractCandidateGender(text) { return window.WorkBuddyCandidateIdentityParser.extractCandidateGender(text); }
 
     function uniqueList(items, limit = 30) { return window.WorkBuddyUniqueList.uniqueList(items, limit); }
 
