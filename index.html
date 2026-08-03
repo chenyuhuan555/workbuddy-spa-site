@@ -52,6 +52,7 @@
   <script src="./src/ui/talent-search-messages.js?v=20260803-talentsearchmessages1"></script>
   <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
   <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
+  <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
   <script src="./src/ui/resume-file-data.js?v=20260803-resumefiledata1"></script>
   <script src="./src/services/pipeline-core.js?v=20260803-pipeline1"></script>
   <style>
@@ -10480,8 +10481,8 @@ const vueAppConfig = {
     const selectedApplication = computed(() => applicationById.value.get(workbenchRoute.id) || null);
     const companyPositions = computed(() => positionsByCompanyId.value.get(selectedCompany.value?.id) || []);
     const companyApplications = computed(() => applicationsByCompanyId.value.get(selectedCompany.value?.id) || []);
-    const positionApplications = computed(() => workbenchV2.applications.filter(item => item.positionId === selectedPosition.value?.id));
-    const filteredPositionApplications = computed(() => positionApplications.value.filter(item => item.stage !== SK.CLOSED));
+    const positionApplications = computed(() => WorkBuddyPositionApplicationFilter.getPositionApplications(workbenchV2.applications, selectedPosition.value?.id, SK.CLOSED));
+    const filteredPositionApplications = computed(() => WorkBuddyPositionApplicationFilter.getActivePositionApplications(workbenchV2.applications, selectedPosition.value?.id, SK.CLOSED));
     const filteredWorkbenchCompanies = computed(() => WorkBuddyCompanyListFilter.filterCompanies(workbenchV2.companies, companyFilter));
     const pagedWorkbenchCompanies = computed(() => paginate(filteredWorkbenchCompanies.value, companyPage.value, PAGE_SIZE));
     const companyCountMaps = computed(() => WorkBuddyCompanyCountMaps.buildCompanyCountMaps(workbenchV2, {
