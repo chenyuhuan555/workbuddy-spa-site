@@ -21,6 +21,7 @@
   <script src="./src/services/save-coordinator.js"></script>
   <script src="./src/services/resume-ai-processing.js?v=20260730-resumeai2"></script>
   <script src="./src/services/resume-background-save-queue.js?v=20260803-resumebackgroundqueue1"></script>
+  <script src="./src/services/resume-original-text-loader.js?v=20260803-resumeoriginaltextloader1"></script>
   <script src="./src/services/resume-ai-batch.js?v=20260803-resumeaibatch1"></script>
   <script src="./src/services/resume-file-sync.js?v=20260730-resumefile1"></script>
   <script src="./src/services/repo/resume-text-repo.js?v=20260731-resumetext1"></script>
@@ -10940,18 +10941,12 @@ const vueAppConfig = {
         throw error;
       }
     }
-    async function loadCandidateResumeRawText(version, candidate, options = {}) {
-      if (!options.refresh && String(version?.rawText || '').trim()) return String(version.rawText).trim();
-      // Phase 1：内存无文本时优先从 resume_texts 表取（跨设备/清缓存场景），避免重复解析原件
-      if (!options.refresh && version && !String(version.rawText || '').trim()) {
-        await ensureResumeTexts(version);
-        if (String(version.rawText || '').trim()) return String(version.rawText).trim();
-      }
-      const record = await loadCandidateOriginalRecord(version);
-      const fileData = await resumeBlobToDataUrl(record.blob);
-      const fileType = String(record.fileType || record.blob.type || version.fileType || '');
-      return extractResumeText({ name: version.fileName || '简历', type: fileType, data: fileData });
-    }
+    const loadCandidateResumeRawText = window.WorkBuddyResumeOriginalTextLoader.createResumeOriginalTextLoader({
+      ensureTexts: version => ensureResumeTexts(version),
+      loadOriginal: version => loadCandidateOriginalRecord(version),
+      blobToDataUrl: resumeBlobToDataUrl,
+      extractText: extractResumeText,
+    });
     async function processResumeAiVersion({ candidateId, versionId, refreshRawText = false }) {
       return ResumeAiProcessing.process({
         bundle: workbenchV2,
