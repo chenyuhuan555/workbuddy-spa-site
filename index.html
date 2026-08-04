@@ -96,6 +96,7 @@
   <script src="./src/ui/backup-export-actions.js?v=20260803-backupexportactions1"></script>
   <script src="./src/ui/ocr-input-actions.js?v=20260803-ocrinputactions1"></script>
   <script src="./src/ui/shortlist-actions.js?v=20260803-shortlistactions1"></script>
+  <script src="./src/ui/ai-note-actions.js?v=20260804-ainoteactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -18212,61 +18213,21 @@ ${ocrText}`
       aiAnalysisSave.open = true;
     }
 
+    const aiNoteActions = window.WorkBuddyAiNoteActions.createAiNoteActions({
+      getTarget: (entityType, entityId) => {
+        if (entityType === 'company') return workbenchV2.companies.find(c => c.id === entityId);
+        if (entityType === 'position') return workbenchV2.positions.find(p => p.id === entityId);
+        return workbenchV2.candidates.find(c => c.id === entityId);
+      },
+      ensureNotes: ensureAiNotes,
+      save: saveWorkbenchV2,
+      showToast,
+    });
     async function confirmSaveAiAnalysis() {
-      if (!aiToolbox.output) {
-        aiAnalysisSave.error = '没有可保存的内容';
-        return;
-      }
-      if (!aiAnalysisSave.targetId) {
-        aiAnalysisSave.error = '请选择保存目标';
-        return;
-      }
-      const tool = activeAiToolboxTool.value;
-      let target = null;
-      if (aiAnalysisSave.targetType === 'company') {
-        target = workbenchV2.companies.find(c => c.id === aiAnalysisSave.targetId);
-      } else if (aiAnalysisSave.targetType === 'position') {
-        target = workbenchV2.positions.find(p => p.id === aiAnalysisSave.targetId);
-      } else {
-        target = workbenchV2.candidates.find(c => c.id === aiAnalysisSave.targetId);
-      }
-      if (!target) {
-        aiAnalysisSave.error = '目标不存在，请重新选择';
-        return;
-      }
-      ensureAiNotes(target);
-      const note = {
-        id: `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-        toolKey: tool?.key || '',
-        toolTitle: tool?.title || 'AI分析',
-        title: (aiAnalysisSave.title || '').trim() || (tool?.title || 'AI分析'),
-        content: aiToolbox.output,
-        createdAt: new Date().toISOString(),
-      };
-      target.aiNotes.push(note);
-      target.updatedAt = new Date().toISOString();
-      const saved = await saveWorkbenchV2();
-      if (!saved) {
-        aiAnalysisSave.error = '保存失败，请重试';
-        return;
-      }
-      aiAnalysisSave.open = false;
-      const labelMap = { company: '公司', position: '岗位', candidate: '候选人' };
-      showToast(`已保存到${labelMap[aiAnalysisSave.targetType]}AI分析`);
+      return aiNoteActions.saveAnalysis({ draft: aiAnalysisSave, output: aiToolbox.output, tool: activeAiToolboxTool.value });
     }
-
     async function deleteAiNote(entityType, entityId, noteId) {
-      let target = null;
-      if (entityType === 'company') target = workbenchV2.companies.find(c => c.id === entityId);
-      else if (entityType === 'position') target = workbenchV2.positions.find(p => p.id === entityId);
-      else target = workbenchV2.candidates.find(c => c.id === entityId);
-      if (!target || !Array.isArray(target.aiNotes)) return;
-      const idx = target.aiNotes.findIndex(n => n.id === noteId);
-      if (idx < 0) return;
-      target.aiNotes.splice(idx, 1);
-      target.updatedAt = new Date().toISOString();
-      await saveWorkbenchV2();
-      showToast('已删除该AI分析');
+      return aiNoteActions.deleteNote(entityType, entityId, noteId);
     }
 
     // ======== 已保存 AI 分析：默认折叠，仅显示核心结论摘要 ========
@@ -18275,35 +18236,7 @@ ${ocrText}`
       if (aiNoteExpanded.has(noteId)) aiNoteExpanded.delete(noteId);
       else aiNoteExpanded.add(noteId);
     }
-    function extractAiNoteSummary(content, maxLen = 160) {
-      if (!content) return '';
-      let text = String(content)
-        .replace(/```[\s\S]*?```/g, ' ')   // 去掉代码块（含 mermaid）
-        .replace(/`([^`]*)`/g, '$1');        // 去掉行内代码标记
-      const headingRe = /^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:一句话推荐语|核心结论|结论摘要|结论|摘要|总结|核心要点)(?:\*\*)?\s*[:：]?\s*$/i;
-      const buf = [];
-      let capture = false;
-      for (const line of text.split('\n')) {
-        if (headingRe.test(line)) { capture = true; continue; }
-        if (capture) {
-          if (/^\s{0,3}#{1,6}\s+/.test(line)) break; // 遇到下一个小标题停止
-          if (line.trim() === '') { if (buf.length) break; continue; }
-          buf.push(line.replace(/^[-*]\s+/, '').trim());
-          if (buf.join(' ').length > maxLen) break;
-        }
-      }
-      let summary = buf.join(' ');
-      if (!summary) {
-        // 退而求其次：取第一个非空段落
-        const paras = text.split(/\n\s*\n/)
-          .map(s => s.replace(/[#>*_`\-]/g, '').replace(/\s+/g, ' ').trim())
-          .filter(Boolean);
-        summary = paras[0] || text.replace(/[#>*_`\-]/g, ' ').replace(/\s+/g, ' ').trim();
-      }
-      summary = summary.replace(/[#>*_`\-]/g, '').replace(/\s+/g, ' ').trim();
-      if (summary.length > maxLen) summary = summary.slice(0, maxLen) + '…';
-      return summary;
-    }
+    const extractAiNoteSummary = (content, maxLen = 160) => aiNoteActions.extractSummary(content, maxLen);
 
     function currentTimeLabel() {
       return `${today.value} ${new Date().toTimeString().slice(0, 5)}`;
