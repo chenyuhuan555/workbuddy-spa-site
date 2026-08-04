@@ -103,3 +103,12 @@ test('AI 访问器在所有动作初始化前可安全提升', () => {
   assert.match(sourceHtml, /var cloudReady\s*=\s*false/);
   assert.doesNotMatch(sourceHtml, /(?:let|const) cloudReady\s*=\s*false/);
 });
+
+test('关系引荐动作启动时不引用未声明的 ID 生成器', () => {
+  const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const initialization = sourceHtml.match(
+    /const networkIntroActions = window\.WorkBuddyNetworkIntroActions\.createNetworkIntroActions\(\{([\s\S]*?)\n\s*\}\);/,
+  );
+  assert.ok(initialization, '应初始化关系引荐动作模块');
+  assert.doesNotMatch(initialization[1], /^\s*genId,\s*$/m);
+});

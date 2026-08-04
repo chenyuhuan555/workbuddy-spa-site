@@ -20433,7 +20433,6 @@ ${String(resumeText || '').slice(0, 9000)}`
       callAi: callDeepSeekWithProgress,
       getApiKey: requireDeepSeekApiKey,
       relationLabel,
-      genId,
       currentTime: currentTimeLabel,
       save: () => { localSave(); if (cloudReady) schedulePush(); },
       showToast,
