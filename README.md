@@ -25,7 +25,7 @@
   - `workspace_state`：业务整包 JSON（乐观锁 RPC `save_workspace_state`）
   - `resume_texts`：简历文本独立表（Phase 1）
   - `candidates`：候选人业务字段和简历版本元数据（Phase 2a/2b）
-  - `resume_versions`：简历版本元数据独立表（Phase 2c，兼容双写，暂不切读）
+  - `resume_versions`：简历版本元数据独立表（Phase 2c，兼容双写；通过回填和一致性校验后可切换读取）
   - `profiles` / `private_settings`：成员与私有配置
   - Storage bucket `workbuddy-files`：路径 `workspace/main/resumes/{candidateId}/{versionId}/{fileId}`
 - **AI 解析**：DeepSeek API（简历文本解析，Key 暂存前端，后续迁入 Edge Function）
@@ -94,10 +94,12 @@
 | Phase 1 | 简历文本分表 + 双写 + 同步瘦身 + 迁移工具 | ✅ 已完成 |
 | Phase 2a | candidates 独立表 + 双写 + 历史回填 | ✅ 代码完成 |
 | Phase 2b.1 | 候选人增量拉取与对账预览 | ✅ 代码完成 |
-| Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | 🟡 代码完成，待生产启用 |
-| Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | 🟡 代码完成，待统一执行 SQL；暂不切读 |
-| Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | 🟡 表、仓储、双写、严格对账、受闸门保护的读切换与增量冲突报告完成，默认不启用 |
-| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | 🟡 代码基础完成，待 SQL/Edge Function 启用 |
+| Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | ✅ 代码、迁移、严格校验和切换流程完成；生产启用状态以设置页为准 |
+| Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | ✅ 代码、迁移、校验和切换流程完成；生产启用状态以设置页为准 |
+| Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | ✅ 表、仓储、双写、严格对账、受闸门保护的读切换和增量冲突处理完成；生产启用状态以设置页为准 |
+| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | 🟡 搜索/匹配 Repository 与 SQL 契约完成；仍需部署 RPC/Edge Function，pgvector 语义匹配待补齐 |
+
+> 状态说明：Phase 2b.2、Phase 2c 和 Phase 3 的代码及安全启用流程已经完成，但是否已在当前 Supabase 项目切换为权威读路径，必须以应用设置页显示的“已启用”状态为准。Phase 4 目前不能视为全部完成：仓储和 SQL 契约已具备，云端 RPC/Edge Function 部署及真正的 pgvector 语义匹配仍未完成。
 
 ## 更新日志
 
