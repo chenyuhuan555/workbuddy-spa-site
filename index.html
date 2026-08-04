@@ -93,6 +93,7 @@
   <script src="./src/ui/ai-config-actions.js?v=20260803-aiconfigactions1"></script>
   <script src="./src/ui/column-actions.js?v=20260803-columnactions1"></script>
   <script src="./src/ui/inline-ai-analysis-actions.js?v=20260803-inlineaianalysisactions1"></script>
+  <script src="./src/ui/backup-export-actions.js?v=20260803-backupexportactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -13365,83 +13366,14 @@ ${ocrText}`
       };
     }
 
-    function exportFullBackup() {
-      downloadJsonFile(`WorkBuddy完整备份_${backupDateLabel()}.json`, packFullBackup());
-      showToast('完整备份已导出');
-    }
-
-    function exportJobsBackup() {
-      downloadJsonFile(`WorkBuddy岗位数据_${backupDateLabel()}.json`, {
-        app: 'WorkBuddy',
-        type: 'jobs',
-        exportedAt: new Date().toISOString(),
-        columns: cloneData(columns).map(col => ({
-          ...col,
-          jobs: (col.jobs || []).map(job => ({
-            ...job,
-            positions: (job.positions || []).map(pos => ({
-              ...pos,
-              resumes: (pos.resumes || []).map(r => ({ ...r, data: '' })),
-            })),
-          })),
-        })),
-      });
-    }
-
-    function exportSinglePositionBackup(job, pos) {
-      if (!job || !pos) return;
-      downloadJsonFile(`WorkBuddy岗位_${sanitizeFileName(job.company)}_${sanitizeFileName(pos.name)}_${backupDateLabel()}.json`, {
-        app: 'WorkBuddy',
-        type: 'position',
-        exportedAt: new Date().toISOString(),
-        company: cloneData({
-          id: job.id,
-          company: job.company,
-          priority: job.priority || 'p2',
-          createdAt: job.createdAt || '',
-          companyProfileText: job.companyProfileText || '',
-          companyProfileUpdatedAt: job.companyProfileUpdatedAt || '',
-        }),
-        position: cloneData(pos),
-      });
-      showToast('岗位数据已导出');
-    }
-
-    function exportCandidatesBackup() {
-      const candidates = [];
-      columns.forEach((col, colIdx) => {
-        (col.jobs || []).forEach(job => {
-          (job.positions || []).forEach(pos => {
-            (pos.resumes || []).forEach(resume => {
-              candidates.push({
-                assignee: col.name,
-                colIdx,
-                company: job.company,
-                jobId: job.id,
-                position: pos.name,
-                posId: pos.id,
-                resume: cloneData(resume),
-              });
-            });
-          });
-        });
-      });
-      downloadJsonFile(`WorkBuddy候选人库_${backupDateLabel()}.json`, {
-        app: 'WorkBuddy',
-        type: 'candidates',
-        exportedAt: new Date().toISOString(),
-        candidates,
-      });
-    }
-
-    function exportKbBackup() {
-      downloadJsonFile(`WorkBuddy知识库_${backupDateLabel()}.json`, {
-        app: 'WorkBuddy',
-        type: 'knowledge-base',
-        exportedAt: new Date().toISOString(),
-        kbArticles: cloneData(kbArticles),
-      });
-    }
+    const backupExportActions = window.WorkBuddyBackupExportActions.createBackupExportActions({
+      columns, kbArticles, cloneData, downloadJsonFile, backupDateLabel, sanitizeFileName, packFullBackup, showToast,
+    });
+    const exportFullBackup = () => backupExportActions.exportFullBackup();
+    const exportJobsBackup = () => backupExportActions.exportJobsBackup();
+    const exportSinglePositionBackup = (job, position) => backupExportActions.exportSinglePositionBackup(job, position);
+    const exportCandidatesBackup = () => backupExportActions.exportCandidatesBackup();
+    const exportKbBackup = () => backupExportActions.exportKbBackup();
 
     function triggerBackupImport() {
       backupImportInput.value?.click();
