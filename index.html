@@ -95,6 +95,7 @@
   <script src="./src/ui/inline-ai-analysis-actions.js?v=20260803-inlineaianalysisactions1"></script>
   <script src="./src/ui/backup-export-actions.js?v=20260803-backupexportactions1"></script>
   <script src="./src/ui/ocr-input-actions.js?v=20260803-ocrinputactions1"></script>
+  <script src="./src/ui/shortlist-actions.js?v=20260803-shortlistactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -16192,28 +16193,15 @@ ${ocrText}`
       shortlistComparisonDialog.show = true;
     }
 
-    function shortlistCandidateSummary(resume) {
-      const risks = resume.aiScore?.risks ? `风险：${resume.aiScore.risks}` : '';
-      return [
-        resume.candidateSummary || resume.electronicResumeText || resume.name || '未命名候选人',
-        resume.aiScore?.score >= 0 ? `评分：${resume.aiScore.score}` : '',
-        resume.pipelineStage ? `阶段：${candidatePipelineLabel(resume.pipelineStage)}` : '',
-        resume.nextFollowupAt ? `下次跟进：${resume.nextFollowupAt}` : '',
-        risks,
-      ].filter(Boolean).join('\n');
-    }
-
-    function copyShortlistSummary() {
-      const job = shortlistComparisonDialog.job;
-      const pos = shortlistComparisonDialog.pos;
-      const candidates = getShortlistCandidates(pos);
-      const text = [
-        `岗位短名单：${job?.company || '未命名公司'} · ${pos?.name || '未命名岗位'}`,
-        '',
-        ...candidates.map((resume, idx) => `${idx + 1}. ${resume.name || '未命名候选人'}\n${shortlistCandidateSummary(resume)}`),
-      ].join('\n\n');
-      navigator.clipboard.writeText(text).then(() => showToast('短名单对比摘要已复制'));
-    }
+    const shortlistActions = window.WorkBuddyShortlistActions.createShortlistActions({
+      dialog: shortlistComparisonDialog,
+      getCandidates: position => getShortlistCandidates(position),
+      pipelineLabel: candidatePipelineLabel,
+      clipboard: navigator.clipboard,
+      showToast,
+    });
+    const shortlistCandidateSummary = resume => shortlistActions.candidateSummary(resume);
+    const copyShortlistSummary = () => shortlistActions.copySummary();
 
     const funnelDashboardData = computed(() => {
       const resumes = collectResumePlacements().map(({ resume }) => resume);
