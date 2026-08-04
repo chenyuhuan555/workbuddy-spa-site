@@ -95,3 +95,9 @@ test('基础 CSP 只允许当前业务所需的脚本和连接来源', () => {
   ]) assert.ok(connections.includes(source), `connect-src 缺少 ${source}`);
   assert.doesNotMatch(sourceHtml, /https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)\/vue@3\/dist\/vue\.global\.prod\.js/);
 });
+
+test('AI 访问器在所有动作初始化前可安全提升', () => {
+  const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(sourceHtml, /function requireDeepSeekApiKey\(\)\s*\{\s*return aiConfigActions\.requireKey\(\);\s*\}/);
+  assert.doesNotMatch(sourceHtml, /const requireDeepSeekApiKey\s*=\s*\(\)\s*=>/);
+});

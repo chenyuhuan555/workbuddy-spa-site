@@ -12288,7 +12288,8 @@ ${ocrText}`
       localStorage.setItem('kb_deepseek_key', aiConfig.apiKey);
       localStorage.setItem('kb_gemini_key', aiConfig.apiKey);
     };
-    const requireDeepSeekApiKey = () => aiConfigActions.requireKey();
+    // 使用函数声明允许前置创建的 AI 动作安全持有该访问器，避免 setup 初始化阶段触发 TDZ。
+    function requireDeepSeekApiKey() { return aiConfigActions.requireKey(); }
 
     // ======== 猎头 AI 工具箱 ========
     const aiToolboxTabs = [
