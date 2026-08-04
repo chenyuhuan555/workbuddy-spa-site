@@ -11141,6 +11141,21 @@ const vueAppConfig = {
     });
     const todoListView = reactive({ open: false, filter: 'all' });
     const todoDetail = reactive({ open: false, todo: null });
+    const todoLinkOptions = computed(() => {
+      const type = todoForm.form.linkType;
+      if (type === 'candidate') return workbenchV2.candidates.map(c => ({ id: c.id, label: `${c.name || '未命名'}${c.currentCompany ? ' · ' + c.currentCompany : ''}` }));
+      if (type === 'position') return workbenchV2.positions.map(p => {
+        const co = workbenchV2.companies.find(x => x.id === p.companyId);
+        return { id: p.id, label: `${p.title || '未命名岗位'}${co ? ' · ' + co.name : ''}` };
+      });
+      if (type === 'company') return workbenchV2.companies.map(c => ({ id: c.id, label: c.name || '未命名公司' }));
+      if (type === 'application') return workbenchV2.applications.filter(a => a.stage !== SK.CLOSED).map(a => {
+        const c = workbenchV2.candidates.find(x => x.id === a.candidateId);
+        const p = workbenchV2.positions.find(x => x.id === a.positionId);
+        return { id: a.id, label: `${c?.name || '候选人'} - ${p?.title || '岗位'}` };
+      });
+      return [];
+    });
     const todoActions = window.WorkBuddyTodoActions.createTodoActions({
       todoForm, todoDetail, todoListView, privateTodos, todoLinkOptions, dashboardTodos,
       workbenchV2, getPrivateTodoClient, showToast,
@@ -11163,21 +11178,6 @@ const vueAppConfig = {
       { value: 'company', label: '公司' },
       { value: 'application', label: '推进记录' },
     ];
-    const todoLinkOptions = computed(() => {
-      const type = todoForm.form.linkType;
-      if (type === 'candidate') return workbenchV2.candidates.map(c => ({ id: c.id, label: `${c.name || '未命名'}${c.currentCompany ? ' · ' + c.currentCompany : ''}` }));
-      if (type === 'position') return workbenchV2.positions.map(p => {
-        const co = workbenchV2.companies.find(x => x.id === p.companyId);
-        return { id: p.id, label: `${p.title || '未命名岗位'}${co ? ' · ' + co.name : ''}` };
-      });
-      if (type === 'company') return workbenchV2.companies.map(c => ({ id: c.id, label: c.name || '未命名公司' }));
-      if (type === 'application') return workbenchV2.applications.filter(a => a.stage !== SK.CLOSED).map(a => {
-        const c = workbenchV2.candidates.find(x => x.id === a.candidateId);
-        const p = workbenchV2.positions.find(x => x.id === a.positionId);
-        return { id: a.id, label: `${c?.name || '候选人'} - ${p?.title || '岗位'}` };
-      });
-      return [];
-    });
     const resetTodoForm = () => todoActions.resetTodoForm();
     const openTodoForm = todo => todoActions.openTodoForm(todo);
     const onTodoLinkTypeChange = () => todoActions.onTodoLinkTypeChange();
