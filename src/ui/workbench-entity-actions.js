@@ -1,4 +1,4 @@
-function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCreate, companyPositionCreate, selectedCompany, selectedPosition, WorkbenchV2, save, schedulePush, cloudReady, showToast, openCompanyDetail, openPositionDetail, workbenchMode, aiToolbox, positionApplications, confirmAction = globalThis.confirm }) {
+function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCreate, companyPositionCreate, selectedCompany, selectedPosition, WorkbenchV2, save, schedulePush, cloudReady, showToast, openCompanyDetail, openPositionDetail, workbenchMode, aiToolbox, getAiToolbox, positionApplications, confirmAction = globalThis.confirm }) {
   const routeCompany = typeof openCompanyDetail === 'function'
     ? openCompanyDetail
     : id => { nav.value = 'companies'; Object.assign(route, { type: 'company', id, parentId: '', tab: 'overview' }); };
@@ -53,7 +53,8 @@ function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCrea
     const position = state.positions.find(item => item.id === id);
     nav.value = 'companies';
     Object.assign(route, { type: 'position', id, parentId: position?.companyId || '', tab: 'overview' });
-    if (workbenchMode?.value === 'v2' && aiToolbox) aiToolbox.posId = id;
+    const toolbox = typeof getAiToolbox === 'function' ? getAiToolbox() : aiToolbox;
+    if (workbenchMode?.value === 'v2' && toolbox) toolbox.posId = id;
   }
   async function toggleWorkbenchPositionStatus() {
     if (!canWrite || !selectedPosition.value) return;

@@ -11296,7 +11296,7 @@ const vueAppConfig = {
       selectedCompany, selectedPosition, WorkbenchV2, save: saveWorkbenchV2, schedulePush, cloudReady, showToast,
       openCompanyDetail: id => workbenchEntityActions.openCompanyDetail(id),
       openPositionDetail: id => workbenchEntityActions.openPositionDetail(id),
-      workbenchMode, aiToolbox, positionApplications: filteredPositionApplications,
+      workbenchMode, getAiToolbox: () => aiToolbox, positionApplications: filteredPositionApplications,
     });
     const workbenchApplicationActions = window.WorkBuddyWorkbenchApplicationActions.createWorkbenchApplicationActions({
       state: { applications: workbenchV2.applications, nav: workbenchNav, route: workbenchRoute },
