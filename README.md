@@ -63,21 +63,6 @@
 3. **管理员（admin）** 登录后，设置页点击「简历文本云端迁移」执行一次性历史回填（失败可重复执行）。
 4. 在「推进中心」打开任意推进记录，可编辑「推进负责人」并点击「保存推进记录」；已有负责人不会被新建规则覆盖。
 
-### Phase 2c 简历版本双写（SQL 可统一执行）
-
-1. 后续统一迁移时，在 [Supabase SQL Editor](https://supabase.com/dashboard/project/pskqpgzwifdozaxprpik/sql/new) 执行 `supabase/candidates.sql`、`supabase/resume-texts.sql` 和 `supabase/resume-versions.sql`。
-2. 应用设置页点击「开始迁移」完成简历版本元数据回填，再点击「校验一致性」。
-3. 当前代码只做版本元数据双写和严格对账，仍以 `workspace_state` / `candidates` 兼容读路径为准；未执行 SQL 或校验未通过时不会切换读取来源。
-4. `resume_versions` 不保存 `rawText`、`formattedText` 或 base64 原件；这些内容分别继续由 `resume_texts` 与 Storage/IndexedDB 负责。
-
-### Phase 2b.2 候选人云端读取启用顺序
-
-1. 在 [Supabase SQL Editor](https://supabase.com/dashboard/project/pskqpgzwifdozaxprpik/sql/new) 执行 `supabase/candidates.sql`；已建过早期表也必须再次执行，以补齐 `extra` 兼容列。
-2. 在应用设置页运行「候选人云端迁移」，确认失败数为 0。
-3. 点击「校验一致性」。系统会逐条核对 ID、业务字段指纹和删除标记，仅数量相同不会放行。
-4. 显示「严格一致」后点击「启用云端读取」。此后候选人以 `candidates` 表为权威读取源，`workspace_state` 暂时保留回退副本。
-
-> 未完成上述四步时，应用继续使用原有 `workspace_state` 候选人读路径，不会自动切换。
 
 ## 部署
 
