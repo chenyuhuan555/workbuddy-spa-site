@@ -98,6 +98,7 @@
   <script src="./src/ui/shortlist-actions.js?v=20260803-shortlistactions1"></script>
   <script src="./src/ui/ai-note-actions.js?v=20260804-ainoteactions1"></script>
   <script src="./src/ui/network-intro-actions.js?v=20260804-networkintroactions1"></script>
+  <script src="./src/ui/timeline-ai-actions.js?v=20260804-timelineaiactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -20163,7 +20164,7 @@ ${String(resumeText || '').slice(0, 9000)}`
     ];
 
     // ── AI 解读函数 ──
-    async function generateDestinyReading() {
+    async function legacyGenerateDestinyReading() {
       const resume = networkGraphDialog.resume;
       if (!resume) return;
       timelineLoadingKey.value = 'destiny';
@@ -20191,7 +20192,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       finally { timelineLoadingKey.value = ''; }
     }
 
-    async function generateOpeningScript() {
+    async function legacyGenerateOpeningScript() {
       const resume = networkGraphDialog.resume;
       if (!resume) return;
       timelineLoadingKey.value = 'script';
@@ -20215,7 +20216,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       finally { timelineLoadingKey.value = ''; }
     }
 
-    async function generateMotivationAnalysis() {
+    async function legacyGenerateMotivationAnalysis() {
       const resume = networkGraphDialog.resume;
       if (!resume) return;
       timelineLoadingKey.value = 'motivation';
@@ -20244,6 +20245,24 @@ ${String(resumeText || '').slice(0, 9000)}`
       } catch (e) { timelineError.value = e.message; }
       finally { timelineLoadingKey.value = ''; }
     }
+
+    const timelineAiActions = window.WorkBuddyTimelineAiActions.createTimelineAiActions({
+      getResume: () => networkGraphDialog.resume,
+      state: { get loadingKey() { return timelineLoadingKey.value; }, set loadingKey(value) { timelineLoadingKey.value = value; }, get output() { return timelineOutput.value; }, set output(value) { timelineOutput.value = value; }, get label() { return timelineOutputLabel.value; }, set label(value) { timelineOutputLabel.value = value; }, get error() { return timelineError.value; }, set error(value) { timelineError.value = value; } },
+      callAi: callDeepSeekWithProgress,
+      getApiKey: requireDeepSeekApiKey,
+      getEntries: getTimelineEntries,
+      formatDuration: fmtDuration,
+      getWindowScore: getTimelineWindowScore,
+      getWindowLabel: getTimelineWindowLabel,
+      getCurrentCompany: getTimelineCurrentCompany,
+      getCurrentRole: getTimelineCurrentRole,
+      isRadarBoosted: getTimelineRadarBoosted,
+      persist: (field, data) => persistTimelineResult(field, data),
+    });
+    const generateDestinyReading = () => timelineAiActions.generateDestinyReading();
+    const generateOpeningScript = () => timelineAiActions.generateOpeningScript();
+    const generateMotivationAnalysis = () => timelineAiActions.generateMotivationAnalysis();
 
     function persistTimelineResult(field, data) {
       const resume = networkGraphDialog.resume;
