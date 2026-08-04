@@ -92,6 +92,7 @@
   <script src="./src/ui/member-actions.js?v=20260803-memberactions1"></script>
   <script src="./src/ui/ai-config-actions.js?v=20260803-aiconfigactions1"></script>
   <script src="./src/ui/column-actions.js?v=20260803-columnactions1"></script>
+  <script src="./src/ui/inline-ai-analysis-actions.js?v=20260803-inlineaianalysisactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -12539,33 +12540,18 @@ ${ocrText}`
       }
     }
 
-    async function saveInlineAiAnalysis(panel, entityType, entityId) {
-      if (!panel.output || !entityId) return;
-      let target = null;
-      if (entityType === 'company') target = workbenchV2.companies.find(c => c.id === entityId);
-      else if (entityType === 'position') target = workbenchV2.positions.find(p => p.id === entityId);
-      else target = workbenchV2.candidates.find(c => c.id === entityId);
-      if (!target) { showToast('保存目标不存在', 'error'); return; }
-      ensureAiNotes(target);
-      const tool = aiToolboxTools.find(t => t.key === panel.toolKey);
-      const now = new Date();
-      const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      target.aiNotes.push({
-        id: `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-        toolKey: panel.toolKey || '',
-        toolTitle: tool?.title || 'AI分析',
-        title: `${tool?.title || 'AI分析'} - ${stamp}`,
-        content: panel.output,
-        createdAt: now.toISOString(),
-      });
-      target.updatedAt = now.toISOString();
-      const saved = await saveWorkbenchV2();
-      if (!saved) { showToast('保存失败，请重试', 'error'); return; }
-      panel.output = '';
-      panel.input = '';
-      const labelMap = { company: '公司', position: '岗位', candidate: '候选人' };
-      showToast(`已保存到${labelMap[entityType]}AI分析`);
-    }
+    const inlineAiAnalysisActions = window.WorkBuddyInlineAiAnalysisActions.createInlineAiAnalysisActions({
+      findTarget: (entityType, entityId) => {
+        if (entityType === 'company') return workbenchV2.companies.find(company => company.id === entityId);
+        if (entityType === 'position') return workbenchV2.positions.find(position => position.id === entityId);
+        return workbenchV2.candidates.find(candidate => candidate.id === entityId);
+      },
+      ensureAiNotes,
+      findTool: key => aiToolboxTools.find(tool => tool.key === key),
+      save: saveWorkbenchV2,
+      showToast,
+    });
+    const saveInlineAiAnalysis = (panel, entityType, entityId) => inlineAiAnalysisActions.saveInlineAiAnalysis(panel, entityType, entityId);
 
     const aiToolboxPdfInput = ref(null);
     const aiToolboxDropActive = ref(false);
