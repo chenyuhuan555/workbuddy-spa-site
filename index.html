@@ -90,6 +90,7 @@
   <script src="./src/ui/workbench-application-actions.js?v=20260803-workbenchapplicationactions1"></script>
   <script src="./src/ui/todo-actions.js?v=20260803-todoactions1"></script>
   <script src="./src/ui/member-actions.js?v=20260803-memberactions1"></script>
+  <script src="./src/ui/ai-config-actions.js?v=20260803-aiconfigactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -12231,26 +12232,6 @@ ${ocrText}`
       set: (value) => aiConfig.showSettings = value
     });
 
-    function loadAiConfig() {
-      const stored = localStorage.getItem(AI_CONFIG_KEY);
-      if (stored) {
-        try {
-          const config = JSON.parse(stored);
-          aiConfig.apiKey = config.apiKey || '';
-          aiConfig.apiKeyValid = config.apiKeyValid || false;
-          aiConfig.lastValidated = config.lastValidated || null;
-          aiConfig.showSettings = config.showSettings || false;
-          aiConfig.saved = !!aiConfig.apiKey;
-          return;
-        } catch (e) {
-          console.error('AI 配置加载失败，使用迁移逻辑:', e);
-        }
-      }
-
-      // 迁移旧配置
-      migrateOldConfig();
-    }
-
     function migrateOldConfig() {
       const storedDs = localStorage.getItem('kb_deepseek_key');
       const storedGemini = localStorage.getItem('kb_gemini_key');
@@ -12269,37 +12250,20 @@ ${ocrText}`
       }
     }
 
-    function saveAiConfig() {
-      aiConfig.apiKey = aiConfig.apiKey.trim();
-      aiConfig.saved = true;
-      localStorage.setItem(AI_CONFIG_KEY, JSON.stringify({
-        apiKey: aiConfig.apiKey,
-        apiKeyValid: aiConfig.apiKeyValid,
-        lastValidated: aiConfig.lastValidated,
-        showSettings: aiConfig.showSettings
-      }));
-
-      // 兼容性：同步到旧格式
+    const aiConfigActions = window.WorkBuddyAiConfigActions.createAiConfigActions({
+      state: aiConfig,
+      storage: localStorage,
+      configKey: AI_CONFIG_KEY,
+      schedulePush,
+      migrateLegacy: migrateOldConfig,
+    });
+    const loadAiConfig = () => aiConfigActions.load();
+    const saveAiConfig = () => {
+      aiConfigActions.save();
       localStorage.setItem('kb_deepseek_key', aiConfig.apiKey);
       localStorage.setItem('kb_gemini_key', aiConfig.apiKey);
-
-      schedulePush(); // 触发云端同步
-
-      if (aiConfig.apiKey) {
-        aiConfig.showSettings = false;
-      }
-    }
-
-    function requireDeepSeekApiKey() {
-      loadAiConfig(); // 确保配置已加载
-
-      const key = aiConfig.apiKey.trim();
-      if (!key || !key.startsWith('sk-')) {
-        aiConfig.showSettings = true; // 自动打开设置面板
-        throw new Error('请先配置 DeepSeek API Key');
-      }
-      return key;
-    }
+    };
+    const requireDeepSeekApiKey = () => aiConfigActions.requireKey();
 
     // ======== 猎头 AI 工具箱 ========
     const aiToolboxTabs = [
