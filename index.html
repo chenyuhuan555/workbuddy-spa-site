@@ -99,6 +99,7 @@
   <script src="./src/ui/ai-note-actions.js?v=20260804-ainoteactions1"></script>
   <script src="./src/ui/network-intro-actions.js?v=20260804-networkintroactions1"></script>
   <script src="./src/ui/timeline-ai-actions.js?v=20260804-timelineaiactions1"></script>
+  <script src="./src/ui/application-match-analysis-actions.js?v=20260804-applicationmatch1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -3968,6 +3969,18 @@
               </aside>
             </div>
           </div>
+          <section class="bg-white border border-indigo-100 rounded-xl p-5">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div><h2 class="font-bold">AI 匹配分析</h2><p class="text-sm text-slate-500 mt-1">分析当前候选人与该岗位的匹配度、优势、风险和推进建议。</p></div>
+              <button v-if="canConfigureAi && canWrite" @click="analyzeSelectedApplicationMatch" :disabled="applicationMatchAnalysis.running" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60" type="button">{{ applicationMatchAnalysis.running ? '分析中…' : selectedApplication.aiMatchAnalysis ? '重新分析' : 'AI 匹配分析' }}</button>
+            </div>
+            <p v-if="applicationMatchAnalysis.error" class="mt-3 rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-sm text-red-700">{{ applicationMatchAnalysis.error }}</p>
+            <div v-if="selectedApplication.aiMatchAnalysis" class="mt-4 grid md:grid-cols-[10rem_minmax(0,1fr)] gap-5">
+              <div class="rounded-xl bg-indigo-50 border border-indigo-100 p-4 text-center"><p class="text-xs text-indigo-700">综合匹配度</p><p class="mt-2 text-4xl font-bold text-indigo-700">{{ selectedApplication.aiMatchAnalysis.score }}<span class="text-lg">分</span></p><p class="mt-1 text-sm font-semibold text-slate-700">{{ selectedApplication.aiMatchAnalysis.conclusion || '未给出结论' }}</p></div>
+              <div class="space-y-3 text-sm"><div v-if="selectedApplication.aiMatchAnalysis.strengths?.length"><p class="font-semibold text-emerald-700">核心匹配点</p><ul class="mt-1 list-disc list-inside text-slate-600"><li v-for="item in selectedApplication.aiMatchAnalysis.strengths" :key="item">{{ item }}</li></ul></div><div v-if="selectedApplication.aiMatchAnalysis.risks?.length"><p class="font-semibold text-amber-700">风险与缺口</p><ul class="mt-1 list-disc list-inside text-slate-600"><li v-for="item in selectedApplication.aiMatchAnalysis.risks" :key="item">{{ item }}</li></ul></div><div v-if="selectedApplication.aiMatchAnalysis.verifyQuestions?.length"><p class="font-semibold text-slate-700">建议核实</p><ul class="mt-1 list-disc list-inside text-slate-600"><li v-for="item in selectedApplication.aiMatchAnalysis.verifyQuestions" :key="item">{{ item }}</li></ul></div><p v-if="selectedApplication.aiMatchAnalysis.recommendation" class="rounded-lg bg-slate-50 px-3 py-2 text-slate-700"><b>推进建议：</b>{{ selectedApplication.aiMatchAnalysis.recommendation }}</p><p class="text-xs text-slate-400">生成于 {{ formatBeijingDateTime(selectedApplication.aiMatchAnalysis.generatedAt) || '未知时间' }}</p></div>
+            </div>
+            <p v-else-if="!applicationMatchAnalysis.running" class="mt-4 text-sm text-slate-400">尚未生成当前候选人与岗位的 AI 匹配分析。</p>
+          </section>
           <div class="grid lg:grid-cols-2 gap-4">
             <div class="bg-white border border-slate-200 rounded-xl p-5">
               <h2 class="font-bold">进度备注</h2>
@@ -10299,6 +10312,7 @@ const vueAppConfig = {
     const applicationFilters = reactive({ companyId: 'all', positionId: 'all', candidateId: 'all', owner: 'all', stage: 'all', scoreMin: '' });
     const applicationPage = ref(1);
     const applicationViewMode = ref('table');
+    const applicationMatchAnalysis = reactive({ running: false, error: '', result: null });
     const talentPoolPeriod = ref('30');
     const workbenchApplicationStages = WorkbenchV2.APPLICATION_STAGES;
     const applicationStageGroups = window.WorkBuddyStages.STAGE_GROUPS;
@@ -10509,6 +10523,17 @@ const vueAppConfig = {
       },
     );
     const selectedApplication = computed(() => applicationById.value.get(workbenchRoute.id) || null);
+    const applicationMatchAnalysisActions = window.WorkBuddyApplicationMatchAnalysisActions.createApplicationMatchAnalysisActions({
+      getContext: () => ({
+        application: selectedApplication.value,
+        candidate: selectedApplicationCandidate.value,
+        position: workbenchV2.positions.find(position => position.id === selectedApplication.value?.positionId),
+      }),
+      callAi: callDeepSeekWithProgress,
+      getApiKey: requireDeepSeekApiKey,
+      save: saveWorkbenchV2,
+      showToast,
+    });
     const companyPositions = computed(() => positionsByCompanyId.value.get(selectedCompany.value?.id) || []);
     const companyApplications = computed(() => applicationsByCompanyId.value.get(selectedCompany.value?.id) || []);
     const positionApplications = computed(() => WorkBuddyPositionApplicationFilter.getPositionApplications(workbenchV2.applications, selectedPosition.value?.id, SK.CLOSED));
@@ -11301,6 +11326,15 @@ const vueAppConfig = {
     }
     function openApplicationDetail(id) { return workbenchApplicationActions.openApplicationDetail(id); }
     async function saveApplicationDetail() { return workbenchApplicationActions.saveApplicationDetail(); }
+    async function analyzeSelectedApplicationMatch() {
+      if (!canConfigureAi || !requireTalentWritePermission()) return;
+      applicationMatchAnalysis.running = true;
+      applicationMatchAnalysis.error = '';
+      const result = await applicationMatchAnalysisActions.analyze();
+      applicationMatchAnalysis.running = false;
+      if (result.ok) applicationMatchAnalysis.result = result.analysis;
+      else applicationMatchAnalysis.error = result.error;
+    }
     function deletePipelineEvent(application, eventId) { return workbenchApplicationActions.deletePipelineEvent(application, eventId); }
     function openDashboardTodo(todo) {
       if (todo?.candidateId) return openCandidateDetail(todo.candidateId);
@@ -22634,7 +22668,7 @@ ${clipped}`
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
       batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, openTalentIntake, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
-      createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, deletePipelineEvent,
+      createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, analyzeSelectedApplicationMatch, applicationMatchAnalysis, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       operationHistory, recycleBin, historyPanel, undoLastOperation, restoreRecycleItem,
       backupImportInput, exportFullBackup, triggerBackupImport, onBackupImportFile,
