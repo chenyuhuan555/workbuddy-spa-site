@@ -124,3 +124,10 @@ test('生产页加载并暴露孤立推进审计与修复动作', () => {
   assert.match(sourceHtml, /下载修复备份/);
   assert.match(sourceHtml, /执行唯一匹配修复/);
 });
+
+test('推进中心明确标记关联失效并且活跃人才计数忽略孤立推进', () => {
+  const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(sourceHtml, /人才关联失效/);
+  assert.doesNotMatch(sourceHtml, /candidateById\.get\(application\.candidateId\)\?\.name \|\| '人才已删除'/);
+  assert.match(sourceHtml, /candidateById\.value\.has\(application\.candidateId\) && application\.stage !== SK\.CLOSED/);
+});

@@ -43,6 +43,16 @@ test('只有回填完成且三类实体均严格一致时才允许启用读取',
   assert.equal(Path.canEnableReadPath({ backfilledAt: '2026-01-01' }, { ...report, ok: false }), false);
 });
 
+test('entity parity rejects applications that reference a missing active candidate', () => {
+  const report = Path.buildEntityParityReport(
+    { companies: [], positions: [], applications: [{ id: 'app-1', candidateId: 'missing' }] },
+    { companies: [], positions: [], applications: [{ id: 'app-1', candidateId: 'missing' }] },
+    [{ id: 'cand-1' }],
+  );
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.orphanApplicationIds, ['app-1']);
+});
+
 test('权威读取只采用云端活跃实体，并保留本地实体作为失败回退输入', () => {
   const bundle = Path.buildAuthoritativeEntityBundle(
     { companies: [{ id: 'co_old', name: '旧' }], positions: [], applications: [] },

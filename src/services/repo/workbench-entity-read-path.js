@@ -47,12 +47,17 @@
     });
   }
 
-  function buildEntityParityReport(localBundle = {}, cloudBundle = {}) {
+  function buildEntityParityReport(localBundle = {}, cloudBundle = {}, candidates = []) {
     const byKind = {};
     KINDS.forEach(kind => { byKind[kind] = parityForKind(localBundle[kind], cloudBundle[kind]); });
+    const validCandidateIds = new Set((candidates || []).filter(item => item?.id && !item.deletedAt).map(item => item.id));
+    const orphanApplicationIds = (cloudBundle.applications || [])
+      .filter(item => item?.id && !item.deletedAt && !validCandidateIds.has(item.candidateId))
+      .map(item => item.id).sort();
     return Object.freeze({
-      ok: KINDS.every(kind => byKind[kind].ok),
+      ok: KINDS.every(kind => byKind[kind].ok) && orphanApplicationIds.length === 0,
       byKind,
+      orphanApplicationIds,
       localCount: KINDS.reduce((sum, kind) => sum + byKind[kind].localCount, 0),
       cloudCount: KINDS.reduce((sum, kind) => sum + byKind[kind].cloudCount, 0),
     });
