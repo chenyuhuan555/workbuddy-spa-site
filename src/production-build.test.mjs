@@ -27,6 +27,24 @@ test('生产构建使用本地静态 Tailwind CSS', () => {
   assert.equal(fs.existsSync(new URL('../dist/docs/dependencies.md', import.meta.url)), true, '发布包应包含依赖清单');
 });
 
+test('发布包中的传统脚本不残留 ES module export 语法', () => {
+  const distSrc = new URL('../dist/src/', import.meta.url);
+  const files = [];
+  function collect(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = new URL(entry.name, directory);
+      if (entry.isDirectory()) collect(`${file.href}/`);
+      else if (entry.isFile() && file.pathname.endsWith('.js')) files.push(file);
+    }
+  }
+  collect(distSrc);
+  assert.ok(files.length > 0, '发布包应包含前端脚本');
+  for (const file of files) {
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /^\s*export\s+(?:function|\{)/m, `传统脚本不应包含 export：${file.pathname}`);
+  }
+});
+
 test('依赖和许可证清单覆盖所有生产与构建依赖', () => {
   const dependencyFile = new URL('../docs/dependencies.md', import.meta.url);
   const noticesFile = new URL('../THIRD_PARTY_NOTICES.md', import.meta.url);

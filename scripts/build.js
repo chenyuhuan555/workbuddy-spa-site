@@ -11,7 +11,7 @@
  *   - 保持相对路径不变（GitHub Pages 以 /workbuddy-spa-site/ 为根）
  *   - 清理 dist/ 中的测试文件和 node_modules
  */
-import { cpSync, rmSync, mkdirSync, existsSync, statSync } from 'node:fs';
+import { cpSync, rmSync, mkdirSync, existsSync, statSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +43,26 @@ cpSync(resolve(root, 'src'), resolve(dist, 'src'), {
     return true;
   },
 });
+
+// src/ 中的拆分文件既要能被 Node 测试以 ES module 导入，也要能被
+// index.html 里的传统脚本标签按顺序加载。发布包使用后者，因此去掉
+// 仅供测试/源码导入使用的 export 关键字，保留文件内部实现和 window 命名空间。
+function stripModuleSyntax(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const filePath = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      stripModuleSyntax(filePath);
+      continue;
+    }
+    if (!entry.isFile() || !filePath.endsWith('.js')) continue;
+    const source = readFileSync(filePath, 'utf8');
+    const classic = source
+      .replace(/^\s*export\s+function\s+/gm, 'function ')
+      .replace(/^\s*export\s+\{[^}]+\};?\s*$/gm, '');
+    if (classic !== source) writeFileSync(filePath, classic);
+  }
+}
+stripModuleSyntax(resolve(dist, 'src'));
 
 // 4. docs/（如果存在）
 const docsDir = resolve(root, 'docs');
