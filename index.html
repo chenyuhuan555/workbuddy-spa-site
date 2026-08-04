@@ -94,6 +94,7 @@
   <script src="./src/ui/column-actions.js?v=20260803-columnactions1"></script>
   <script src="./src/ui/inline-ai-analysis-actions.js?v=20260803-inlineaianalysisactions1"></script>
   <script src="./src/ui/backup-export-actions.js?v=20260803-backupexportactions1"></script>
+  <script src="./src/ui/ocr-input-actions.js?v=20260803-ocrinputactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -12087,32 +12088,15 @@ const vueAppConfig = {
     const ocrError = ref('');
     const ocrInput = ref(null);
 
-    function triggerOcrInput() { ocrInput.value?.click(); }
-    function clearOcr() { ocrImage.value = ''; ocrStatus.value = ''; ocrError.value = ''; }
-
-    async function onOcrPaste(e) {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) await processOcrImage(file);
-          break;
-        }
-      }
-    }
-
-    async function onOcrDrop(e) {
-      ocrDragging.value = false;
-      const file = e.dataTransfer?.files?.[0];
-      if (file && file.type.startsWith('image/')) await processOcrImage(file);
-    }
-
-    async function onOcrFileChange(e) {
-      const file = e.target.files?.[0];
-      if (file) await processOcrImage(file);
-      e.target.value = '';
-    }
+    const ocrInputActions = window.WorkBuddyOcrInputActions.createOcrInputActions({
+      state: { image: ocrImage, dragging: ocrDragging, status: ocrStatus, error: ocrError, input: ocrInput },
+      processImage: file => processOcrImage(file),
+    });
+    const triggerOcrInput = () => ocrInputActions.triggerInput();
+    const clearOcr = () => ocrInputActions.clear();
+    const onOcrPaste = event => ocrInputActions.paste(event);
+    const onOcrDrop = event => ocrInputActions.drop(event);
+    const onOcrFileChange = event => ocrInputActions.change(event);
 
     async function extractJobInfoWithDeepSeek(ocrText) {
       return await callDeepSeekWithProgress({
