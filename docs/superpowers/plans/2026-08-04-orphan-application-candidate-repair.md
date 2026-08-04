@@ -18,7 +18,7 @@
 - Create `src/ui/application-candidate-repair-actions.test.mjs`: action-flow tests with injected repositories and backup callback.
 - Modify `src/services/repo/workbench-entity-read-path.js`: include candidate-reference integrity in the Phase 3 parity report.
 - Modify `src/services/repo/workbench-entity-read-path.test.mjs`: cover the cross-table read-path gate.
-- Modify `src/services/production-build.test.mjs`: assert production wiring and corrected fallback wording/counting.
+- Modify `src/production-build.test.mjs`: assert production wiring and corrected fallback wording/counting.
 - Modify `index.html`: load the modules, add the admin repair card, wire existing repositories, expose state/actions, validate authority loads, and count only valid candidates.
 - No SQL constraint is applied in this plan. After production orphan count reaches zero, a separate reviewed Supabase migration may add a non-cascading foreign key.
 
@@ -411,7 +411,7 @@ git commit -m "feat: add guarded orphan application repair"
 - Modify: `index.html:10461-10586`
 - Modify: `index.html:14500-14612`
 - Modify: `index.html:22681-22688`
-- Modify: `src/services/production-build.test.mjs`
+- Modify: `src/production-build.test.mjs`
 
 - [ ] **Step 1: Add failing production wiring assertions**
 
@@ -427,7 +427,7 @@ test('生产页加载并暴露孤立推进审计与修复动作', () => {
 
 - [ ] **Step 2: Run the targeted test and verify RED**
 
-Run: `node --test --test-name-pattern="生产页加载并暴露孤立推进审计与修复动作" src/services/production-build.test.mjs`
+Run: `node --test --test-name-pattern="生产页加载并暴露孤立推进审计与修复动作" src/production-build.test.mjs`
 
 Expected: FAIL because the modules and action names are absent from `index.html`.
 
@@ -461,14 +461,14 @@ Display orphan application count, orphan candidate-ID count, automatic mapping c
 
 - [ ] **Step 5: Run targeted and module tests**
 
-Run: `node --test src/services/application-candidate-integrity.test.mjs src/ui/application-candidate-repair-actions.test.mjs src/services/production-build.test.mjs`
+Run: `node --test src/services/application-candidate-integrity.test.mjs src/ui/application-candidate-repair-actions.test.mjs src/production-build.test.mjs`
 
 Expected: all tests PASS.
 
 - [ ] **Step 6: Commit the administrator repair UI**
 
 ```powershell
-git add -- index.html src/services/production-build.test.mjs
+git add -- index.html src/production-build.test.mjs
 git commit -m "feat: expose guarded application repair audit"
 ```
 
@@ -519,7 +519,7 @@ Reload WorkBuddy, open 推进中心, and verify repaired rows show candidate nam
 **Files:**
 - Modify: `src/services/repo/workbench-entity-read-path.js`
 - Modify: `src/services/repo/workbench-entity-read-path.test.mjs`
-- Modify: `src/services/production-build.test.mjs`
+- Modify: `src/production-build.test.mjs`
 - Modify: `index.html:4238-4239`
 - Modify: `index.html:10568-10586`
 - Modify: `index.html:14550-14612`
@@ -542,7 +542,7 @@ Add static assertions that active progression counting checks `candidateById.val
 
 - [ ] **Step 2: Run targeted tests and verify RED**
 
-Run: `node --test src/services/repo/workbench-entity-read-path.test.mjs src/services/production-build.test.mjs`
+Run: `node --test src/services/repo/workbench-entity-read-path.test.mjs src/production-build.test.mjs`
 
 Expected: the orphan-reference and corrected-label/count tests FAIL.
 
@@ -574,14 +574,14 @@ Change the fallback label to `人才关联失效`. In `activeApplicationCountByC
 
 - [ ] **Step 5: Run targeted tests and verify GREEN**
 
-Run: `node --test src/services/repo/workbench-entity-read-path.test.mjs src/services/production-build.test.mjs`
+Run: `node --test src/services/repo/workbench-entity-read-path.test.mjs src/production-build.test.mjs`
 
 Expected: all tests PASS.
 
 - [ ] **Step 6: Commit the prevention slice**
 
 ```powershell
-git add -- index.html src/services/repo/workbench-entity-read-path.js src/services/repo/workbench-entity-read-path.test.mjs src/services/production-build.test.mjs
+git add -- index.html src/services/repo/workbench-entity-read-path.js src/services/repo/workbench-entity-read-path.test.mjs src/production-build.test.mjs
 git commit -m "fix: reject orphan application candidate links"
 ```
 

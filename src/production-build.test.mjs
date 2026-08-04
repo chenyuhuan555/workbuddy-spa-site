@@ -32,8 +32,8 @@ test('发布包中的传统脚本不残留 ES module export 语法', () => {
   const files = [];
   function collect(directory) {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      const file = new URL(entry.name, directory);
-      if (entry.isDirectory()) collect(`${file.href}/`);
+      const file = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directory);
+      if (entry.isDirectory()) collect(file);
       else if (entry.isFile() && file.pathname.endsWith('.js')) files.push(file);
     }
   }
@@ -111,4 +111,16 @@ test('关系引荐动作启动时不引用未声明的 ID 生成器', () => {
   );
   assert.ok(initialization, '应初始化关系引荐动作模块');
   assert.doesNotMatch(initialization[1], /^\s*genId,\s*$/m);
+});
+
+test('生产页加载并暴露孤立推进审计与修复动作', () => {
+  const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(sourceHtml, /application-candidate-integrity\.js/);
+  assert.match(sourceHtml, /application-candidate-repair-actions\.js/);
+  assert.match(sourceHtml, /auditApplicationCandidateLinks/);
+  assert.match(sourceHtml, /backupApplicationCandidateLinks/);
+  assert.match(sourceHtml, /applyApplicationCandidateRepair/);
+  assert.match(sourceHtml, /检查人才关联/);
+  assert.match(sourceHtml, /下载修复备份/);
+  assert.match(sourceHtml, /执行唯一匹配修复/);
 });

@@ -32,6 +32,7 @@
   <script src="./src/services/migration-meta.js?v=20260803-migrationmeta1"></script>
   <script src="./src/services/repo/workbench-entity-repo.js?v=20260802-entityrepo1"></script>
   <script src="./src/services/repo/workbench-entity-read-path.js?v=20260802-entityread1"></script>
+  <script src="./src/services/application-candidate-integrity.js?v=20260804-appcandidateintegrity1"></script>
   <script src="./src/services/repo/workbench-entity-merge.js?v=20260802-entitymerge1"></script>
   <script src="./src/services/repo/offline-sync-queue.js?v=20260802-offlinequeue1"></script>
   <script src="./src/services/repo/resume-search-repo.js?v=20260802-searchrepo1"></script>
@@ -88,6 +89,7 @@
   <script src="./src/ui/workbench-entity-actions.js?v=20260803-workbenchentityactions1"></script>
   <script src="./src/ui/workbench-search-actions.js?v=20260803-workbenchsearchactions1"></script>
   <script src="./src/ui/workbench-application-actions.js?v=20260803-workbenchapplicationactions1"></script>
+  <script src="./src/ui/application-candidate-repair-actions.js?v=20260804-appcandidaterepair1"></script>
   <script src="./src/ui/todo-actions.js?v=20260803-todoactions1"></script>
   <script src="./src/ui/member-actions.js?v=20260803-memberactions1"></script>
   <script src="./src/ui/ai-config-actions.js?v=20260803-aiconfigactions1"></script>
@@ -6924,6 +6926,32 @@
             <li v-if="workbenchEntityPull.conflicts.length > 10">其余 {{ workbenchEntityPull.conflicts.length - 10 }} 条冲突已省略</li>
           </ul>
         </div>
+        <section v-if="canManageMembers" class="mx-5 mb-4 rounded-xl border border-orange-200 bg-orange-50/60 p-4" aria-label="推进人才关联修复">
+          <div class="flex flex-col lg:flex-row lg:items-start gap-3">
+            <div class="min-w-0">
+              <h3 class="text-sm font-bold text-slate-800">推进人才关联检查</h3>
+              <p class="mt-1 text-xs text-slate-600">先只读检查，再下载完整候选人和推进记录备份；系统只修复具备唯一强身份依据的关联，不删除任何业务历史。</p>
+            </div>
+            <div class="lg:ml-auto flex flex-wrap gap-2">
+              <button type="button" @click="auditApplicationCandidateLinks" :disabled="applicationCandidateRepair.running" class="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold disabled:opacity-50">{{ applicationCandidateRepair.running ? '处理中…' : '检查人才关联' }}</button>
+              <button type="button" @click="backupApplicationCandidateLinks" :disabled="!applicationCandidateRepair.report || applicationCandidateRepair.running" class="px-3 py-2 rounded-lg bg-white border border-orange-300 text-orange-800 text-xs font-semibold disabled:opacity-50">下载修复备份</button>
+              <button type="button" @click="applyApplicationCandidateRepair" :disabled="!applicationCandidateRepair.backupReady || !applicationCandidateRepair.report?.mappings?.length || applicationCandidateRepair.running" class="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-semibold disabled:opacity-50">执行唯一匹配修复</button>
+            </div>
+          </div>
+          <div v-if="applicationCandidateRepair.report" class="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+            <p class="rounded-lg bg-white px-3 py-2 text-slate-600">孤立推进 <b class="text-slate-900">{{ applicationCandidateRepair.report.orphanApplicationIds.length }}</b></p>
+            <p class="rounded-lg bg-white px-3 py-2 text-slate-600">失效人才 ID <b class="text-slate-900">{{ applicationCandidateRepair.report.orphanCandidateIds.length }}</b></p>
+            <p class="rounded-lg bg-white px-3 py-2 text-slate-600">可自动修复 <b class="text-emerald-700">{{ applicationCandidateRepairAutoFixCount }}</b></p>
+            <p class="rounded-lg bg-white px-3 py-2 text-slate-600">待人工确认 <b class="text-amber-700">{{ applicationCandidateRepair.report.unresolved.length }}</b></p>
+          </div>
+          <p v-if="applicationCandidateRepair.backupReady" class="mt-2 text-xs font-semibold text-emerald-700" role="status">备份已下载；执行前仍会重新审计，数据变化时自动停止。</p>
+          <p v-if="applicationCandidateRepair.lastResult" class="mt-2 text-xs font-semibold text-emerald-700" role="status">已修复 {{ applicationCandidateRepair.lastResult.updated }} 条推进，剩余待确认 {{ applicationCandidateRepair.lastResult.unresolved }} 个失效人才 ID。</p>
+          <p v-if="applicationCandidateRepair.error" class="mt-2 text-xs text-red-700" role="alert">{{ applicationCandidateRepairErrorMessage }}</p>
+          <details v-if="applicationCandidateRepair.report?.unresolved?.length" class="mt-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-amber-900">
+            <summary class="cursor-pointer font-semibold">查看待人工确认清单</summary>
+            <ul class="mt-2 space-y-1"><li v-for="item in applicationCandidateRepair.report.unresolved.slice(0, 100)" :key="item.candidateId">{{ item.candidateId || '空 ID' }} · {{ applicationCandidateRepairReasonLabel(item.reason) }} · {{ item.applicationIds.length }} 条推进</li></ul>
+          </details>
+        </section>
         <div v-if="workbenchEntityParity.checked || workbenchEntityParity.error" class="px-5 pb-4 text-sm">
           <span v-if="workbenchEntityParity.error" class="text-red-600">校验失败：{{ workbenchEntityParity.error }}</span>
           <template v-else><span class="text-slate-600">云端 {{ workbenchEntityParity.cloudCount }} 条 · 本地 {{ workbenchEntityParity.localCount }} 条</span><span class="ml-2" :class="workbenchEntityParity.ok ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">{{ workbenchEntityParity.ok ? '严格一致' : '存在差异' }}</span><span v-if="!workbenchEntityParity.ok" class="ml-2 text-amber-700">请查看各实体差异后再考虑切读</span></template>
@@ -14398,6 +14426,85 @@ ${ocrText}`
         });
       }
       return workbenchEntityRepo;
+    }
+    const applicationCandidateRepair = reactive({
+      running: false,
+      error: '',
+      report: null,
+      backupReady: false,
+      backupRows: null,
+      lastResult: null,
+    });
+    const applicationCandidateRepairActions = window.WorkBuddyApplicationCandidateRepairActions.createApplicationCandidateRepairActions({
+      state: applicationCandidateRepair,
+      integrity: window.WorkBuddyApplicationCandidateIntegrity,
+      loadCandidates: () => getCandidateRepo().listAllCandidates(),
+      loadApplications: () => getWorkbenchEntityRepo().listAll('applications'),
+      upsertApplications: rows => getWorkbenchEntityRepo().upsertMany('applications', rows),
+      downloadBackup: payload => downloadJsonFile(`WorkBuddy推进人才关联修复备份_${backupDateLabel()}.json`, payload),
+      replaceApplications: rows => {
+        const active = rows.filter(item => item?.id && !item.deletedAt);
+        workbenchV2.applications.splice(0, workbenchV2.applications.length, ...active);
+      },
+      clone: value => JSON.parse(JSON.stringify(value)),
+      now: () => new Date().toISOString(),
+    });
+    const applicationCandidateRepairAutoFixCount = computed(() => (
+      applicationCandidateRepair.report?.mappings?.reduce((sum, item) => sum + item.applicationIds.length, 0) || 0
+    ));
+    const applicationCandidateRepairErrorMessage = computed(() => ({
+      AUDIT_REQUIRED: '请先执行人才关联检查',
+      BACKUP_REQUIRED: '执行修复前必须先下载备份',
+      STALE_PLAN: '云端数据已变化，请重新检查并下载新备份',
+      UNSAFE_PATCH: '修复计划包含 candidateId 以外的字段变化，已停止',
+      VERIFY_FAILED: '写后校验失败，原推进记录已自动回滚',
+      ROLLBACK_FAILED: '写后校验及自动回滚均失败，请立即使用下载的备份恢复',
+    }[applicationCandidateRepair.error] || applicationCandidateRepair.error || ''));
+    function applicationCandidateRepairReasonLabel(reason) {
+      return ({
+        SOURCE_CANDIDATE_MISSING: '缺少可用于识别的旧人才记录',
+        MULTIPLE_STRONG_MATCHES: '手机号、邮箱或简历标识命中多人',
+        MULTIPLE_PROFILE_MATCHES: '姓名、公司和职位组合命中多人',
+        NO_DETERMINISTIC_MATCH: '没有唯一可靠匹配依据',
+      }[reason] || reason || '未知原因');
+    }
+    async function auditApplicationCandidateLinks() {
+      if (!canManageMembers) return showToast('仅管理员可以检查并修复推进关联', 'error');
+      try {
+        const report = await applicationCandidateRepairActions.audit();
+        showToast(`检查完成：发现 ${report.orphanApplicationIds.length} 条孤立推进`);
+        return report;
+      } catch (error) {
+        showToast(`检查失败：${error?.message || '请稍后重试'}`, 'error');
+        return null;
+      }
+    }
+    async function backupApplicationCandidateLinks() {
+      if (!canManageMembers) return showToast('仅管理员可以下载修复备份', 'error');
+      try {
+        await applicationCandidateRepairActions.backup();
+        showToast('候选人和推进记录修复备份已下载');
+      } catch (error) {
+        applicationCandidateRepair.error = error?.code || error?.message || 'BACKUP_FAILED';
+        showToast(applicationCandidateRepairErrorMessage.value, 'error');
+      }
+    }
+    async function applyApplicationCandidateRepair() {
+      if (!canManageMembers) return showToast('仅管理员可以执行推进关联修复', 'error');
+      const count = applicationCandidateRepairAutoFixCount.value;
+      if (!count) return showToast('当前没有可安全自动修复的推进关联');
+      if (!confirm(`将只更新 ${count} 条推进记录的 candidateId，其他业务字段保持不变。是否执行？`)) return;
+      try {
+        const result = await applicationCandidateRepairActions.apply();
+        if (!await saveWorkbenchV2()) throw new Error('本地业务快照保存失败');
+        if (cloudReady) schedulePush();
+        showToast(`已修复 ${result.updated} 条推进关联，业务历史保持不变`, 'success');
+        return result;
+      } catch (error) {
+        applicationCandidateRepair.error = error?.code || error?.message || 'REPAIR_FAILED';
+        showToast(applicationCandidateRepairErrorMessage.value, 'error');
+        return null;
+      }
     }
     const WORKBENCH_ENTITY_FP_KEY = STORAGE_KEY + '_workbench_entity_fingerprints';
     const WORKBENCH_ENTITY_OFFLINE_QUEUE_KEY = STORAGE_KEY + '_workbench_entity_offline_queue';
@@ -22683,6 +22790,8 @@ ${clipped}`
       workbenchEntityMigration, runWorkbenchEntityMigration, workbenchEntityParity, verifyWorkbenchEntityParity,
       workbenchEntityReadPathEnabled, workbenchEntityReadPathCanEnable, workbenchEntityReadSwitch, enableWorkbenchEntityCloudReadPath,
       workbenchEntityPull, pullWorkbenchEntitiesFromCloud,
+      applicationCandidateRepair, applicationCandidateRepairAutoFixCount, applicationCandidateRepairErrorMessage,
+      applicationCandidateRepairReasonLabel, auditApplicationCandidateLinks, backupApplicationCandidateLinks, applyApplicationCandidateRepair,
       workbenchEntityOfflineState,
       candidatePull, pullCandidatesFromCloud, candidateOfflineState, candidateParity, candidateParityDiffSections, verifyCandidateParity,
       candidateReadPathEnabled, candidateReadPathCanEnable, candidateReadSwitch, enableCandidateCloudReadPath,
