@@ -13956,7 +13956,8 @@ ${ocrText}`
     }
 
     // -------- init: 首次创建 bin / 已有拉取 --------
-    let cloudReady = false; // 云端初始化完成标记
+    // 该标记会被前置创建的动作闭包引用，使用函数作用域变量避免 setup 初始化阶段触发 TDZ。
+    var cloudReady = false; // 云端初始化完成标记
     let cloudPushTimer = null;
     let cloudWorkspaceVersion = 0;
     let workspaceStateClient = null;

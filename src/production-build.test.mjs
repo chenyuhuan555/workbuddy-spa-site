@@ -100,4 +100,6 @@ test('AI 访问器在所有动作初始化前可安全提升', () => {
   const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(sourceHtml, /function requireDeepSeekApiKey\(\)\s*\{\s*return aiConfigActions\.requireKey\(\);\s*\}/);
   assert.doesNotMatch(sourceHtml, /const requireDeepSeekApiKey\s*=\s*\(\)\s*=>/);
+  assert.match(sourceHtml, /var cloudReady\s*=\s*false/);
+  assert.doesNotMatch(sourceHtml, /(?:let|const) cloudReady\s*=\s*false/);
 });
