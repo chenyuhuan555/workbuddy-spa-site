@@ -91,6 +91,7 @@
   <script src="./src/ui/todo-actions.js?v=20260803-todoactions1"></script>
   <script src="./src/ui/member-actions.js?v=20260803-memberactions1"></script>
   <script src="./src/ui/ai-config-actions.js?v=20260803-aiconfigactions1"></script>
+  <script src="./src/ui/column-actions.js?v=20260803-columnactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -13046,30 +13047,11 @@ ${ocrText}`
     // -------- 新增承接方 --------
     const newColName = ref('');
     const addColumnCollapsed = ref(true); // 新增承接方默认收起
-    function addColumn() {
-      const name = newColName.value.trim();
-      if (!name) { showToast('请输入承接方名称', 'error'); return; }
-      if (columns.some(c => c.name === name)) {
-        showToast('该名称已存在', 'error'); return;
-      }
-      const publicIdx = columns.findIndex(c => c.name === '公共');
-      const insertIdx = publicIdx >= 0 ? publicIdx : columns.length;
-      columns.splice(insertIdx, 0, { name, jobs: [], editing: false, tempName: '' });
-      newColName.value = '';
-      showToast(`已添加承接方「${name}」`);
-    }
-    function deleteColumn(colIdx) {
-      if (columns.length <= 1) {
-        showToast('至少保留一个承接方', 'error'); return;
-      }
-      const col = columns[colIdx];
-      if (col.name === '公共') {
-        showToast('公共承接方不能删除', 'error'); return;
-      }
-      if (col.jobs.length > 0 && !confirm(`「${col.name}」下有 ${col.jobs.length} 个公司组，确定删除？`)) return;
-      columns.splice(colIdx, 1);
-      showToast(`已移除「${col.name}」`);
-    }
+    const columnActions = window.WorkBuddyColumnActions.createColumnActions({
+      columns, newColName, showToast, confirmAction: message => confirm(message),
+    });
+    const addColumn = () => columnActions.addColumn();
+    const deleteColumn = index => columnActions.deleteColumn(index);
 
     // -------- Toast --------
     const toast = reactive({ show: false, msg: '', type: 'success' });
