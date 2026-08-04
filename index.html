@@ -97,6 +97,7 @@
   <script src="./src/ui/ocr-input-actions.js?v=20260803-ocrinputactions1"></script>
   <script src="./src/ui/shortlist-actions.js?v=20260803-shortlistactions1"></script>
   <script src="./src/ui/ai-note-actions.js?v=20260804-ainoteactions1"></script>
+  <script src="./src/ui/network-intro-actions.js?v=20260804-networkintroactions1"></script>
   <script src="./src/ui/talent-cloud-search-actions.js?v=20260803-talentcloudsearchactions1"></script>
   <script src="./src/ui/legacy-job-actions.js?v=20260803-legacyjobactions1"></script>
   <script src="./src/ui/legacy-job-parse-actions.js?v=20260803-legacyjobparseactions1"></script>
@@ -20296,7 +20297,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       });
     }
 
-    async function generateNetworkIntroMessage() {
+    async function legacyGenerateNetworkIntroMessage() {
       const edge = networkGraphDialog.selectedEdge;
       const target = networkGraphDialog.resume;
       const introducer = edge?.otherResume;
@@ -20359,7 +20360,7 @@ ${String(resumeText || '').slice(0, 9000)}`
       }
     }
 
-    async function copyNetworkIntroMessage(text) {
+    async function legacyCopyNetworkIntroMessage(text) {
       const value = String(text || '').trim();
       if (!value) return;
       try {
@@ -20369,6 +20370,22 @@ ${String(resumeText || '').slice(0, 9000)}`
         showToast('复制失败，请手动选中文字复制', 'error');
       }
     }
+
+    const networkIntroActions = window.WorkBuddyNetworkIntroActions.createNetworkIntroActions({
+      dialog: networkGraphDialog,
+      getLoadingKey: () => networkIntroLoadingKey.value,
+      setLoadingKey: value => { networkIntroLoadingKey.value = value; },
+      callAi: callDeepSeekWithProgress,
+      getApiKey: requireDeepSeekApiKey,
+      relationLabel,
+      genId,
+      currentTime: currentTimeLabel,
+      save: () => { localSave(); if (cloudReady) schedulePush(); },
+      showToast,
+      clipboard: navigator.clipboard,
+    });
+    const generateNetworkIntroMessage = () => networkIntroActions.generate();
+    const copyNetworkIntroMessage = text => networkIntroActions.copy(text);
 
     function duplicateTextOfResume(resume) { return window.WorkBuddyResumeDuplicateText.duplicateTextOfResume(resume); }
     function extractCandidateName(text, fileName) { return window.WorkBuddyCandidateIdentityParser.extractCandidateName(text, fileName); }
