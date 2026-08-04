@@ -125,9 +125,31 @@ test('生产页加载并暴露孤立推进审计与修复动作', () => {
   assert.match(sourceHtml, /执行唯一匹配修复/);
 });
 
-test('推进中心明确标记关联失效并且活跃人才计数忽略孤立推进', () => {
+test('全部前端展示统一隐藏人才、公司或岗位关联失效的推进', () => {
   const sourceHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(sourceHtml, /人才关联失效/);
-  assert.doesNotMatch(sourceHtml, /candidateById\.get\(application\.candidateId\)\?\.name \|\| '人才已删除'/);
-  assert.match(sourceHtml, /candidateById\.value\.has\(application\.candidateId\) && application\.stage !== SK\.CLOSED/);
+  assert.match(sourceHtml, /application-visibility\.js/);
+  assert.match(sourceHtml, /const visibleApplications = computed\(\(\) => WorkBuddyApplicationVisibility\.filterVisibleApplications\(workbenchV2\)\);/);
+  assert.match(sourceHtml, /const visibleWorkbenchV2 = computed\(\(\) => \(\{ \.\.\.workbenchV2, applications: visibleApplications\.value \}\)\);/);
+
+  for (const pattern of [
+    /indexById\(visibleApplications\.value\)/,
+    /groupBy\(visibleApplications\.value, item => item\.candidateId\)/,
+    /groupBy\(visibleApplications\.value, item => item\.companyId\)/,
+    /getPositionApplications\(visibleApplications\.value,/,
+    /getActivePositionApplications\(visibleApplications\.value,/,
+    /selectedCandidateApplications = computed\(\(\) => visibleApplications\.value\.filter/,
+    /filterApplications\(visibleApplications\.value, applicationFilters\)/,
+    /buildCompanyCountMaps\(visibleWorkbenchV2\.value,/,
+    /buildDashboardMetrics\(visibleWorkbenchV2\.value,/,
+    /for \(const application of visibleApplications\.value\)/,
+    /visibleApplications\.value\.forEach\(a =>/,
+    /const allApps = visibleApplications\.value/,
+    /visibleApplications\.value\.forEach\(app =>/,
+    /visibleApplications\.filter\(item => item\.positionId === position\.id/,
+  ]) assert.match(sourceHtml, pattern);
+
+  assert.match(sourceHtml, /state: \{ applications: workbenchV2\.applications, nav: workbenchNav, route: workbenchRoute \}/);
+  assert.match(sourceHtml, /findApplication: id => workbenchV2\.applications\.find/);
+  assert.match(sourceHtml, /loadApplications: \(\) => getWorkbenchEntityRepo\(\)\.listAll\('applications'\)/);
+  assert.match(sourceHtml, /workbenchV2\.applications\.splice\(0, workbenchV2\.applications\.length, \.\.\.active\)/);
 });
