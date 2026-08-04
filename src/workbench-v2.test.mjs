@@ -197,6 +197,32 @@ test('createApplication 建立 talent×position 推进且仅允许一条活跃�
   );
 });
 
+test('createApplication 默认按岗位负责人、公司负责人、候选人负责人顺序分配推进负责人且不覆盖显式值', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.companies.push(WorkbenchV2.createCompany({ id: 'co1', name: '公司', owner: '公司负责人' }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '候选人', owner: '候选人负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', companyId: 'co1', title: '岗位', owner: '岗位负责人' }));
+
+  const inherited = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+  assert.equal(inherited.owner, '岗位负责人');
+
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c2', name: '候选人2', owner: '候选人2负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p2', companyId: 'co1', title: '岗位2', owner: '' }));
+  const companyFallback = WorkbenchV2.createApplication(bundle, { candidateId: 'c2', positionId: 'p2' });
+  assert.equal(companyFallback.owner, '公司负责人');
+
+  bundle.companies[0].owner = '';
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c3', name: '候选人3', owner: '候选人3负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p3', companyId: 'co1', title: '岗位3', owner: '' }));
+  const candidateFallback = WorkbenchV2.createApplication(bundle, { candidateId: 'c3', positionId: 'p3' });
+  assert.equal(candidateFallback.owner, '候选人3负责人');
+
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c4', name: '候选人4', owner: '候选人4负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p4', companyId: 'co1', title: '岗位4', owner: '岗位4负责人' }));
+  const explicit = WorkbenchV2.createApplication(bundle, { candidateId: 'c4', positionId: 'p4', owner: '手动负责人' });
+  assert.equal(explicit.owner, '手动负责人');
+});
+
 test('changeApplicationStage 推进阶段并写入 updatedAt（阶段属于推进关系，不属于人才全局）', () => {
   const bundle = WorkbenchV2.createEmptyBundle();
   bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '赵六' }));
@@ -261,6 +287,13 @@ test('候选人详情路由与推进中心在 Phase 1 保持不变', () => {
   assert.match(INDEX_HTML, /<h1 class="text-2xl font-bold">推进中心<\/h1>/, '推进中心标题应保持');
   assert.match(INDEX_HTML, /候选人推进/, '推进中心“候选人推进”关系语义保留');
   assert.match(INDEX_HTML, /v-else-if="workbenchRoute\.tab === 'applications'".*推进记录/, '候选人详情“推进记录”页签保留');
+});
+
+test('推进详情提供负责人编辑入口并支持清空', () => {
+  assert.match(INDEX_HTML, /aria-label="推进负责人"[^>]*v-model="selectedApplication\.owner"/, '推进详情应允许编辑负责人');
+  assert.match(INDEX_HTML, /list="application-owner-options"/, '负责人输入应支持已有负责人提示');
+  assert.match(INDEX_HTML, /@click="selectedApplication\.owner = ''"/, '推进负责人应支持清空');
+  assert.match(INDEX_HTML, /:disabled="!canWrite"[^>]*class="px-5 py-2\.5/, '无写权限时不能保存推进详情');
 });
 
 test('导航项 key 仍为 candidates（仅 label 改为人才库，路由键不变）', () => {

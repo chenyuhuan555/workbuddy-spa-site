@@ -19,6 +19,28 @@ test('opens an application detail route and normalizes editable fields', () => {
   assert.deepEqual(state.route, { type: 'application', id: 'app-1', parentId: 'co-1', tab: 'overview' });
   assert.equal(state.applications[0].progressNote, '');
   assert.equal(state.applications[0].communicationLog, '');
+  assert.equal(state.applications[0].owner, '');
+});
+
+test('保存推进详情需要写权限并持久化负责人变更', async () => {
+  const application = { id: 'app-1', owner: '原负责人' };
+  let saves = 0;
+  let allowed = false;
+  const actions = createWorkbenchApplicationActions({
+    state: { applications: [application], route: {} },
+    findApplication: id => id === application.id ? application : null,
+    requireWritePermission: () => allowed,
+    saveWorkbenchV2: async () => { saves += 1; return true; },
+    showToast: () => {},
+  });
+
+  await actions.saveApplicationDetail();
+  assert.equal(saves, 0);
+
+  allowed = true;
+  application.owner = '新负责人';
+  await actions.saveApplicationDetail();
+  assert.equal(saves, 1);
 });
 
 test('deletes a pipeline event and persists the fallback stage', async () => {

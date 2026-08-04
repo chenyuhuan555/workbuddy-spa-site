@@ -16,13 +16,17 @@ export function createWorkbenchApplicationActions({
     if (!application) { showToast('推进记录不存在', 'error'); return; }
     if (typeof application.progressNote !== 'string') application.progressNote = '';
     if (typeof application.communicationLog !== 'string') application.communicationLog = '';
+    if (typeof application.owner !== 'string') application.owner = '';
     if (state.nav && typeof state.nav === 'object' && 'value' in state.nav) state.nav.value = 'companies';
     else state.nav = 'companies';
     Object.assign(state.route, { type: 'application', id, parentId: application.companyId || '', tab: 'overview' });
   }
 
   async function saveApplicationDetail() {
-    if (await saveWorkbenchV2()) showToast('推进记录已保存');
+    if (!requireWritePermission()) return false;
+    const saved = await saveWorkbenchV2();
+    if (saved) showToast('推进记录已保存');
+    return saved;
   }
 
   async function deletePipelineEvent(application, eventId) {

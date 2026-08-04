@@ -113,11 +113,15 @@
     ));
     if (existing) throw new Error('该候选人已存在此岗位推进');
 
+    const company = bundle.companies.find(item => item.id === position.companyId);
+    const defaultOwner = position.owner || company?.owner || candidate.owner || '';
+
     const application = stamp('app', {
       companyId: position.companyId,
       stage: KEYS.DISCOVERED,
       stageEnteredAt: nowIso(),
       pipelineEvents: [],
+      owner: defaultOwner,
     }, input);
     bundle.applications.push(application);
     return application;
