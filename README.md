@@ -82,11 +82,13 @@
 | Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | ✅ 代码、迁移、严格校验和切换流程完成；生产启用状态以设置页为准 |
 | Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | ✅ 代码、迁移、校验和切换流程完成；生产启用状态以设置页为准 |
 | Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | ✅ 表、仓储、双写、严格对账、受闸门保护的读切换和增量冲突处理完成；生产启用状态以设置页为准 |
-| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | 🟡 搜索/匹配 Repository 与 SQL 契约完成；仍需部署 RPC/Edge Function，pgvector 语义匹配待补齐 |
+| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | ⏸️ 暂缓部署：基础 RPC 已准备，但 Supabase Compute/CPU 接近满载；pgvector 语义匹配待补齐 |
 
-> 状态说明：Phase 2b.2、Phase 2c 和 Phase 3 的代码及安全启用流程已经完成，但是否已在当前 Supabase 项目切换为权威读路径，必须以应用设置页显示的“已启用”状态为准。Phase 4 目前不能视为全部完成：仓储和 SQL 契约已具备，云端 RPC/Edge Function 部署及真正的 pgvector 语义匹配仍未完成。
+> 状态说明：Phase 2b.2、Phase 2c 和 Phase 3 的代码及安全启用流程已经完成，但是否已在当前 Supabase 项目切换为权威读路径，必须以应用设置页显示的“已启用”状态为准。Phase 4 基础 RPC 已具备部署脚本，但因当前 Supabase Compute/CPU 接近满载，暂不执行部署；后续仍需部署 RPC，并补齐真正的 pgvector 语义匹配。
 
 ## 更新日志
+
+- **2026-08-04**：根据 Supabase 基础设施监控结果暂缓 Phase 4 部署；当前 Compute/CPU 约 98%，先处理资源负载，再上线基础搜索 RPC
 
 - **2026-08-04**：推进中心新增推进负责人编辑、清空和自动继承规则；隐藏公司、岗位或候选人已删除的失效推进记录
 
