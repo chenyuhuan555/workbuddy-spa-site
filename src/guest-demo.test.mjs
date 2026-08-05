@@ -35,6 +35,13 @@ test('empty guest storage starts with an explicitly fictional schema-v2 workspac
   assert.equal(workspace.meta.fictional, true);
   assert.ok(workspace.workbenchV2.companies.every(item => item.demo === true));
   assert.ok(workspace.workbenchV2.candidates.every(item => /^138\d{8}$/.test(item.phone)));
+  assert.equal(workspace.meta.seedVersion, 2);
+  assert.ok(workspace.workbenchV2.positions.every(item => item.description.length > 180));
+  assert.ok(workspace.workbenchV2.candidates.slice(0, 6).every(item => item.resumeVersions[0].rawText.length > 180));
+  assert.ok(workspace.workbenchV2.applications.every(item => item.pipelineEvents.length >= 2 || item.id === 'demo_app_7'));
+  assert.ok(workspace.workbenchV2.applications.some(item => item.communicationLog && item.progressNote));
+  assert.ok(workspace.kb.length >= 8);
+  assert.ok(workspace.workbenchV2.notes.length >= 3);
   assert.deepEqual(storage.keys(), [api.STORAGE_KEY]);
 });
 
@@ -69,6 +76,24 @@ test('existing seeded labels lose repetitive fictional suffixes on reload', () =
   assert.equal(reloaded.workbenchV2.positions[0].title, 'AI 产品负责人');
   assert.equal(reloaded.workbenchV2.candidates[0].name, '林晓');
   assert.equal(reloaded.workbenchV2.todos[0].title, '跟进星河科技面试反馈');
+});
+
+test('old guest seed data is enriched without replacing visitor edits', () => {
+  const api = loadModule();
+  const storage = createStorage();
+  const workspace = api.createInitialWorkspace();
+  workspace.meta.seedVersion = 1;
+  workspace.workbenchV2.positions[0].description = '游客自己改过的岗位说明';
+  workspace.workbenchV2.applications[0].progressNote = '游客自己的备注';
+  workspace.kb = workspace.kb.slice(0, 1);
+  storage.setItem(api.STORAGE_KEY, JSON.stringify(workspace));
+
+  const reloaded = api.createGuestDemo({ storage }).loadWorkspace();
+  assert.equal(reloaded.meta.seedVersion, 2);
+  assert.equal(reloaded.workbenchV2.positions[0].description, '游客自己改过的岗位说明');
+  assert.equal(reloaded.workbenchV2.applications[0].progressNote, '游客自己的备注');
+  assert.ok(reloaded.workbenchV2.applications[0].communicationLog);
+  assert.ok(reloaded.kb.length >= 8);
 });
 
 test('malformed guest JSON recovers to seed data without reading another namespace', () => {
