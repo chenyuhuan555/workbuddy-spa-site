@@ -3392,6 +3392,10 @@
     section[aria-labelledby="talent-cloud-search-title"] { display: none !important; }
     /* The talent-library header is the single search entry; the filter row keeps only facets. */
     input[aria-label="搜索姓名、公司、技能、简历原文"] { display: none; }
+    div:has(> div > input[aria-label="搜索人才、技能、公司、项目"]) { flex-direction: row; flex-wrap: wrap; align-items: center; }
+    div:has(> div > input[aria-label="搜索人才、技能、公司、项目"]) > div:first-child { flex: 1 1 22rem; }
+    div:has(> div > input[aria-label="搜索人才、技能、公司、项目"]) button[aria-haspopup="menu"],
+    div:has(> div > input[aria-label="搜索人才、技能、公司、项目"]) > button { width: auto; white-space: nowrap; }
   </style>
 </head>
 <body class="min-h-screen">
