@@ -7,6 +7,7 @@
   var accountBar = document.getElementById('wb-account-bar');
   var loginCancel = document.getElementById('wb-login-cancel');
   var booted = false;
+  var LOGOUT_INTENT_KEY = 'workbuddy.logout_intent.v1';
   var config = window.WorkBuddySupabaseConfig;
   if (!config || !config.url || !config.publishableKey || !window.supabase || !window.WorkBuddyAuth) {
     loginShell.style.display = 'none';
@@ -79,6 +80,12 @@
 
   async function onStateChange(state) {
     if (state.status === 'anonymous') {
+      if (window.sessionStorage.getItem(LOGOUT_INTENT_KEY) === '1') {
+        window.WorkBuddyRuntimeMode = 'logged-out';
+        clearBusinessState();
+        openLogin();
+        return;
+      }
       await enterGuestMode();
       return;
     }
@@ -88,6 +95,7 @@
       authRoot.style.display = 'flex';
     }
     if (state.status !== 'authenticated') return;
+    window.sessionStorage.removeItem(LOGOUT_INTENT_KEY);
     if (booted && window.WorkBuddyRuntimeMode === 'guest') {
       window.location.reload();
       return;
@@ -159,6 +167,7 @@
   });
 
   document.getElementById('wb-logout').addEventListener('click', async function () {
+    window.sessionStorage.setItem(LOGOUT_INTENT_KEY, '1');
     await controller.logout();
     window.location.reload();
   });

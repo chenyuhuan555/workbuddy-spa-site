@@ -34,6 +34,7 @@ function createHarness(restoreState) {
   let bootCount = 0;
   let reloadCount = 0;
   let guestAiInstallCount = 0;
+  const sessionValues = new Map();
 
   const sandbox = {
     console,
@@ -44,7 +45,7 @@ function createHarness(restoreState) {
       querySelector: () => null,
     },
     location: { reload: () => { reloadCount += 1; } },
-    sessionStorage: { getItem() {}, setItem() {}, removeItem() {} },
+    sessionStorage: { getItem: key => sessionValues.get(key) || null, setItem: (key, value) => sessionValues.set(key, String(value)), removeItem: key => sessionValues.delete(key) },
     WorkBuddySupabaseConfig: { url: 'https://example.supabase.co', publishableKey: 'public-key' },
     supabase: { createClient: () => ({ auth: { updateUser: async () => ({}) }, rpc: async () => ({}) }) },
     WorkBuddyGuestDemo: { createGuestDemo: () => ({}) },
@@ -75,6 +76,7 @@ function createHarness(restoreState) {
     get bootCount() { return bootCount; },
     get reloadCount() { return reloadCount; },
     get guestAiInstallCount() { return guestAiInstallCount; },
+    sessionValues,
     publish: state => authCallbacks.onStateChange(state),
   };
 }
@@ -131,4 +133,23 @@ test('successful login from a mounted guest reloads before live data can boot', 
 
   assert.equal(harness.reloadCount, 1);
   assert.equal(harness.bootCount, 1, 'live app must not mount over the existing guest app');
+});
+
+test('explicit logout opens the login screen instead of re-entering guest mode', async () => {
+  const harness = createHarness({
+    status: 'authenticated',
+    profile: { username: 'member', display_name: '正式成员', role: 'editor' },
+    user: { id: 'user-1' },
+  });
+  await nextTurn();
+
+  await harness.elements['wb-logout'].listeners.click();
+  await nextTurn();
+
+  assert.equal(harness.sandbox.WorkBuddyRuntimeMode, 'logged-out');
+  assert.equal(harness.elements['wb-auth'].style.display, 'flex');
+  assert.equal(harness.elements['wb-login-shell'].style.display, 'block');
+  assert.equal(harness.elements.app.style.display, 'none');
+  assert.equal(harness.reloadCount, 1);
+  assert.equal(harness.guestAiInstallCount, 0);
 });
