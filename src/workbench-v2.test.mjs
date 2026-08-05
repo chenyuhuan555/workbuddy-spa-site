@@ -683,6 +683,13 @@ test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已�
   assert.match(INDEX_HTML, /filterCandidatesByCategory\(.*talentJobMatch\.categoryId/s, '匹配范围需要支持按分类限定');
 });
 
+test('候选人岗位匹配采用卡片布局并展示匹配分与标签', () => {
+  assert.match(INDEX_HTML, /workbenchRoute\.tab === 'matching'[\s\S]*?rounded-3xl/, '岗位匹配应使用大卡片容器');
+  assert.match(INDEX_HTML, /match\.highlights/, '岗位匹配应展示匹配标签');
+  assert.match(INDEX_HTML, /匹配分/, '岗位匹配应展示匹配分说明');
+  assert.match(INDEX_HTML, />创建推荐<\/button>/, '岗位匹配应提供创建推荐操作');
+});
+
 test('人才库目标公司挖掘仅分析当前分类范围，结果不自动创建公司', () => {
   assert.match(INDEX_HTML, /openTalentCompanyResearch/, '人才库需要提供目标公司挖掘入口');
   assert.match(INDEX_HTML, /filterCandidatesByCategory\(.*talentCompanyResearch\.categoryId/s, '挖掘范围需要支持按分类限定');
