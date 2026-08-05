@@ -16,6 +16,7 @@ test('createDraft 只复制允许编辑的核心字段', () => {
     owner: '顾问A',
     phone: '15500000000',
     email: 'lei@example.com',
+    profileText: '',
     resumeVersions: [{ id: 'r1' }],
     note: '业务备注',
   };
@@ -30,6 +31,7 @@ test('createDraft 只复制允许编辑的核心字段', () => {
     owner: '顾问A',
     phone: '15500000000',
     email: 'lei@example.com',
+    profileText: '',
   });
   draft.skills.push('新增');
   assert.deepEqual(candidate.skills, ['培训', '企业文化'], '草稿不得直接修改人才对象');
@@ -57,6 +59,7 @@ test('buildPatch 返回姓名、当前公司和既有核心字段，并清理首
     owner: ' 顾问B ',
     phone: ' 15500000000 ',
     email: ' lei@example.com ',
+    profileText: '具备企业服务经验。',
     resumeVersions: ['不得写入'],
   }, '企业文化', '组织发展');
 
@@ -68,6 +71,7 @@ test('buildPatch 返回姓名、当前公司和既有核心字段，并清理首
     owner: '顾问B',
     phone: '15500000000',
     email: 'lei@example.com',
+    profileText: '具备企业服务经验。',
   });
 });
 
@@ -101,6 +105,7 @@ test('save 只应用核心字段并持久化一次', async () => {
       owner: '顾问A',
       phone: '155',
       email: 'a@b.com',
+      profileText: '具备企业服务经验。',
     },
     updateTalent(currentBundle, id, patch) {
       assert.equal(currentBundle, bundle);
@@ -115,7 +120,7 @@ test('save 只应用核心字段并持久化一次', async () => {
   });
 
   assert.equal(result, candidate);
-  assert.deepEqual(Object.keys(updates[0].patch).sort(), ['currentCompany', 'directions', 'email', 'name', 'owner', 'phone', 'skills']);
+  assert.deepEqual(Object.keys(updates[0].patch).sort(), ['currentCompany', 'directions', 'email', 'name', 'owner', 'phone', 'profileText', 'skills']);
   assert.equal(candidate.name, '雷艺旋（更新）');
   assert.equal(candidate.currentCompany, '百度');
   assert.equal(candidate.note, '保留');
@@ -148,6 +153,7 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
     owner: '旧顾问',
     phone: 'old-phone',
     email: 'old@example.com',
+    profileText: '',
     updatedAt: 'old-time',
     note: '保留',
   };
@@ -158,7 +164,7 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
     canWrite: true,
     bundle,
     candidateId: 'c1',
-    draft: { name: '雷艺旋', currentCompany: '', skills: ['新技能'], directions: [], owner: '', phone: '', email: '' },
+    draft: { name: '雷艺旋', currentCompany: '', skills: ['新技能'], directions: [], owner: '', phone: '', email: '', profileText: '' },
     updateTalent(_bundle, _id, patch) {
       Object.assign(candidate, patch, { updatedAt: 'new-time' });
       return candidate;
@@ -178,6 +184,7 @@ test('save 持久化失败时回滚并再次持久化回滚状态', async () => 
     owner: '旧顾问',
     phone: 'old-phone',
     email: 'old@example.com',
+    profileText: '',
     updatedAt: 'old-time',
     note: '保留',
   });

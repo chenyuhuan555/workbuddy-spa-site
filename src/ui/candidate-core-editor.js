@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : window, function createCandidateCoreEditor() {
   'use strict';
 
-  const EDITABLE_FIELDS = ['name', 'currentCompany', 'skills', 'directions', 'owner', 'phone', 'email'];
+  const EDITABLE_FIELDS = ['name', 'currentCompany', 'skills', 'directions', 'owner', 'phone', 'email', 'profileText'];
 
   function copyTags(value) {
     return Array.isArray(value) ? value.map(item => String(item || '')) : [];
@@ -20,6 +20,7 @@
       owner: String(candidate.owner || ''),
       phone: String(candidate.phone || ''),
       email: String(candidate.email || ''),
+      profileText: String(candidate.profileText || candidate.summary || ''),
     };
   }
 
@@ -45,6 +46,7 @@
       owner: String(draft.owner || '').trim(),
       phone: String(draft.phone || '').trim(),
       email: String(draft.email || '').trim(),
+      profileText: String(draft.profileText || '').trim(),
     };
   }
 
