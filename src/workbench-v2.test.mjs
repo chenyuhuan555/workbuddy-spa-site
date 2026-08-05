@@ -863,6 +863,18 @@ test('人才库环形图不会重复计算无推进记录的人才', () => {
   assert.doesNotMatch(source, /buckets\[5\]\s*\+=\s*totalCands\s*-\s*Object\.keys\(candidateStages\)/);
 });
 
+test('业务进展筛选接入全部岗位与本月新增范围', () => {
+  assert.match(INDEX_HTML, /v-model="businessProgressPeriod"/);
+  assert.match(INDEX_HTML, /const businessProgressPeriod = ref\('all'\)/);
+  const start = INDEX_HTML.indexOf('const businessProgressItems = computed(() => {');
+  const end = INDEX_HTML.indexOf('function showWorkbench()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /position\.createdAt/);
+  assert.match(source, /scopedPositionIds/);
+  assert.match(source, /application\.positionId/);
+});
+
 test('顶部新建按钮具备不依赖 Tailwind 的高对比度样式', () => {
   const start = INDEX_HTML.indexOf('wb-v2-create-button');
   assert.ok(start >= 0);

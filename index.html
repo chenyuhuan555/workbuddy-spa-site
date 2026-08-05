@@ -3783,9 +3783,9 @@
             <div class="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-slate-900 text-[15px]">业务进展</h3>
-                <select aria-label="业务进展统计范围" class="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 outline-none">
-                  <option>全部岗位</option>
-                  <option>本月新增</option>
+                <select aria-label="业务进展统计范围" v-model="businessProgressPeriod" class="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 outline-none">
+                  <option value="all">全部岗位</option>
+                  <option value="month">本月新增</option>
                 </select>
               </div>
               <div class="flex-1 space-y-3 min-h-[260px]">
@@ -11461,8 +11461,16 @@ const vueAppConfig = {
     });
 
     // ── 仪表盘：业务进展条 ──
+    const businessProgressPeriod = ref('all');
     const businessProgressItems = computed(() => {
-      const allApps = visibleApplications.value;
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+      const scopedPositions = workbenchV2.positions.filter(position => {
+        if (businessProgressPeriod.value !== 'month') return true;
+        const createdAt = Date.parse(position.createdAt || '');
+        return Number.isFinite(createdAt) && createdAt >= monthStart;
+      });
+      const scopedPositionIds = new Set(scopedPositions.map(position => position.id));
+      const allApps = visibleApplications.value.filter(application => scopedPositionIds.has(application.positionId));
       const SCREEN_RECOMMEND = [...SG.SCREEN, ...SG.RECOMMEND];
       const countByGroup = (group) => allApps.filter(a => group.includes(a.stage)).length;
       const cDiscover = countByGroup(SG.DISCOVER);
@@ -11474,7 +11482,7 @@ const vueAppConfig = {
         allApps.length || 1, cDiscover || 1, cScreenRecommend || 1,
         cInterview || 1, cOffer || 1, cOnboard || 1,
       );
-      const openPositions = workbenchV2.positions.filter(p => p.status === 'open').length;
+      const openPositions = scopedPositions.filter(p => p.status === 'open').length;
       return [
         { label: '需求确认', count: openPositions, percent: Math.round((openPositions / maxVal) * 100) },
         { label: '寻访中', count: cDiscover, percent: Math.round((cDiscover / maxVal) * 100) },
@@ -23064,7 +23072,7 @@ ${clipped}`
       resumeOriginalStatusLabel, retryCandidateResumeFileSync, replaceCandidateResumeOriginal,
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches, applicationBatchScoring,
-      candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressItems,
+      candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressPeriod, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
