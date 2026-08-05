@@ -3521,7 +3521,7 @@
             <input v-model="globalSearchQuery" @keyup.enter="runWorkbenchGlobalSearch" type="search" aria-label="全局搜索" placeholder="搜索公司、职位、人才…" class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-sm placeholder:text-slate-400">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           </div>
-          <button type="button" @click="runWorkbenchGlobalSearch" aria-label="搜索工作台" title="搜索" class="wb-v2-global-search-button w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-50 text-white hover:text-white inline-flex items-center justify-center gap-1.5 px-3 transition">
+          <button type="button" @click="runWorkbenchGlobalSearch" aria-label="搜索工作台" title="搜索" class="wb-v2-global-search-button w-auto min-w-9 h-9 rounded-xl bg-slate-100 hover:bg-emerald-50 text-white hover:text-white inline-flex items-center justify-center gap-1.5 px-3 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>搜索</span>
           </button>
           <div v-if="searchActive && String(globalSearchQuery || '').trim()" id="topbar-search-results" class="absolute left-0 right-0 top-12 z-40 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
@@ -3545,9 +3545,9 @@
         </div>
         <div class="ml-auto flex items-center gap-3">
           <div v-if="isGuestMode" class="flex shrink-0 items-center gap-2 whitespace-nowrap">
-            <span class="hidden 2xl:inline-flex items-center rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">游客演示模式</span>
-            <button type="button" @click="resetGuestDemo" class="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-50">重置演示数据</button>
-            <button type="button" @click="openGuestLogin" class="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800">登录查看真实数据</button>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-700"></span>演示中</span>
+            <button type="button" @click="resetGuestDemo" class="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" title="重置演示数据">↻ <span class="hidden sm:inline">重置</span></button>
+            <button type="button" @click="openGuestLogin" class="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" title="登录查看真实数据">♙ <span class="hidden sm:inline">登录</span></button>
           </div>
           <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
           <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : isGuestMode ? '已保存到本浏览器' : '已保存' }}</span>
@@ -3564,12 +3564,21 @@
       </header>
 
       <main class="wb-v2-main flex-1 overflow-y-auto p-5 lg:p-6">
-        <div v-if="isGuestMode" role="status" class="mx-auto mb-5 flex max-w-[1400px] flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+        <div v-if="isGuestMode" role="status" class="mx-auto mb-5 flex max-w-[1400px] flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
           <div>
             <p class="text-sm font-bold">当前内容均为虚构演示数据</p>
-            <p class="mt-0.5 text-xs text-amber-800">您可以自由新增、修改和删除；数据仅保存在当前浏览器，不会上传云端。AI 功能返回预设模拟结果，不会调用真实服务。</p>
+            <p class="mt-0.5 text-xs text-amber-800">您可以自由新增、修改和删除；数据仅保存在当前浏览器，不会上传云端。体验 AI 功能请填写 DeepSeek API Key。</p>
           </div>
-          <button type="button" @click="openGuestLogin" class="self-start whitespace-nowrap text-xs font-bold text-emerald-800 hover:text-emerald-900 sm:self-auto">登录后查看真实业务数据 →</button>
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label for="guest-deepseek-api-key" class="text-xs font-semibold text-amber-900 whitespace-nowrap">体验 AI</label>
+              <input id="guest-deepseek-api-key" aria-label="游客 DeepSeek API Key" v-model="aiConfig.apiKey" type="password" autocomplete="off" placeholder="填写 DeepSeek API Key" class="w-full sm:w-80 px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs" @keydown.enter="saveGuestAiKey">
+              <button type="button" @click="saveGuestAiKey" class="self-start whitespace-nowrap rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 sm:self-auto">保存 Key</button>
+              <span v-if="guestAiKeyConfigured" class="text-xs font-semibold text-emerald-800">已启用真实 AI</span>
+              <span v-else class="text-xs text-amber-800">未填写时使用本地模拟结果</span>
+            </div>
+            <button type="button" @click="openGuestLogin" class="self-start whitespace-nowrap text-xs font-bold text-emerald-800 hover:text-emerald-900 sm:self-auto">登录查看真实数据 →</button>
+          </div>
         </div>
         <!-- ========== Dashboard 首页（截图设计）========== -->
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard max-w-[1400px] mx-auto space-y-5">
@@ -10257,7 +10266,9 @@ const vueAppConfig = {
               return cloneData(saved);
             },
             remove: async id => {
-              setTimeout(() => { void saveGuestWorkspace(); }, 0);
+              const index = privateTodos.findIndex(item => item.id === id);
+              if (index >= 0) privateTodos.splice(index, 1);
+              await saveGuestWorkspace();
               return id;
             },
           });
@@ -11263,7 +11274,7 @@ const vueAppConfig = {
     });
     const todoActions = window.WorkBuddyTodoActions.createTodoActions({
       todoForm, todoDetail, todoListView, privateTodos, todoLinkOptions, dashboardTodos,
-      workbenchV2, getPrivateTodoClient, showToast,
+      workbenchV2, createTodo: payload => WorkbenchV2.createTodo(payload), getPrivateTodoClient, showToast,
       openCandidateDetail: id => openCandidateDetail(id),
       openPositionDetail: id => openPositionDetail(id),
       openCompanyDetail: id => openCompanyDetail(id),
@@ -12343,7 +12354,7 @@ ${ocrText}`
     const kbFilterCat = ref('');
     const kbCategories = ['会议记录', '工作沉淀', '流程规范', '团队公告', '其他'];
     // ======== AI 配置 ========
-    const AI_CONFIG_KEY = STORAGE_KEY + '_ai_config';
+    const AI_CONFIG_KEY = isGuestMode ? 'workbuddy.guest.deepseek_config.v1' : STORAGE_KEY + '_ai_config';
 
     const aiConfig = reactive({
       apiKey: '',
@@ -12386,14 +12397,30 @@ ${ocrText}`
       storage: localStorage,
       configKey: AI_CONFIG_KEY,
       schedulePush,
-      migrateLegacy: migrateOldConfig,
+      migrateLegacy: isGuestMode ? () => {} : migrateOldConfig,
     });
     const loadAiConfig = () => aiConfigActions.load();
     const saveAiConfig = () => {
       aiConfigActions.save();
-      localStorage.setItem('kb_deepseek_key', aiConfig.apiKey);
-      localStorage.setItem('kb_gemini_key', aiConfig.apiKey);
+      if (!isGuestMode) {
+        localStorage.setItem('kb_deepseek_key', aiConfig.apiKey);
+        localStorage.setItem('kb_gemini_key', aiConfig.apiKey);
+      }
     };
+    const guestAiKeyConfigured = computed(() => isGuestMode && /^sk-/.test(String(aiConfig.apiKey || '').trim()));
+    function saveGuestAiKey() {
+      if (!isGuestMode) return;
+      const key = String(aiConfig.apiKey || '').trim();
+      if (key && !key.startsWith('sk-')) {
+        aiConfig.apiKeyValid = false;
+        showToast('DeepSeek API Key 应以 sk- 开头', 'error');
+        return;
+      }
+      aiConfig.apiKey = key;
+      aiConfig.apiKeyValid = false;
+      saveAiConfig();
+      showToast(key ? 'DeepSeek API Key 已保存在当前浏览器' : '已切回本地模拟 AI');
+    }
     // 使用函数声明允许前置创建的 AI 动作安全持有该访问器，避免 setup 初始化阶段触发 TDZ。
     function requireDeepSeekApiKey() { return aiConfigActions.requireKey(); }
 
@@ -15407,8 +15434,7 @@ ${ocrText}`
     // -------- 生命周期 --------
     onMounted(async () => {
       if (isGuestMode) {
-        aiConfig.apiKey = 'sk-guest-demo-local-only';
-        aiConfig.apiKeyValid = true;
+        loadAiConfig();
         await loadGuestWorkspace();
         appHydrating = false;
         updateActiveNavFromScroll();
@@ -23033,7 +23059,7 @@ ${clipped}`
       openKbArticle, openAdvisorForMeeting, closeKbView, deleteKbArticle,
       kbApiKey, kbOptimizing, kbShowApiSettings, optimizeKbText, saveKbApiKey,
       // AI 配置
-      aiConfig, loadAiConfig, saveAiConfig, validateApiKey, testApiKey,
+      aiConfig, loadAiConfig, saveAiConfig, validateApiKey, testApiKey, guestAiKeyConfigured, saveGuestAiKey,
       // 活水雷达
       radarLoading, radarNews, radarSignals, radarInsight, radarHotSectors, radarTrend,
       radarLastUpdated, radarFilter, radarIndustryFilter, radarIndustries, radarIndustryCounts, radarSelectedNewsIdx, radarManualInputOpen, radarManualText,

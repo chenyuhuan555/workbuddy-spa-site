@@ -54,6 +54,23 @@ test('guest edits persist only under the dedicated demo key and reload as clones
   assert.notEqual(demo.loadWorkspace().workbenchV2.companies[0].name, 'mutated in memory');
 });
 
+test('existing seeded labels lose repetitive fictional suffixes on reload', () => {
+  const api = loadModule();
+  const storage = createStorage();
+  const workspace = api.createInitialWorkspace();
+  workspace.workbenchV2.companies[0].name += '（演示）';
+  workspace.workbenchV2.positions[0].title += '（虚构）';
+  workspace.workbenchV2.candidates[0].name += '（演示）';
+  workspace.workbenchV2.todos[0].title += '（虚构）';
+  storage.setItem(api.STORAGE_KEY, JSON.stringify(workspace));
+
+  const reloaded = api.createGuestDemo({ storage }).loadWorkspace();
+  assert.equal(reloaded.workbenchV2.companies[0].name, '星河科技');
+  assert.equal(reloaded.workbenchV2.positions[0].title, 'AI 产品负责人');
+  assert.equal(reloaded.workbenchV2.candidates[0].name, '林晓');
+  assert.equal(reloaded.workbenchV2.todos[0].title, '跟进星河科技面试反馈');
+});
+
 test('malformed guest JSON recovers to seed data without reading another namespace', () => {
   const api = loadModule();
   const storage = createStorage({

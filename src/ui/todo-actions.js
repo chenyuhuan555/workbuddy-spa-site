@@ -6,6 +6,7 @@ export function createTodoActions({
   privateTodos,
   todoLinkOptions = { value: [] },
   workbenchV2,
+  createTodo,
   getPrivateTodoClient,
   showToast = () => {},
   openCandidateDetail = () => {},
@@ -81,7 +82,7 @@ export function createTodoActions({
       const existing = editing ? privateTodos.find(item => item.id === todoForm.editingId) : null;
       const todo = existing
         ? { ...existing, ...payload, updatedAt: new Date().toISOString() }
-        : workbenchV2.createTodo(payload);
+        : (typeof createTodo === 'function' ? createTodo(payload) : workbenchV2.createTodo(payload));
       const saved = await getPrivateTodoClient().save(todo);
       const index = privateTodos.findIndex(item => item.id === saved.id);
       if (index >= 0) privateTodos.splice(index, 1, saved);

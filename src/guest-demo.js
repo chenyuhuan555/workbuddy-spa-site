@@ -53,28 +53,28 @@
 
   function createInitialWorkspace() {
     const companies = [
-      company('demo_co_1', '星河科技（演示）', '人工智能', '深圳', '演示顾问'),
-      company('demo_co_2', '远航供应链（演示）', '物流科技', '上海', '演示顾问'),
-      company('demo_co_3', '青云健康（演示）', '数字医疗', '北京', '演示顾问'),
-      company('demo_co_4', '木棉消费（演示）', '新消费', '广州', '演示顾问', 'potential'),
+      company('demo_co_1', '星河科技', '人工智能', '深圳', '演示顾问'),
+      company('demo_co_2', '远航供应链', '物流科技', '上海', '演示顾问'),
+      company('demo_co_3', '青云健康', '数字医疗', '北京', '演示顾问'),
+      company('demo_co_4', '木棉消费', '新消费', '广州', '演示顾问', 'potential'),
     ];
     const positions = [
-      position('demo_pos_1', 'demo_co_1', 'AI 产品负责人（演示）', '深圳', '50-80K', '演示顾问', ['AI产品', '商业化', '团队管理']),
-      position('demo_pos_2', 'demo_co_1', '算法工程师（演示）', '深圳', '40-65K', '演示顾问', ['大模型', 'Python', 'RAG']),
-      position('demo_pos_3', 'demo_co_2', '供应链解决方案总监（演示）', '上海', '45-70K', '演示顾问', ['供应链', '解决方案', '大客户']),
-      position('demo_pos_4', 'demo_co_3', '医疗 SaaS 销售总监（演示）', '北京', '35-60K', '演示顾问', ['医疗SaaS', '销售管理', '渠道']),
-      position('demo_pos_5', 'demo_co_4', '品牌增长负责人（演示）', '广州', '35-55K', '演示顾问', ['品牌策略', '增长', '内容营销']),
-      position('demo_pos_6', 'demo_co_2', '物流运营负责人（演示）', '上海', '35-50K', '演示顾问', ['物流运营', '精益管理', '数据分析']),
+      position('demo_pos_1', 'demo_co_1', 'AI 产品负责人', '深圳', '50-80K', '演示顾问', ['AI产品', '商业化', '团队管理']),
+      position('demo_pos_2', 'demo_co_1', '算法工程师', '深圳', '40-65K', '演示顾问', ['大模型', 'Python', 'RAG']),
+      position('demo_pos_3', 'demo_co_2', '供应链解决方案总监', '上海', '45-70K', '演示顾问', ['供应链', '解决方案', '大客户']),
+      position('demo_pos_4', 'demo_co_3', '医疗 SaaS 销售总监', '北京', '35-60K', '演示顾问', ['医疗SaaS', '销售管理', '渠道']),
+      position('demo_pos_5', 'demo_co_4', '品牌增长负责人', '广州', '35-55K', '演示顾问', ['品牌策略', '增长', '内容营销']),
+      position('demo_pos_6', 'demo_co_2', '物流运营负责人', '上海', '35-50K', '演示顾问', ['物流运营', '精益管理', '数据分析']),
     ];
     const candidates = [
-      candidate('demo_cand_1', '林晓（虚构）', '未来智能（演示）', '高级产品经理', '深圳', '演示顾问', ['AI产品', '商业化', '团队管理'], 9),
-      candidate('demo_cand_2', '周屿（虚构）', '云端实验室（演示）', '算法专家', '深圳', '演示顾问', ['大模型', 'Python', 'RAG'], 7),
-      candidate('demo_cand_3', '陈澄（虚构）', '链路科技（演示）', '解决方案总监', '上海', '演示顾问', ['供应链', '解决方案', '大客户'], 11),
-      candidate('demo_cand_4', '苏禾（虚构）', '康桥软件（演示）', '销售负责人', '北京', '演示顾问', ['医疗SaaS', '销售管理', '渠道'], 10),
-      candidate('demo_cand_5', '许言（虚构）', '拾光品牌（演示）', '增长负责人', '广州', '演示顾问', ['品牌策略', '增长', '内容营销'], 8),
-      candidate('demo_cand_6', '江岚（虚构）', '速达物流（演示）', '运营经理', '上海', '演示顾问', ['物流运营', '精益管理', '数据分析'], 8),
-      candidate('demo_cand_7', '唐宁（虚构）', '启明数据（演示）', '数据产品经理', '杭州', '演示顾问', ['数据产品', 'BI', '项目管理'], 6),
-      candidate('demo_cand_8', '顾遥（虚构）', '原点咨询（演示）', '行业顾问', '北京', '演示顾问', ['行业研究', '客户沟通', '方案设计'], 7),
+      candidate('demo_cand_1', '林晓', '未来智能', '高级产品经理', '深圳', '演示顾问', ['AI产品', '商业化', '团队管理'], 9),
+      candidate('demo_cand_2', '周屿', '云端实验室', '算法专家', '深圳', '演示顾问', ['大模型', 'Python', 'RAG'], 7),
+      candidate('demo_cand_3', '陈澄', '链路科技', '解决方案总监', '上海', '演示顾问', ['供应链', '解决方案', '大客户'], 11),
+      candidate('demo_cand_4', '苏禾', '康桥软件', '销售负责人', '北京', '演示顾问', ['医疗SaaS', '销售管理', '渠道'], 10),
+      candidate('demo_cand_5', '许言', '拾光品牌', '增长负责人', '广州', '演示顾问', ['品牌策略', '增长', '内容营销'], 8),
+      candidate('demo_cand_6', '江岚', '速达物流', '运营经理', '上海', '演示顾问', ['物流运营', '精益管理', '数据分析'], 8),
+      candidate('demo_cand_7', '唐宁', '启明数据', '数据产品经理', '杭州', '演示顾问', ['数据产品', 'BI', '项目管理'], 6),
+      candidate('demo_cand_8', '顾遥', '原点咨询', '行业顾问', '北京', '演示顾问', ['行业研究', '客户沟通', '方案设计'], 7),
     ];
     const applications = [
       application('demo_app_1', 'demo_cand_1', 'demo_pos_1', 'demo_co_1', 'recommended', '演示顾问', 92),
@@ -95,8 +95,8 @@
         schemaVersion: 2,
         companies, positions, candidates, applications,
         todos: [
-          { id: 'demo_todo_1', title: '跟进星河科技面试反馈（演示）', type: 'followup', date: '2026-08-05', done: false, demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
-          { id: 'demo_todo_2', title: '整理供应链岗位推荐报告（演示）', type: 'recommend', date: '2026-08-06', done: false, demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
+          { id: 'demo_todo_1', title: '跟进星河科技面试反馈', type: 'followup', date: '2026-08-05', done: false, demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
+          { id: 'demo_todo_2', title: '整理供应链岗位推荐报告', type: 'recommend', date: '2026-08-06', done: false, demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
         ],
         aiArtifacts: [], activities: [], notes: [],
         migrationMeta: { executedAt: SEED_DATE },
@@ -115,6 +115,30 @@
       throw new Error('GUEST_WORKSPACE_REQUIRED');
     }
     if (workspace.workbenchV2?.schemaVersion !== 2) throw new Error('GUEST_WORKSPACE_SCHEMA_INVALID');
+  }
+
+  function stripDemoSuffix(value) {
+    return typeof value === 'string' ? value.replace(/\s*[（(](?:演示|虚构)[）)]\s*$/u, '').trim() : value;
+  }
+
+  function normalizeVisibleDemoLabels(workspace) {
+    const workbench = workspace.workbenchV2 || {};
+    (workbench.companies || []).forEach(item => {
+      if (String(item.id || '').startsWith('demo_')) item.name = stripDemoSuffix(item.name);
+    });
+    (workbench.positions || []).forEach(item => {
+      if (String(item.id || '').startsWith('demo_')) item.title = stripDemoSuffix(item.title);
+    });
+    (workbench.candidates || []).forEach(item => {
+      if (String(item.id || '').startsWith('demo_')) {
+        item.name = stripDemoSuffix(item.name);
+        item.currentCompany = stripDemoSuffix(item.currentCompany);
+      }
+    });
+    (workbench.todos || []).forEach(item => {
+      if (String(item.id || '').startsWith('demo_')) item.title = stripDemoSuffix(item.title);
+    });
+    return workspace;
   }
 
   function createGuestDemo({ storage } = {}) {
@@ -138,7 +162,7 @@
       try {
         const workspace = JSON.parse(raw);
         assertGuestWorkspace(workspace);
-        return clone(workspace);
+        return clone(normalizeVisibleDemoLabels(workspace));
       } catch (_) {
         return resetWorkspace();
       }
