@@ -6811,7 +6811,7 @@
     </section>
 
     <!-- ======== 备份与恢复 ======== -->
-    <section id="settings-section" class="backup-section">
+    <section id="settings-section" v-if="!isGuestMode" class="backup-section">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
         <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
           <div class="min-w-0">
@@ -7054,6 +7054,12 @@
           </div>
         </div>
       </div>
+    </section>
+    <section v-else-if="workbenchNav === 'settings'" class="max-w-4xl mx-auto bg-white border border-amber-200 rounded-2xl p-8 text-center">
+      <p class="text-xs font-bold tracking-wider text-amber-700">游客演示模式</p>
+      <h2 class="text-xl font-bold text-slate-900 mt-2">管理设置仅对登录用户开放</h2>
+      <p class="text-sm text-slate-500 mt-2">迁移、云端读取和备份恢复涉及真实业务数据，请登录后查看。</p>
+      <button type="button" @click="openGuestLogin" class="mt-5 px-4 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800">登录查看真实数据</button>
     </section>
 
   </main>

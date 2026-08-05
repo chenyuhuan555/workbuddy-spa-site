@@ -35,3 +35,8 @@ test('guests can use AI features but cannot navigate to real settings', () => {
   assert.match(html, /filter\(item => canConfigureAi \|\| item\.key !== 'settings'\)/);
   assert.match(html, /filter\(item => !isGuestMode \|\| item\.key !== 'settings'\)/);
 });
+
+test('guest mode hides cloud migration and backup management cards', () => {
+  assert.match(html, /<section id="settings-section" v-if="!isGuestMode" class="backup-section">/);
+  assert.match(html, /管理设置仅对登录用户开放/);
+});
