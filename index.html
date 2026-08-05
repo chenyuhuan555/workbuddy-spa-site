@@ -4157,25 +4157,35 @@
               <p class="mt-3 text-sm text-slate-500">总推进职位</p>
             </aside>
           </div>
-          <div v-else-if="workbenchRoute.tab === 'resume'" class="bg-white border border-slate-200 rounded-xl p-5">
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <h2 class="font-bold">简历</h2>
-              <div class="flex items-center gap-2">
-                <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="px-2 py-1 rounded-lg border border-slate-200 text-xs disabled:opacity-50">
+          <div v-else-if="workbenchRoute.tab === 'resume'" class="space-y-4">
+            <div class="resume-toolbar flex items-center justify-between gap-4 flex-wrap rounded-3xl border border-slate-100 bg-white px-6 py-5 shadow-sm">
+              <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-bold tracking-tight text-slate-800">简历</h2>
+                <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 disabled:opacity-50">
                   <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
                 </select>
+              </div>
+              <div class="flex items-center gap-3 flex-wrap">
                 <span v-if="candidateResumeEdit.active" class="flex items-center gap-2">
                   <button type="button" @click="cancelCandidateResumeEdit" :disabled="candidateResumeEdit.saving" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50">取消</button>
                   <button type="button" @click="saveCandidateResumeEdit" :disabled="candidateResumeEdit.saving" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-700 bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-50">{{ candidateResumeEdit.saving ? '保存中…' : '保存电子简历' }}</button>
                 </span>
-                <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="startCandidateResumeEdit" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed">编辑电子简历</button>
-                <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="reprocessCandidateResumeFromText" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">使用现有文本重新处理</button>
-                <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="reextractCandidateResumeFromOriginal" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">从原始文件重新提取并处理</button>
-                <button type="button" @click="switchCandidateResumeMode('text')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'text' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">电子简历</button>
-                <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['px-3 py-1.5 rounded-lg text-xs font-bold border transition', candidateResumeView.mode === 'original' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100']">原始文件</button>
+                <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="startCandidateResumeEdit" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true">✎</span>编辑简历</button>
+                <div v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" class="relative">
+                  <button type="button" @click="candidateResumeProcessMenuOpen = !candidateResumeProcessMenuOpen" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" aria-haspopup="menu" :aria-expanded="candidateResumeProcessMenuOpen" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true" class="text-lg leading-none text-emerald-600">⟳</span>重新处理 <span aria-hidden="true" class="text-base">⌄</span></button>
+                  <div v-if="candidateResumeProcessMenuOpen" role="menu" class="absolute right-0 top-full z-30 mt-2 min-w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                    <button type="button" @click="candidateResumeProcessMenuOpen = false; reprocessCandidateResumeFromText()" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700">使用现有文本重新处理</button>
+                    <button v-if="hasCandidateResumeOriginal" type="button" @click="candidateResumeProcessMenuOpen = false; reextractCandidateResumeFromOriginal()" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700">从原始文件重新提取并处理</button>
+                  </div>
+                </div>
+                <div class="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <button type="button" @click="switchCandidateResumeMode('text')" :class="['inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold transition', candidateResumeView.mode === 'text' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500 hover:bg-slate-50']"><span aria-hidden="true">▤</span>电子简历</button>
+                  <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['inline-flex items-center gap-2 border-l border-slate-200 px-5 py-3 text-sm font-semibold transition', candidateResumeView.mode === 'original' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500 hover:bg-slate-50']"><span aria-hidden="true">▱</span>原始文件</button>
+                </div>
               </div>
             </div>
-            <div v-if="activeCandidateResumeVersion" class="mt-3 flex flex-wrap items-center gap-2 text-xs" role="status" aria-live="polite">
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
+            <div v-if="activeCandidateResumeVersion" class="flex flex-wrap items-center gap-2 text-xs" role="status" aria-live="polite">
               <span class="text-slate-500">{{ resumeOriginalStatusLabel(activeCandidateResumeVersion) }}</span>
               <button v-if="canWrite && ['local-only','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" type="button" @click="retryCandidateResumeFileSync" :disabled="activeCandidateResumeVersion.originalFileStatus === 'syncing'" class="font-semibold text-emerald-700 hover:text-emerald-800">同步原始文件</button>
               <label v-if="canWrite && activeCandidateResumeVersion.originalFileStatus === 'missing'" class="font-semibold text-blue-700 hover:text-blue-800 cursor-pointer">重新上传原件<input aria-label="重新上传当前简历原件" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
@@ -4208,6 +4218,7 @@
               <p v-else class="text-sm text-slate-400 py-8 text-center">暂无原始文件</p>
             </div>
             <p v-if="!selectedCandidateResumeVersions.length" class="text-sm text-slate-400 mt-4">暂无简历版本</p>
+            </div>
           </div>
           <div v-else-if="workbenchRoute.tab === 'applications'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="text-lg font-bold">推进记录</h2><div v-for="application in selectedCandidateApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 border border-slate-200 rounded-lg p-4 text-base flex justify-between items-center cursor-pointer hover:border-emerald-300 hover:bg-slate-50 transition"><span>{{ workbenchV2.companies.find(item => item.id === application.companyId)?.name }} · {{ workbenchV2.positions.find(item => item.id === application.positionId)?.title }}</span><span class="flex items-center gap-2"><b class="text-lg">{{ candidatePipelineLabel(application.stage) }}</b><span class="text-sm text-emerald-700">查看详情 →</span></span></div><p v-if="!selectedCandidateApplications.length" class="text-base text-slate-400 mt-4">暂无推进记录</p></div>
           <div v-else-if="workbenchRoute.tab === 'matching'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="font-bold">岗位匹配</h2><div v-for="match in candidatePositionMatches" :key="match.positionId" class="mt-3 border border-slate-200 rounded-lg p-4 flex gap-4 items-center"><div class="flex-1"><button @click="openPositionDetail(match.positionId)" class="font-bold text-left hover:text-emerald-700" type="button">{{ workbenchV2.companies.find(item => item.id === match.companyId)?.name }} · {{ workbenchV2.positions.find(item => item.id === match.positionId)?.title }}</button><p class="text-xs text-slate-500 mt-1">{{ match.reason }}</p><p v-if="match.gaps.length" class="text-xs text-amber-700 mt-1">{{ match.gaps.join('；') }}</p></div><strong class="text-emerald-700">{{ match.score }}</strong><button v-if="canWrite" @click="createApplicationFromMatch(selectedCandidate.id, match.positionId, match)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold" type="button">创建推进</button></div><p v-if="!candidatePositionMatches.length" class="text-sm text-slate-400 text-center py-8">暂无开放岗位可匹配。</p></div>
@@ -10987,6 +10998,7 @@ const vueAppConfig = {
       loading: false,
       error: '',
     });
+    const candidateResumeProcessMenuOpen = ref(false);
     const candidateResumeEdit = reactive({
       active: false,
       saving: false,
@@ -22940,7 +22952,7 @@ ${clipped}`
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
-      candidateResumeView, candidateResumeEdit, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
+      candidateResumeView, candidateResumeProcessMenuOpen, candidateResumeEdit, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       startCandidateResumeEdit, saveCandidateResumeEdit, cancelCandidateResumeEdit,
       reprocessCandidateResumeVersion, reprocessCandidateResumeFromText, reextractCandidateResumeFromOriginal, resumeAiStageLabel,
       resumeOriginalStatusLabel, retryCandidateResumeFileSync, replaceCandidateResumeOriginal,

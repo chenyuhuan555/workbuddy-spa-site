@@ -55,5 +55,9 @@ test('原件替换保留当前版本并只更新文件元数据', () => {
 test('新增简历动作保持按钮类型和文件输入可访问名称', () => {
   assert.match(INDEX_HTML, /<button[^>]+type="button"[^>]*>使用现有文本重新处理<\/button>/);
   assert.match(INDEX_HTML, /<button[^>]+type="button"[^>]*>从原始文件重新提取并处理<\/button>/);
+  assert.match(INDEX_HTML, /class="resume-toolbar[^"]*"/);
+  assert.match(INDEX_HTML, />编辑简历<\/button>/);
+  assert.match(INDEX_HTML, />重新处理 <span/);
+  assert.match(INDEX_HTML, /candidateResumeProcessMenuOpen/);
   assert.match(INDEX_HTML, /<input[^>]+aria-label="重新上传当前简历原件"[^>]+type="file"/);
 });

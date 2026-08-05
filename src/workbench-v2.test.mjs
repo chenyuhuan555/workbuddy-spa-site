@@ -108,8 +108,8 @@ test('人才详情优先展示排版文本并提供可见失败与重新处理�
   assert.match(INDEX_HTML, /role="alert"[^>]*>[\s\S]*?activeCandidateResumeVersion\.formatError/);
   assert.match(INDEX_HTML, />原始提取文本</);
   assert.match(INDEX_HTML, /\{\{ activeCandidateResumeVersion\.rawText \}\}/);
-  assert.match(INDEX_HTML, /type="button"[^>]*@click="reprocessCandidateResumeFromText"/);
-  assert.match(INDEX_HTML, /type="button"[^>]*@click="reextractCandidateResumeFromOriginal"/);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="[^\"]*reprocessCandidateResumeFromText/);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="[^\"]*reextractCandidateResumeFromOriginal/);
   assert.match(INDEX_HTML, /使用现有文本重新处理/);
   assert.match(INDEX_HTML, /从原始文件重新提取并处理/);
   assert.match(INDEX_HTML, /v-if="activeCandidateResumeVersion\?\.formattedText"[^>]*v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
