@@ -48,6 +48,9 @@
     'electronic-resume-format': {
       formattedText: '【模拟电子简历】\n林晓\n高级产品经理\n核心能力：AI 产品、商业化、团队管理。',
     },
+    'company-industry-detection': {
+      industry: '企业服务',
+    },
   });
 
   const arrayResponses = Object.freeze({

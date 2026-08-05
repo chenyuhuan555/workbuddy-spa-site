@@ -179,6 +179,9 @@ test('公司看板提供全部岗位关键词重新提取并展示进度', () =>
   assert.match(INDEX_HTML, /runBulkPositionSkillsExtraction/, '应存在批量重提取处理函数');
   assert.match(INDEX_HTML, /positionSkillsBatch\.completed/, '批量操作应展示完成进度');
   assert.match(INDEX_HTML, /extractPositionSkillsForPosition\(position\)/, '批量操作应复用单岗位提取逻辑');
+  assert.match(INDEX_HTML, /task: 'company-industry-detection'/, '批量提取应同时识别公司行业');
+  assert.match(INDEX_HTML, /company\.industry = await extractCompanyIndustryForCompany/, '识别结果应回写公司行业');
+  assert.match(INDEX_HTML, /const allPositions = workbenchV2\.positions/, '公司行业识别不应依赖岗位 JD 已填写');
 });
 
 test('createApplication 建立 talent×position 推进且仅允许一条活跃推进', () => {

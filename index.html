@@ -10443,7 +10443,7 @@ const vueAppConfig = {
     const companyPositionCreate = reactive({ open: false, title: '', city: '', salary: '', owner: '' });
     const positionDescriptionEdit = reactive({ open: false, value: '', city: '', salary: '', owner: '', skills: '' });
     const positionSkillsExtracting = ref(false);
-    const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, current: '' });
+    const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, industrySucceeded: 0, industryFailed: 0, current: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const candidatePage = ref(1);
     const talentCloudSearch = reactive({ query: '', running: false, page: 1, pageSize: 50, total: 0, items: [], error: '', fallback: false, hasMore: false, requestId: 0 });
@@ -18372,6 +18372,33 @@ ${ocrText}`
         .map(item => String(item || '').trim())
         .filter(Boolean))).slice(0, 20);
     }
+    function normalizeCompanyIndustry(value) {
+      return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+    }
+    async function extractCompanyIndustryForCompany(company, positions) {
+      const positionContext = positions.map(position => [
+        `岗位：${position.title || '未命名岗位'}`,
+        `岗位职责：${String(position.description || '').slice(0, 1800)}`,
+        `岗位关键词：${normalizePositionSkills(position.skills).join('、') || '暂无'}`,
+      ].join('\n')).join('\n\n');
+      const parsed = await callDeepSeekWithProgress({
+        task: 'company-industry-detection',
+        getApiKey: requireDeepSeekApiKey,
+        temperature: 0.1,
+        timeout: 20000,
+        schema: 'json',
+        messages: [{
+          role: 'system',
+          content: '你是企业研究助手。只输出严格 JSON，不要解释，不要编造具体公司事实。'
+        }, {
+          role: 'user',
+          content: `请根据公司名称和岗位信息判断公司所属行业或业务赛道，返回最准确的一级行业+细分方向，控制在 2-12 个汉字。输出 JSON：{"industry":"行业/赛道"}\n\n公司名称：${company.name || '未知公司'}\n公司简介：${String(company.profileText || '').slice(0, 1800) || '未提供'}\n${positionContext}`
+        }]
+      });
+      const industry = normalizeCompanyIndustry(parsed?.industry);
+      if (!industry) throw new Error('未能识别公司所属行业');
+      return industry;
+    }
     async function extractPositionSkillsForPosition(position) {
       const description = String(position.description || '').trim();
       if (!description) throw new Error('岗位职责与要求为空');
@@ -18412,9 +18439,11 @@ ${ocrText}`
     }
     async function runBulkPositionSkillsExtraction() {
       if (!canWrite || !canConfigureAi || positionSkillsBatch.running) return;
-      const positions = workbenchV2.positions.filter(position => String(position.description || '').trim());
-      if (!positions.length) { showToast('暂无包含岗位职责的岗位可提取关键词', 'error'); return; }
-      Object.assign(positionSkillsBatch, { running: true, total: positions.length, completed: 0, succeeded: 0, failed: 0, current: '' });
+      const allPositions = workbenchV2.positions;
+      const positions = allPositions.filter(position => String(position.description || '').trim());
+      const companiesWithPositions = new Set(allPositions.map(position => position.companyId).filter(Boolean));
+      if (!positions.length && !companiesWithPositions.size) { showToast('暂无可用于识别的岗位或公司', 'error'); return; }
+      Object.assign(positionSkillsBatch, { running: true, total: positions.length, completed: 0, succeeded: 0, failed: 0, industrySucceeded: 0, industryFailed: 0, current: '' });
       try {
         for (const position of positions) {
           positionSkillsBatch.current = position.title || '未命名岗位';
@@ -18430,12 +18459,34 @@ ${ocrText}`
             positionSkillsBatch.completed += 1;
           }
         }
-        if (positionSkillsBatch.succeeded) {
+        const positionsByCompany = new Map();
+        allPositions.forEach(position => {
+          if (!position.companyId) return;
+          const list = positionsByCompany.get(position.companyId) || [];
+          list.push(position);
+          positionsByCompany.set(position.companyId, list);
+        });
+        for (const [companyId, companyPositions] of positionsByCompany) {
+          const company = companyById.value.get(companyId);
+          if (!company || normalizeCompanyIndustry(company.industry)) continue;
+          try {
+            company.industry = await extractCompanyIndustryForCompany(company, companyPositions);
+            company.updatedAt = new Date().toISOString();
+            positionSkillsBatch.industrySucceeded += 1;
+          } catch (error) {
+            positionSkillsBatch.industryFailed += 1;
+            console.warn('[workbenchV2] 公司行业识别失败:', companyId, error.message);
+          }
+        }
+        if (positionSkillsBatch.succeeded || positionSkillsBatch.industrySucceeded) {
           const saved = await saveWorkbenchV2();
           if (cloudReady) schedulePush();
+          const industryMessage = positionSkillsBatch.industrySucceeded
+            ? `；自动识别 ${positionSkillsBatch.industrySucceeded} 家公司行业`
+            : '';
           showToast(saved
-            ? `全部岗位关键词提取完成：成功 ${positionSkillsBatch.succeeded}，失败 ${positionSkillsBatch.failed}`
-            : `关键词已暂存：成功 ${positionSkillsBatch.succeeded}，失败 ${positionSkillsBatch.failed}`);
+            ? `全部岗位关键词提取完成：成功 ${positionSkillsBatch.succeeded}，失败 ${positionSkillsBatch.failed}${industryMessage}`
+            : `关键词已暂存：成功 ${positionSkillsBatch.succeeded}，失败 ${positionSkillsBatch.failed}${industryMessage}`);
         } else {
           showToast(`未能提取有效关键词：失败 ${positionSkillsBatch.failed}`, 'error');
         }
