@@ -4161,9 +4161,6 @@
             <div class="resume-toolbar flex items-center justify-between gap-4 flex-wrap rounded-3xl border border-slate-100 bg-white px-6 py-5 shadow-sm">
               <div class="flex items-center gap-3">
                 <h2 class="text-2xl font-bold tracking-tight text-slate-800">简历</h2>
-                <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 disabled:opacity-50">
-                  <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
-                </select>
               </div>
               <div class="flex items-center gap-3 flex-wrap">
                 <span v-if="candidateResumeEdit.active" class="flex items-center gap-2">
@@ -4186,6 +4183,9 @@
             </div>
             <div class="rounded-xl border border-slate-200 bg-white p-5">
             <div v-if="activeCandidateResumeVersion" class="flex flex-wrap items-center gap-2 text-xs" role="status" aria-live="polite">
+              <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 disabled:opacity-50">
+                <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
+              </select>
               <span class="text-slate-500">{{ resumeOriginalStatusLabel(activeCandidateResumeVersion) }}</span>
               <button v-if="canWrite && ['local-only','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" type="button" @click="retryCandidateResumeFileSync" :disabled="activeCandidateResumeVersion.originalFileStatus === 'syncing'" class="font-semibold text-emerald-700 hover:text-emerald-800">同步原始文件</button>
               <label v-if="canWrite && activeCandidateResumeVersion.originalFileStatus === 'missing'" class="font-semibold text-blue-700 hover:text-blue-800 cursor-pointer">重新上传原件<input aria-label="重新上传当前简历原件" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
