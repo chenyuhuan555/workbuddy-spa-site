@@ -85,6 +85,7 @@ test('old guest seed data is enriched without replacing visitor edits', () => {
   workspace.meta.seedVersion = 1;
   workspace.workbenchV2.positions[0].description = '游客自己改过的岗位说明';
   workspace.workbenchV2.applications[0].progressNote = '游客自己的备注';
+  workspace.workbenchV2.notes = [{ id: 'user_note', content: '游客自己的知识备注' }];
   workspace.kb = workspace.kb.slice(0, 1);
   storage.setItem(api.STORAGE_KEY, JSON.stringify(workspace));
 
@@ -92,6 +93,7 @@ test('old guest seed data is enriched without replacing visitor edits', () => {
   assert.equal(reloaded.meta.seedVersion, 2);
   assert.equal(reloaded.workbenchV2.positions[0].description, '游客自己改过的岗位说明');
   assert.equal(reloaded.workbenchV2.applications[0].progressNote, '游客自己的备注');
+  assert.ok(reloaded.workbenchV2.notes.some(item => item.id === 'user_note'));
   assert.ok(reloaded.workbenchV2.applications[0].communicationLog);
   assert.ok(reloaded.kb.length >= 8);
 });

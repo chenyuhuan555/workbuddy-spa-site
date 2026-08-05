@@ -275,14 +275,16 @@
         changed = true;
       }
     });
-    if (!Array.isArray(workbench.activities) || workbench.activities.length < seedWorkbench.activities.length) {
-      workbench.activities = clone(seedWorkbench.activities);
-      changed = true;
-    }
-    if (!Array.isArray(workbench.notes) || workbench.notes.length < seedWorkbench.notes.length) {
-      workbench.notes = clone(seedWorkbench.notes);
-      changed = true;
-    }
+    if (!Array.isArray(workbench.activities)) workbench.activities = [];
+    const existingActivityIds = new Set(workbench.activities.map(item => item.id));
+    seedWorkbench.activities.forEach(item => {
+      if (!existingActivityIds.has(item.id)) { workbench.activities.push(clone(item)); changed = true; }
+    });
+    if (!Array.isArray(workbench.notes)) workbench.notes = [];
+    const existingNoteIds = new Set(workbench.notes.map(item => item.id));
+    seedWorkbench.notes.forEach(item => {
+      if (!existingNoteIds.has(item.id)) { workbench.notes.push(clone(item)); changed = true; }
+    });
     const existingKb = new Set((Array.isArray(workspace.kb) ? workspace.kb : []).map(item => item.id));
     seed.kb.forEach(item => {
       if (!existingKb.has(item.id)) {
