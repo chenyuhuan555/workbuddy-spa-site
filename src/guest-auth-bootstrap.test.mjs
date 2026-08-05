@@ -26,7 +26,7 @@ function createHarness(restoreState) {
   const ids = [
     'wb-auth', 'wb-login-shell', 'wb-password-shell', 'wb-config-shell', 'app',
     'wb-account-bar', 'wb-account-name', 'wb-account-role', 'wb-login-error',
-    'wb-login-form', 'wb-login-username', 'wb-login-password', 'wb-password-form',
+    'wb-login-form', 'wb-login-username', 'wb-login-password', 'wb-login-cancel', 'wb-password-form',
     'wb-new-password', 'wb-confirm-password', 'wb-password-error', 'wb-logout',
   ];
   const elements = Object.fromEntries(ids.map(id => [id, createElement(id)]));
@@ -172,4 +172,23 @@ test('explicit logout opens the login screen instead of re-entering guest mode',
   assert.equal(harness.elements.app.style.display, 'none');
   assert.equal(harness.reloadCount, 1);
   assert.equal(harness.guestAiInstallCount, 0);
+});
+
+test('logged-out login screen can return to guest demo mode', async () => {
+  const harness = createHarness({
+    status: 'authenticated',
+    profile: { username: 'member', display_name: '正式成员', role: 'editor' },
+    user: { id: 'user-1' },
+  });
+  await nextTurn();
+
+  await harness.elements['wb-logout'].listeners.click();
+  await nextTurn();
+  assert.equal(harness.elements['wb-login-cancel'].style.display, 'block');
+
+  await harness.elements['wb-login-cancel'].listeners.click();
+  await nextTurn();
+  assert.equal(harness.sandbox.WorkBuddyRuntimeMode, 'guest');
+  assert.equal(harness.elements['wb-auth'].style.display, 'none');
+  assert.equal(harness.elements.app.style.display, 'block');
 });

@@ -32,7 +32,7 @@
     loginShell.style.display = 'block';
     passwordShell.style.display = 'none';
     configShell.style.display = 'none';
-    if (loginCancel) loginCancel.style.display = window.WorkBuddyRuntimeMode === 'guest' ? 'block' : 'none';
+    if (loginCancel) loginCancel.style.display = 'block';
   }
 
   function closeLogin() {
@@ -156,7 +156,9 @@
     } catch (_) { showAuthFailure(); }
   });
 
-  if (loginCancel) loginCancel.addEventListener('click', closeLogin);
+  if (loginCancel) loginCancel.addEventListener('click', function () {
+    enterGuestMode().catch(showAuthFailure);
+  });
 
   document.getElementById('wb-password-form').addEventListener('submit', async function (event) {
     event.preventDefault();
