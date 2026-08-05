@@ -4179,8 +4179,8 @@
                   </div>
                 </div>
                 <div class="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <button type="button" @click="switchCandidateResumeMode('text')" :class="['inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold transition', candidateResumeView.mode === 'text' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500 hover:bg-slate-50']"><span aria-hidden="true">▤</span>电子简历</button>
-                  <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['inline-flex items-center gap-2 border-l border-slate-200 px-5 py-3 text-sm font-semibold transition', candidateResumeView.mode === 'original' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500 hover:bg-slate-50']"><span aria-hidden="true">▱</span>原始文件</button>
+                  <button type="button" @click="switchCandidateResumeMode('text')" :class="['inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold transition', candidateResumeView.mode === 'text' ? 'bg-emerald-100 text-emerald-800 shadow-inner' : 'text-slate-500 hover:bg-slate-50']"><span aria-hidden="true">▤</span>电子简历</button>
+                  <button v-if="hasCandidateResumeOriginal" type="button" @click="switchCandidateResumeMode('original')" :class="['inline-flex items-center gap-2 border-l border-slate-200 px-5 py-3 text-sm font-semibold transition', candidateResumeView.mode === 'original' ? 'bg-emerald-100 text-emerald-800 shadow-inner' : 'text-slate-500 hover:bg-slate-50']"><span aria-hidden="true">▱</span>原始文件</button>
                 </div>
               </div>
             </div>
@@ -11168,8 +11168,15 @@ const vueAppConfig = {
     }
     async function recoverResumeAiProcessing() {
       const pendingKeys = readResumeAiPendingKeys();
-      if (!pendingKeys.length) return;
-      const recovered = ResumeAiProcessing.recoverInterrupted(workbenchV2, pendingKeys);
+      const activeKeys = new Set(pendingKeys);
+      (workbenchV2.candidates || []).forEach(candidate => {
+        (candidate.resumeVersions || []).forEach(version => {
+          if (version.formatStatus === 'processing') activeKeys.add(`${candidate.id}:${version.id}`);
+        });
+      });
+      const recoveryKeys = [...activeKeys];
+      if (!recoveryKeys.length) return;
+      const recovered = ResumeAiProcessing.recoverInterrupted(workbenchV2, recoveryKeys);
       const validKeys = recovered.map(item => `${item.candidateId}:${item.versionId}`);
       writeResumeAiPendingKeys(validKeys);
       if (!validKeys.length) return;

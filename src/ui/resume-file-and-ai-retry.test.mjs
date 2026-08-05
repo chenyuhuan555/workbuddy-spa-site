@@ -59,5 +59,7 @@ test('新增简历动作保持按钮类型和文件输入可访问名称', () =>
   assert.match(INDEX_HTML, />编辑简历<\/button>/);
   assert.match(INDEX_HTML, />重新处理 <span/);
   assert.match(INDEX_HTML, /candidateResumeProcessMenuOpen/);
+  assert.match(INDEX_HTML, /candidateResumeView\.mode === 'text' \? 'bg-emerald-100/);
+  assert.match(INDEX_HTML, /version\.formatStatus === 'processing'/);
   assert.match(INDEX_HTML, /<input[^>]+aria-label="重新上传当前简历原件"[^>]+type="file"/);
 });

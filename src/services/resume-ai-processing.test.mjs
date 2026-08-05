@@ -375,7 +375,7 @@ test('页面只恢复显式记录的中断任务，不扫描全部历史简历',
   assert.match(INDEX_HTML, /resumeAiPendingStore = window\.WorkBuddyResumeAiPendingStore\.createResumeAiPendingStore/);
   assert.match(INDEX_HTML, /key: STORAGE_KEY \+ '_resume_ai_pending_v1'/);
   assert.match(INDEX_HTML, /function recoverResumeAiProcessing\(\)/);
-  assert.match(INDEX_HTML, /ResumeAiProcessing\.recoverInterrupted\(workbenchV2, pendingKeys\)/);
+  assert.match(INDEX_HTML, /ResumeAiProcessing\.recoverInterrupted\(workbenchV2, recoveryKeys\)/);
   assert.match(INDEX_HTML, /await recoverResumeAiProcessing\(\);/);
   const recoveryBody = INDEX_HTML.match(/async function recoverResumeAiProcessing\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
   assert.doesNotMatch(recoveryBody, /flatMap|resumeVersions\.forEach|candidates\.forEach/);
