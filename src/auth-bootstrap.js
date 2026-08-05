@@ -6,6 +6,9 @@
   var appRoot = document.getElementById('app');
   var accountBar = document.getElementById('wb-account-bar');
   var loginCancel = document.getElementById('wb-login-cancel');
+  var forgotPassword = document.getElementById('wb-forgot-password');
+  var contactShell = document.getElementById('wb-contact-shell');
+  var contactClose = document.getElementById('wb-contact-close');
   var booted = false;
   var LOGOUT_INTENT_KEY = 'workbuddy.logout_intent.v1';
   var LOGIN_HANDOFF_KEY = 'workbuddy.login_handoff.v1';
@@ -33,6 +36,7 @@
     passwordShell.style.display = 'none';
     configShell.style.display = 'none';
     if (loginCancel) loginCancel.style.display = 'block';
+    if (contactShell) contactShell.style.display = 'none';
   }
 
   function closeLogin() {
@@ -158,6 +162,12 @@
 
   if (loginCancel) loginCancel.addEventListener('click', function () {
     enterGuestMode().catch(showAuthFailure);
+  });
+  if (forgotPassword) forgotPassword.addEventListener('click', function () {
+    if (contactShell) contactShell.style.display = 'block';
+  });
+  if (contactClose) contactClose.addEventListener('click', function () {
+    if (contactShell) contactShell.style.display = 'none';
   });
 
   document.getElementById('wb-password-form').addEventListener('submit', async function (event) {
