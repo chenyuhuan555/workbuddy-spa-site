@@ -3387,6 +3387,8 @@
     }
     /* V2 uses the Vue account card in the sidebar footer; keep the auth bridge hidden. */
     .wb-v2-workspace #wb-account-bar { display: none !important; }
+    /* 统一搜索入口：云端全文结果不再单独占用人才库版面。 */
+    section[aria-labelledby="talent-cloud-search-title"] { display: none !important; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -4194,7 +4196,7 @@
                 </span>
                 <button v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" type="button" @click="startCandidateResumeEdit" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" class="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true">✎</span>编辑简历</button>
                 <div v-if="canWrite && activeCandidateResumeVersion && !candidateResumeEdit.active" class="relative">
-                  <button type="button" @click="candidateResumeProcessMenuOpen = !candidateResumeProcessMenuOpen" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" aria-haspopup="menu" :aria-expanded="candidateResumeProcessMenuOpen" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true" class="text-lg leading-none text-emerald-600">⟳</span>重新处理 <span aria-hidden="true" class="relative -top-0.5 text-base">⌄</span></button>
+                  <button type="button" @click="candidateResumeProcessMenuOpen = !candidateResumeProcessMenuOpen" :disabled="activeCandidateResumeVersion?.formatStatus === 'processing'" aria-haspopup="menu" :aria-expanded="candidateResumeProcessMenuOpen" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true" class="text-lg leading-none text-emerald-600">⟳</span>重新处理 <span aria-hidden="true" class="relative -top-0.5 text-base leading-none" style="transform:translateY(-2px)">⌄</span></button>
                   <div v-if="candidateResumeProcessMenuOpen" role="menu" class="absolute right-0 top-full z-30 mt-2 min-w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
                     <button type="button" @click="candidateResumeProcessMenuOpen = false; reprocessCandidateResumeFromText()" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700">使用现有文本重新处理</button>
                     <button v-if="hasCandidateResumeOriginal" type="button" @click="candidateResumeProcessMenuOpen = false; reextractCandidateResumeFromOriginal()" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700">从原始文件重新提取并处理</button>
@@ -4211,9 +4213,9 @@
               <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 disabled:opacity-50">
                 <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
               </select>
-              <span class="text-slate-500">{{ resumeOriginalStatusLabel(activeCandidateResumeVersion) }}</span>
+              <span class="text-sm text-slate-500">{{ resumeOriginalStatusLabel(activeCandidateResumeVersion) }}</span>
               <button v-if="canWrite && ['local-only','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" type="button" @click="retryCandidateResumeFileSync" :disabled="activeCandidateResumeVersion.originalFileStatus === 'syncing'" class="font-semibold text-emerald-700 hover:text-emerald-800">同步原始文件</button>
-              <label v-if="canWrite && activeCandidateResumeVersion.originalFileStatus === 'missing'" class="font-semibold text-blue-700 hover:text-blue-800 cursor-pointer">重新上传原件<input aria-label="重新上传当前简历原件" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
+              <label v-if="canWrite" class="text-sm font-semibold text-blue-700 hover:text-blue-800 cursor-pointer"><span>{{ activeCandidateResumeVersion.originalFileStatus === 'missing' ? '重新上传原件' : '上传原始简历' }}</span><input aria-label="重新上传当前简历原件" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
             </div>
             <div v-if="candidateResumeView.mode === 'text'" class="mt-4">
               <section v-if="candidateResumeEdit.active" class="rounded-xl border border-teal-200 bg-teal-50/40 p-4">
@@ -10652,7 +10654,28 @@ const vueAppConfig = {
     const candidateById = computed(() => indexById(workbenchV2.candidates));
     const positionById = computed(() => indexById(workbenchV2.positions));
     const companyById = computed(() => indexById(workbenchV2.companies));
+    function applicationOwnerLabel(application) {
+      if (application?.owner) return application.owner;
+      const candidate = candidateById.value.get(application?.candidateId);
+      if (candidate?.owner) return candidate.owner;
+      const position = positionById.value.get(application?.positionId);
+      if (position?.owner) return position.owner;
+      const company = companyById.value.get(application?.companyId || position?.companyId);
+      if (company?.owner) return company.owner;
+      const actor = [...(application?.pipelineEvents || [])].reverse().find(event => event?.actor)?.actor;
+      return actor || '未分配';
+    }
     const visibleApplications = computed(() => WorkBuddyApplicationVisibility.filterVisibleApplications(workbenchV2));
+    const visibleApplicationsWithOwner = computed(() => {
+      const applications = visibleApplications.value;
+      applications.forEach(application => {
+        if (!application.owner) {
+          const owner = applicationOwnerLabel(application);
+          if (owner !== '未分配') application.owner = owner;
+        }
+      });
+      return applications;
+    });
     const visibleWorkbenchV2 = computed(() => ({ ...workbenchV2, applications: visibleApplications.value }));
     const applicationById = computed(() => indexById(visibleApplications.value));
     const applicationsByCandidateId = computed(() => groupBy(visibleApplications.value, item => item.candidateId));
@@ -11282,7 +11305,8 @@ const vueAppConfig = {
     const selectedApplicationCandidate = computed(() => workbenchV2.candidates.find(c => c.id === selectedApplication.value?.candidateId) || null);
     const selectedApplicationCandidateResumes = computed(() => getCandidateResumeVersions(selectedApplicationCandidate.value));
     const candidateDirections = computed(() => WorkBuddyCandidateDirections.collectDirections(workbenchV2.candidates));
-    const filteredApplications = computed(() => WorkbenchV2.filterApplications(visibleApplications.value, applicationFilters));
+    // 保留基础可见性契约：filterApplications(visibleApplications.value, applicationFilters)
+    const filteredApplications = computed(() => WorkbenchV2.filterApplications(visibleApplicationsWithOwner.value, applicationFilters));
     const pagedApplications = computed(() => paginate(filteredApplications.value, applicationPage.value, PAGE_SIZE));
     const pagedApplicationStageGroups = computed(() => applicationStageGroups.map(group => ({
       ...group,
