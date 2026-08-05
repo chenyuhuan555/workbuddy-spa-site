@@ -30,6 +30,21 @@ test('rejects incomplete input without calling AI', async () => {
   assert.equal(calls, 0);
 });
 
+test('uses the latest resume version text when candidate-level text is absent', async () => {
+  const state = context();
+  state.candidate.electronicResumeText = '';
+  state.candidate.resumeVersions = [{ rawText: '供应链销售负责人，负责华东区域客户拓展' }];
+  let prompt = '';
+  const actions = createApplicationMatchAnalysisActions({
+    getContext: () => state,
+    callAi: async request => { prompt = request.messages[1].content; return JSON.stringify({ score: 82 }); },
+    save: async () => true,
+  });
+  const result = await actions.analyze();
+  assert.equal(result.ok, true);
+  assert.match(prompt, /供应链销售负责人/);
+});
+
 test('keeps old result when AI or persistence fails', async () => {
   const state = context();
   const actions = createApplicationMatchAnalysisActions({ getContext: () => state, callAi: async () => 'not-json', save: async () => false });

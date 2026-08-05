@@ -25,7 +25,10 @@ export function createApplicationMatchAnalysisActions({ getContext, callAi, getA
   async function analyzeApplication(application, candidate, position) {
     if (running) return { ok: false, error: '分析正在进行中' };
     if (!application || !candidate || !position) return { ok: false, error: '候选人、岗位或推进记录不存在' };
-    const resumeText = String(candidate.formattedText || candidate.electronicResumeText || candidate.rawText || candidate.candidateProfileText || '').trim();
+    const versionText = (candidate.resumeVersions || [])
+      .flatMap(version => [version?.formattedText, version?.rawText, version?.electronicResumeText])
+      .find(value => String(value || '').trim());
+    const resumeText = String(candidate.formattedText || candidate.electronicResumeText || candidate.rawText || candidate.candidateProfileText || candidate.profileText || versionText || '').trim();
     const jobText = [position.title, position.description, ...(Array.isArray(position.skills) ? position.skills : [])].filter(Boolean).join('\n').trim();
     if (!jobText) return { ok: false, error: '岗位信息不足，请先补充岗位职责或匹配关键词' };
     if (!resumeText) return { ok: false, error: '候选人简历文本不足，请先完成简历提取' };

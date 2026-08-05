@@ -11541,6 +11541,9 @@ const vueAppConfig = {
     }
     async function runBulkApplicationAiScoring() {
       if (!canWrite || !canConfigureAi || applicationBatchScoring.running) return;
+      if (!isGuestMode) {
+        try { requireDeepSeekApiKey(); } catch (error) { showToast(error.message || '请先配置 DeepSeek API Key', 'error'); return; }
+      }
       const targets = filteredApplications.value.filter(application => {
         if (application.matchScore !== null && application.matchScore !== undefined && application.matchScore !== '') return false;
         return candidateById.value.has(application.candidateId) && positionById.value.has(application.positionId);
@@ -11554,16 +11557,17 @@ const vueAppConfig = {
       applicationBatchScoring.completed = 0;
       applicationBatchScoring.scored = 0;
       applicationBatchScoring.failed = 0;
+      let firstError = '';
       for (const application of targets) {
         const candidate = candidateById.value.get(application.candidateId);
         const position = positionById.value.get(application.positionId);
         const result = await applicationMatchAnalysisActions.analyzeApplication(application, candidate, position);
         if (result.ok) applicationBatchScoring.scored += 1;
-        else applicationBatchScoring.failed += 1;
+        else { applicationBatchScoring.failed += 1; firstError ||= result.error || '未知错误'; }
         applicationBatchScoring.completed += 1;
       }
       applicationBatchScoring.running = false;
-      showToast(`AI评分完成：${applicationBatchScoring.scored} 条成功${applicationBatchScoring.failed ? `，${applicationBatchScoring.failed} 条失败` : ''}`);
+      showToast(`AI评分完成：${applicationBatchScoring.scored} 条成功${applicationBatchScoring.failed ? `，${applicationBatchScoring.failed} 条失败（${firstError}）` : ''}`);
     }
     function deletePipelineEvent(application, eventId) { return workbenchApplicationActions.deletePipelineEvent(application, eventId); }
     function openDashboardTodo(todo) {
