@@ -135,6 +135,26 @@ test('successful login from a mounted guest reloads before live data can boot', 
   assert.equal(harness.bootCount, 1, 'live app must not mount over the existing guest app');
 });
 
+test('guest-to-live login handoff never falls back to the guest screen during reload', async () => {
+  const harness = createHarness({ status: 'anonymous', profile: null, user: null });
+  await nextTurn();
+
+  harness.publish({
+    status: 'authenticated',
+    profile: { username: 'admin', display_name: '管理员', role: 'admin' },
+    user: { id: 'admin-1' },
+  });
+  await nextTurn();
+  assert.equal(harness.sessionValues.get('workbuddy.login_handoff.v1'), '1');
+
+  harness.publish({ status: 'anonymous', profile: null, user: null });
+  await nextTurn();
+  assert.equal(harness.sandbox.WorkBuddyRuntimeMode, 'login-pending');
+  assert.equal(harness.elements['wb-auth'].style.display, 'flex');
+  assert.equal(harness.elements.app.style.display, 'none');
+  assert.equal(harness.guestAiInstallCount, 1, 'must not install guest mode a second time');
+});
+
 test('explicit logout opens the login screen instead of re-entering guest mode', async () => {
   const harness = createHarness({
     status: 'authenticated',

@@ -8,6 +8,7 @@
   var loginCancel = document.getElementById('wb-login-cancel');
   var booted = false;
   var LOGOUT_INTENT_KEY = 'workbuddy.logout_intent.v1';
+  var LOGIN_HANDOFF_KEY = 'workbuddy.login_handoff.v1';
   var config = window.WorkBuddySupabaseConfig;
   if (!config || !config.url || !config.publishableKey || !window.supabase || !window.WorkBuddyAuth) {
     loginShell.style.display = 'none';
@@ -86,6 +87,12 @@
         openLogin();
         return;
       }
+      if (window.sessionStorage.getItem(LOGIN_HANDOFF_KEY) === '1') {
+        window.WorkBuddyRuntimeMode = 'login-pending';
+        clearBusinessState();
+        openLogin();
+        return;
+      }
       await enterGuestMode();
       return;
     }
@@ -97,9 +104,11 @@
     if (state.status !== 'authenticated') return;
     window.sessionStorage.removeItem(LOGOUT_INTENT_KEY);
     if (booted && window.WorkBuddyRuntimeMode === 'guest') {
+      window.sessionStorage.setItem(LOGIN_HANDOFF_KEY, '1');
       window.location.reload();
       return;
     }
+    window.sessionStorage.removeItem(LOGIN_HANDOFF_KEY);
     window.WorkBuddyRuntimeMode = 'live';
     window.WorkBuddyAccess = Object.freeze({
       profile: state.profile,
@@ -172,5 +181,13 @@
     window.location.reload();
   });
 
-  controller.restore().catch(function () { enterGuestMode().catch(showAuthFailure); });
+  controller.restore().catch(function () {
+    if (window.sessionStorage.getItem(LOGIN_HANDOFF_KEY) === '1' || window.sessionStorage.getItem(LOGOUT_INTENT_KEY) === '1') {
+      window.WorkBuddyRuntimeMode = 'login-pending';
+      clearBusinessState();
+      openLogin();
+      return;
+    }
+    enterGuestMode().catch(showAuthFailure);
+  });
 })();
