@@ -683,6 +683,13 @@ test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已�
   assert.match(INDEX_HTML, /filterCandidatesByCategory\(.*talentJobMatch\.categoryId/s, '匹配范围需要支持按分类限定');
 });
 
+test('推进中心提供批量 AI 评分并回写匹配分', () => {
+  assert.match(INDEX_HTML, /一键AI评分/);
+  assert.match(INDEX_HTML, /runBulkApplicationAiScoring/);
+  assert.match(INDEX_HTML, /applicationBatchScoring\.completed/);
+  assert.match(INDEX_HTML, /applicationMatchAnalysisActions\.analyzeApplication/);
+});
+
 test('候选人岗位匹配采用卡片布局并展示匹配分与标签', () => {
   assert.match(INDEX_HTML, /candidate-match-card[^\"]*grid-cols-\[minmax\(0,1fr\)_130px_150px\]/, '岗位匹配应保持三栏卡片布局');
   assert.match(INDEX_HTML, /positions\.find\(item => item\.id === match\.positionId\)\?\.skills/, '岗位匹配应展示岗位技能标签');

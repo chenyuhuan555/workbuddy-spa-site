@@ -17,6 +17,7 @@ test('generates, normalizes and saves an application match analysis', async () =
   assert.equal(result.analysis.score, 100);
   assert.deepEqual(result.analysis.risks, ['需确认薪资']);
   assert.equal(state.application.aiMatchAnalysis.score, 100);
+  assert.equal(state.application.matchScore, 100);
   assert.equal(saved, 1);
 });
 

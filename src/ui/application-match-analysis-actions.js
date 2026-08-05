@@ -22,9 +22,8 @@ export function createApplicationMatchAnalysisActions({ getContext, callAi, getA
     };
   }
 
-  async function analyze() {
+  async function analyzeApplication(application, candidate, position) {
     if (running) return { ok: false, error: '分析正在进行中' };
-    const { application, candidate, position } = getContext?.() || {};
     if (!application || !candidate || !position) return { ok: false, error: '候选人、岗位或推进记录不存在' };
     const resumeText = String(candidate.formattedText || candidate.electronicResumeText || candidate.rawText || candidate.candidateProfileText || '').trim();
     const jobText = [position.title, position.description, ...(Array.isArray(position.skills) ? position.skills : [])].filter(Boolean).join('\n').trim();
@@ -38,9 +37,12 @@ export function createApplicationMatchAnalysisActions({ getContext, callAi, getA
       ] });
       const analysis = { ...parseAnalysis(content), generatedAt: now() };
       const previous = application.aiMatchAnalysis;
+      const previousScore = application.matchScore;
       application.aiMatchAnalysis = analysis;
+      application.matchScore = analysis.score;
       if (!await save()) {
         application.aiMatchAnalysis = previous;
+        application.matchScore = previousScore;
         return { ok: false, error: '匹配分析保存失败，请重试' };
       }
       showToast('候选人与岗位匹配分析已完成');
@@ -52,7 +54,12 @@ export function createApplicationMatchAnalysisActions({ getContext, callAi, getA
     }
   }
 
-  return { analyze, parseAnalysis };
+  async function analyze() {
+    const { application, candidate, position } = getContext?.() || {};
+    return analyzeApplication(application, candidate, position);
+  }
+
+  return { analyze, analyzeApplication, parseAnalysis };
 }
 
 if (typeof window !== 'undefined') window.WorkBuddyApplicationMatchAnalysisActions = { createApplicationMatchAnalysisActions };
