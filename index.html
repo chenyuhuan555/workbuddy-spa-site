@@ -9786,8 +9786,8 @@
         <div v-if="!advisorPanel.meetingArticle" class="absolute inset-0 bg-slate-900/20 pointer-events-auto" @click="advisorPanel.open = false"></div>
         <aside :class="['advisor-panel max-w-full bg-white shadow-2xl border border-slate-200/60 pointer-events-auto flex flex-col overflow-hidden rounded-2xl', advisorPanel.meetingArticle ? 'h-full w-full' : 'absolute right-4 top-4 bottom-4 w-[420px]']"
           :style="advisorPanel.meetingArticle ? null : advisorPanelStyle">
-          <div v-if="!advisorPanel.meetingArticle" class="advisor-resize-handle absolute left-0 top-0 h-full w-2 -translate-x-1 rounded-l-lg transition"
-            @mousedown="startAdvisorResize"
+          <div v-if="!advisorPanel.meetingArticle" class="advisor-resize-handle absolute left-0 top-0 h-full w-3 -translate-x-1 rounded-l-lg transition"
+            @pointerdown="startAdvisorResize"
             title="拖拽调整助手宽度"></div>
           <!-- 紧凑顶部栏：对话切换 + 上下文指示 + 关闭 -->
           <div class="px-3 py-1.5 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2 flex-shrink-0">
@@ -17894,9 +17894,11 @@ ${ocrText}`
     }
 
     function startAdvisorResize(e) {
+      if (e.button !== undefined && e.button !== 0) return;
       advisorPanel.resizing = true;
-      document.addEventListener('mousemove', moveAdvisorResize);
-      document.addEventListener('mouseup', endAdvisorResize);
+      document.addEventListener('pointermove', moveAdvisorResize);
+      document.addEventListener('pointerup', endAdvisorResize);
+      document.addEventListener('pointercancel', endAdvisorResize);
       e.preventDefault();
       e.stopPropagation();
     }
@@ -17905,14 +17907,16 @@ ${ocrText}`
       if (!advisorPanel.resizing) return;
       const nextWidth = window.innerWidth - e.clientX;
       advisorPanel.width = Math.max(360, Math.min(nextWidth, getAdvisorPanelMaxWidth()));
+      e.preventDefault();
     }
 
     function endAdvisorResize() {
       if (!advisorPanel.resizing) return;
       advisorPanel.resizing = false;
       saveAdvisorPanelWidth();
-      document.removeEventListener('mousemove', moveAdvisorResize);
-      document.removeEventListener('mouseup', endAdvisorResize);
+      document.removeEventListener('pointermove', moveAdvisorResize);
+      document.removeEventListener('pointerup', endAdvisorResize);
+      document.removeEventListener('pointercancel', endAdvisorResize);
     }
 
     function toggleAdvisorQuickPrompts() {
