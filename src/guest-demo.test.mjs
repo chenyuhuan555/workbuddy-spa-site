@@ -34,6 +34,7 @@ test('empty guest storage starts with an explicitly fictional schema-v2 workspac
   assert.equal(workspace.meta.mode, 'guest-demo');
   assert.equal(workspace.meta.fictional, true);
   assert.ok(workspace.workbenchV2.companies.every(item => item.demo === true));
+  assert.ok(workspace.workbenchV2.candidates.every(item => /^138\d{8}$/.test(item.phone)));
   assert.deepEqual(storage.keys(), [api.STORAGE_KEY]);
 });
 

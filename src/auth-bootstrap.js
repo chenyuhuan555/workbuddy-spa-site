@@ -5,6 +5,7 @@
   var configShell = document.getElementById('wb-config-shell');
   var appRoot = document.getElementById('app');
   var accountBar = document.getElementById('wb-account-bar');
+  var loginCancel = document.getElementById('wb-login-cancel');
   var booted = false;
   var config = window.WorkBuddySupabaseConfig;
   if (!config || !config.url || !config.publishableKey || !window.supabase || !window.WorkBuddyAuth) {
@@ -24,6 +25,44 @@
     window.WorkBuddyAccess = null;
   }
 
+  function openLogin() {
+    authRoot.style.display = 'flex';
+    loginShell.style.display = 'block';
+    passwordShell.style.display = 'none';
+    configShell.style.display = 'none';
+    if (loginCancel) loginCancel.style.display = window.WorkBuddyRuntimeMode === 'guest' ? 'block' : 'none';
+  }
+
+  function closeLogin() {
+    if (window.WorkBuddyRuntimeMode !== 'guest') return;
+    authRoot.style.display = 'none';
+    loginShell.style.display = 'none';
+  }
+
+  window.WorkBuddyAuthUi = Object.freeze({ openLogin: openLogin, closeLogin: closeLogin });
+
+  async function enterGuestMode() {
+    window.WorkBuddyRuntimeMode = 'guest';
+    window.WorkBuddyGuestDemoAi.install(window);
+    window.WorkBuddyAccess = Object.freeze({
+      profile: { display_name: '游客', username: 'guest', role: 'guest' },
+      isGuest: true,
+      canWrite: true,
+      canAccessCloud: false,
+      canConfigureAi: true,
+      canManageMembers: false
+    });
+    authRoot.style.display = 'none';
+    loginShell.style.display = 'none';
+    passwordShell.style.display = 'none';
+    accountBar.style.display = 'none';
+    appRoot.style.display = 'block';
+    if (!booted) {
+      booted = true;
+      await window.WorkBuddyBootApp();
+    }
+  }
+
   function dockAccountBar() {
     var sidebar = document.querySelector('.wb-v2-sidebar');
     if (!sidebar) return;
@@ -39,12 +78,26 @@
   }
 
   async function onStateChange(state) {
-    loginShell.style.display = state.status === 'anonymous' || state.status === 'authenticating' ? 'block' : 'none';
+    if (state.status === 'anonymous') {
+      await enterGuestMode();
+      return;
+    }
+    loginShell.style.display = state.status === 'authenticating' ? 'block' : 'none';
     passwordShell.style.display = state.status === 'must-change-password' ? 'block' : 'none';
+    if (state.status === 'authenticating' || state.status === 'must-change-password') {
+      authRoot.style.display = 'flex';
+    }
     if (state.status !== 'authenticated') return;
+    if (booted && window.WorkBuddyRuntimeMode === 'guest') {
+      window.location.reload();
+      return;
+    }
+    window.WorkBuddyRuntimeMode = 'live';
     window.WorkBuddyAccess = Object.freeze({
       profile: state.profile,
+      isGuest: false,
       canWrite: state.profile.role === 'admin' || state.profile.role === 'editor',
+      canAccessCloud: true,
       canConfigureAi: state.profile.role === 'admin' || state.profile.role === 'editor',
       canManageMembers: state.profile.role === 'admin'
     });
@@ -70,9 +123,8 @@
   window.WorkBuddyAuthController = controller;
 
   function showAuthFailure() {
-    clearBusinessState();
-    authRoot.style.display = 'flex';
-    loginShell.style.display = 'block';
+    if (window.WorkBuddyRuntimeMode !== 'guest') clearBusinessState();
+    openLogin();
     document.getElementById('wb-login-error').textContent = '用户名或密码错误';
     document.getElementById('wb-login-error').style.display = 'block';
   }
@@ -86,6 +138,8 @@
       document.getElementById('wb-login-password').value = '';
     } catch (_) { showAuthFailure(); }
   });
+
+  if (loginCancel) loginCancel.addEventListener('click', closeLogin);
 
   document.getElementById('wb-password-form').addEventListener('submit', async function (event) {
     event.preventDefault();
@@ -109,5 +163,5 @@
     window.location.reload();
   });
 
-  controller.restore().catch(showAuthFailure);
+  controller.restore().catch(function () { enterGuestMode().catch(showAuthFailure); });
 })();

@@ -15,6 +15,7 @@
   <script src="./src/supabase-workspace.js?v=20260713-auth2"></script>
   <script src="./src/private-todos.js?v=20260714-private1"></script>
   <script src="./src/ai.js"></script>
+  <script src="./src/guest-demo-ai.js?v=20260805-guestdemoai1"></script>
   <script src="./src/search-filters.js"></script>
   <script src="./src/constants/pipeline-stages.js?v=20260728-phase0"></script>
   <script src="./src/workbench-v2.js"></script>
@@ -3402,6 +3403,7 @@
       </label>
       <p id="wb-login-error" role="alert" style="display:none;color:#dc2626;font-size:13px;margin:8px 0"></p>
       <button id="wb-login-submit" type="submit" style="width:100%;margin-top:10px;padding:12px;border:0;border-radius:12px;background:#047857;color:white;font-size:15px;font-weight:700;cursor:pointer">登录</button>
+      <button id="wb-login-cancel" type="button" style="display:none;width:100%;margin-top:10px;padding:10px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#475569;font-size:14px;font-weight:700;cursor:pointer">返回游客演示</button>
     </form>
     <p style="margin:18px 0 0;color:#94a3b8;font-size:12px;text-align:center">忘记密码请联系管理员</p>
   </section>
@@ -3542,8 +3544,13 @@
           </div>
         </div>
         <div class="ml-auto flex items-center gap-3">
+          <div v-if="isGuestMode" class="flex shrink-0 items-center gap-2 whitespace-nowrap">
+            <span class="hidden 2xl:inline-flex items-center rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">游客演示模式</span>
+            <button type="button" @click="resetGuestDemo" class="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-50">重置演示数据</button>
+            <button type="button" @click="openGuestLogin" class="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800">登录查看真实数据</button>
+          </div>
           <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
-          <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : '已保存' }}</span>
+          <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : isGuestMode ? '已保存到本浏览器' : '已保存' }}</span>
           <div class="relative">
             <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="wb-v2-create-button px-4 py-2 rounded-xl text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="background:#226647!important;color:#fff!important;border:1px solid #1b563b!important;box-shadow:0 8px 18px rgba(39,118,83,.18)!important;min-width:98px">＋ 新建</button>
             <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
@@ -3557,6 +3564,13 @@
       </header>
 
       <main class="wb-v2-main flex-1 overflow-y-auto p-5 lg:p-6">
+        <div v-if="isGuestMode" role="status" class="mx-auto mb-5 flex max-w-[1400px] flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-bold">当前内容均为虚构演示数据</p>
+            <p class="mt-0.5 text-xs text-amber-800">您可以自由新增、修改和删除；数据仅保存在当前浏览器，不会上传云端。AI 功能返回预设模拟结果，不会调用真实服务。</p>
+          </div>
+          <button type="button" @click="openGuestLogin" class="self-start whitespace-nowrap text-xs font-bold text-emerald-800 hover:text-emerald-900 sm:self-auto">登录后查看真实业务数据 →</button>
+        </div>
         <!-- ========== Dashboard 首页（截图设计）========== -->
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard max-w-[1400px] mx-auto space-y-5">
           <!-- 标题区 -->
@@ -10203,6 +10217,10 @@ const vueAppConfig = {
     const ResumeFormattedTextEditor = window.WorkBuddyResumeFormattedTextEditor;
     const ResumeAiProcessing = window.WorkBuddyResumeAiProcessing;
     const ResumeFileSync = window.WorkBuddyResumeFileSync;
+    const isGuestMode = window.WorkBuddyRuntimeMode === 'guest';
+    const guestDemo = isGuestMode
+      ? window.WorkBuddyGuestDemo.createGuestDemo({ storage: window.localStorage })
+      : null;
     // -------- 承接方看板数据 --------
     const columns = reactive([
       { name: '承接方A', jobs: [], editing: false, tempName: '' },
@@ -10214,6 +10232,31 @@ const vueAppConfig = {
     let privateTodoClient = null;
     function getPrivateTodoClient() {
       if (!privateTodoClient) {
+        if (isGuestMode) {
+          privateTodoClient = Object.freeze({
+            list: async () => cloneData(privateTodos),
+            save: async todo => {
+              const now = new Date().toISOString();
+              const saved = {
+                ...cloneData(todo),
+                id: todo.id || `demo_todo_${Date.now().toString(36)}`,
+                demo: true,
+                createdAt: todo.createdAt || now,
+                updatedAt: now,
+              };
+              const index = privateTodos.findIndex(item => item.id === saved.id);
+              if (index >= 0) privateTodos.splice(index, 1, saved);
+              else privateTodos.unshift(saved);
+              await saveGuestWorkspace();
+              return cloneData(saved);
+            },
+            remove: async id => {
+              setTimeout(() => { void saveGuestWorkspace(); }, 0);
+              return id;
+            },
+          });
+          return privateTodoClient;
+        }
         privateTodoClient = window.WorkBuddyPrivateTodos.createClient({
           supabase: window.WorkBuddySupabase,
           getProfile: () => window.WorkBuddyAccess?.profile,
@@ -10255,7 +10298,7 @@ const vueAppConfig = {
       error: '',
       running: false,
     });
-    const workbenchMode = ref(localStorage.getItem(STORAGE_KEY + '_workspace_mode') || 'v2');
+    const workbenchMode = ref(isGuestMode ? 'v2' : (localStorage.getItem(STORAGE_KEY + '_workspace_mode') || 'v2'));
     const workbenchNav = ref('dashboard');
     const workbenchSidebarCollapsed = ref(false);
     const canWrite = window.WorkBuddyAccess?.canWrite === true;
@@ -10269,7 +10312,20 @@ const vueAppConfig = {
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
       { key: 'knowledge', label: '知识库', icon: '知' },
       { key: 'settings', label: '设置', icon: '设' },
-    ].filter(item => canConfigureAi || item.key !== 'settings');
+    ].filter(item => canConfigureAi || item.key !== 'settings')
+      .filter(item => !isGuestMode || item.key !== 'settings');
+
+    function openGuestLogin() {
+      if (!isGuestMode) return;
+      window.WorkBuddyAuthUi.openLogin();
+    }
+
+    function resetGuestDemo() {
+      if (!isGuestMode) return;
+      if (!confirm('重置后将删除您在本浏览器中的全部演示修改，确定继续吗？')) return;
+      guestDemo.resetWorkspace();
+      window.location.reload();
+    }
     const memberManagement = reactive({
       members: [], loading: false, error: '',
       form: { username: '', displayName: '', role: 'member', password: '' }
@@ -10601,7 +10657,7 @@ const vueAppConfig = {
     function talentCloudSearchErrorMessage(error) { return window.WorkBuddyTalentSearchMessages.errorMessage(error); }
     const talentCloudSearchActions = window.WorkBuddyTalentCloudSearchActions.createTalentCloudSearchActions({
       state: talentCloudSearch,
-      isReady: () => Boolean(window.WorkBuddySupabase && window.WorkBuddyAccess?.profile),
+      isReady: () => !isGuestMode && Boolean(window.WorkBuddySupabase && window.WorkBuddyAccess?.profile),
       search: params => getResumeSearchRepo().search(params),
       errorMessage: talentCloudSearchErrorMessage,
     });
@@ -12018,6 +12074,7 @@ const vueAppConfig = {
     }
 
     async function saveWorkbenchV2() {
+      if (isGuestMode) return saveGuestWorkspace();
       if (window.WorkBuddyAccess && !window.WorkBuddyAccess.canWrite) return false;
       try {
         await saveAppSnapshot(APP_SNAPSHOT_KEYS.workbenchV2, workbenchV2);
@@ -13692,8 +13749,43 @@ ${ocrText}`
       }
     }
 
+    function loadGuestWorkspace() {
+      const data = guestDemo.loadWorkspace();
+      const names = Array.isArray(data.names) ? data.names : [];
+      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+      columns.splice(0, columns.length, ...names.map((name, index) => ({
+        name,
+        jobs: cloneData(Array.isArray(jobs[index]) ? jobs[index] : []),
+        editing: false,
+        tempName: '',
+      })));
+      if (!columns.length) columns.push({ name: '演示工作区', jobs: [], editing: false, tempName: '' });
+      replaceWorkbenchV2(data.workbenchV2);
+      kbArticles.splice(0, kbArticles.length, ...cloneData(Array.isArray(data.kb) ? data.kb : []));
+      resumeReasonTags.splice(0, resumeReasonTags.length, ...(Array.isArray(data.resumeReasonTags) ? data.resumeReasonTags : []));
+      replacePrivateTodos(workbenchV2.todos);
+      return true;
+    }
+
+    async function saveGuestWorkspace() {
+      if (!guestDemo) return false;
+      const guestWorkbench = cloneData(workbenchV2);
+      guestWorkbench.todos = cloneData(privateTodos);
+      guestDemo.saveWorkspace({
+        meta: { mode: 'guest-demo', fictional: true, version: 1 },
+        names: columns.map(column => column.name),
+        jobs: cloneData(columns.map(column => column.jobs || [])),
+        workbenchV2: guestWorkbench,
+        kb: cloneData(kbArticles),
+        resumeReasonTags: [...resumeReasonTags],
+        deletedRecords: { jobs: [], positions: [], resumes: [] },
+      });
+      return true;
+    }
+
     // -------- localStorage 本地缓存 --------
     async function localSave() {
+      if (isGuestMode) return saveGuestWorkspace();
       if (window.WorkBuddyAccess && !window.WorkBuddyAccess.canWrite) return false;
       // 主数据与知识库快照写入 IndexedDB；V2 工作台由 saveWorkbenchV2 独立保存。
       const data = packData({ stripLargeText: true, includeWorkbenchV2: false, includeKb: false });
@@ -13941,13 +14033,13 @@ ${ocrText}`
     }
 
     function schedulePush(delay = SYNC_DEBOUNCE) {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite) return;
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || !window.WorkBuddyAccess?.canAccessCloud) return;
       clearTimeout(cloudPushTimer);
       cloudPushTimer = setTimeout(() => { void doPush(); }, delay);
     }
 
     async function doPush() {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || syncStatus.value === 'syncing') return;
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || !window.WorkBuddyAccess?.canAccessCloud || syncStatus.value === 'syncing') return;
       syncStatus.value = 'syncing';
       try {
         if (candidateReadPathEnabled.value) await requireCandidateRowsSynced();
@@ -14009,6 +14101,10 @@ ${ocrText}`
     const saveCoordinator = window.WorkBuddySaveCoordinator.createSaveCoordinator({
       delay: 500,
       save: async domains => {
+        if (isGuestMode) {
+          if (!await saveGuestWorkspace()) throw new Error('游客演示数据保存失败');
+          return;
+        }
         if (domains.has('legacy') && !await localSave()) throw new Error('旧版工作区保存失败');
         if (domains.has('workbench') && !await saveWorkbenchV2()) throw new Error('工作台保存失败');
         if (cloudReady) schedulePush();
@@ -14019,6 +14115,7 @@ ${ocrText}`
     const retryLocalSave = () => saveCoordinator.retry().catch(() => {});
 
     function getWorkspaceStateClient() {
+      if (isGuestMode) throw new Error('GUEST_CLOUD_DISABLED');
       if (!workspaceStateClient) {
         workspaceStateClient = window.WorkBuddyWorkspace.createWorkspaceClient({
           supabase: window.WorkBuddySupabase,
@@ -14750,6 +14847,7 @@ ${ocrText}`
 
     let resumeSearchRepo = null;
     function getResumeSearchRepo() {
+      if (isGuestMode) throw new Error('GUEST_CLOUD_DISABLED');
       if (!resumeSearchRepo) {
         resumeSearchRepo = window.WorkBuddyResumeSearchRepo.createResumeSearchRepo({
           supabase: window.WorkBuddySupabase,
@@ -15208,6 +15306,7 @@ ${ocrText}`
     const { mergeCollectionById, mergeWorkspaceStates } = window.WorkBuddySyncMerge;
 
     async function initCloud() {
+      if (isGuestMode) return;
       syncStatus.value = 'syncing';
       try {
         const workspaceClient = getWorkspaceStateClient();
@@ -15301,6 +15400,15 @@ ${ocrText}`
 
     // -------- 生命周期 --------
     onMounted(async () => {
+      if (isGuestMode) {
+        aiConfig.apiKey = 'sk-guest-demo-local-only';
+        aiConfig.apiKeyValid = true;
+        await loadGuestWorkspace();
+        appHydrating = false;
+        updateActiveNavFromScroll();
+        window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });
+        return;
+      }
       loadAiConfig(); // 加载 AI 配置
       loadAdvisorState(); // 恢复顾问助手本地聊天和悬浮位置
       checkFirstTime(); // 检查是否首次使用，显示引导
@@ -22777,6 +22885,7 @@ ${clipped}`
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
+      isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,

@@ -25,9 +25,10 @@
   }
 
   function candidate(id, name, currentCompany, currentTitle, city, owner, skills, experienceYears) {
+    const demoNumber = String(id).replace(/\D/g, '').slice(-4).padStart(4, '0');
     return {
       id, name, currentCompany, currentTitle, city, owner, skills, experienceYears,
-      phone: `1380000${String(id).slice(-4).padStart(4, '0')}`,
+      phone: `1380000${demoNumber}`,
       email: `${id}@example.invalid`, status: 'open', tags: ['演示人才'], directions: skills.slice(0, 2),
       summary: `${name}为完全虚构的演示候选人，用于展示人才画像、搜索与推进功能。`,
       resumeVersions: [{
