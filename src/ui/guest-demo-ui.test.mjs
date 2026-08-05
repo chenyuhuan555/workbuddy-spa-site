@@ -62,3 +62,11 @@ test('company dashboard header keeps a concise subtitle and two focused actions'
   assert.match(html, /＋ 新建公司/);
   assert.doesNotMatch(html, /AI 重新提取全部岗位关键词/);
 });
+
+test('talent library uses one unified search input for local and cloud resume search', () => {
+  assert.match(html, /placeholder="搜索姓名、公司、技能、简历原文…"/);
+  assert.match(html, /@input="syncUnifiedTalentSearch"/);
+  assert.match(html, /@keyup\.enter="runUnifiedTalentSearch"/);
+  assert.match(html, /顶部搜索框也会检索已同步的简历原文/);
+  assert.doesNotMatch(html, /aria-label="搜索简历原文和文件名"/);
+});
