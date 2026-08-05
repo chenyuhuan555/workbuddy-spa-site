@@ -22,7 +22,7 @@ function createElement(id) {
   };
 }
 
-function createHarness(restoreState) {
+function createHarness(restoreState, initialSession = {}) {
   const ids = [
     'wb-auth', 'wb-login-shell', 'wb-password-shell', 'wb-config-shell', 'app',
     'wb-account-bar', 'wb-account-name', 'wb-account-role', 'wb-login-error',
@@ -36,6 +36,7 @@ function createHarness(restoreState) {
   let reloadCount = 0;
   let guestAiInstallCount = 0;
   const sessionValues = new Map();
+  Object.entries(initialSession).forEach(([key, value]) => sessionValues.set(key, String(value)));
 
   const sandbox = {
     console,
@@ -203,4 +204,17 @@ test('login screen opens and closes administrator contact details', async () => 
   assert.equal(harness.elements['wb-contact-shell'].style.display, 'block');
   await harness.elements['wb-contact-close'].listeners.click();
   assert.equal(harness.elements['wb-contact-shell'].style.display, 'none');
+});
+
+test('session marker prevents a transient anonymous restore from entering guest mode', async () => {
+  const harness = createHarness(
+    { status: 'anonymous', profile: null, user: null },
+    { 'workbuddy.authenticated': '1' },
+  );
+  await nextTurn();
+
+  assert.equal(harness.sandbox.WorkBuddyRuntimeMode, 'login-pending');
+  assert.equal(harness.elements['wb-auth'].style.display, 'flex');
+  assert.equal(harness.elements.app.style.display, 'none');
+  assert.equal(harness.guestAiInstallCount, 0);
 });

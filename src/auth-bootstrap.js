@@ -12,6 +12,7 @@
   var booted = false;
   var LOGOUT_INTENT_KEY = 'workbuddy.logout_intent.v1';
   var LOGIN_HANDOFF_KEY = 'workbuddy.login_handoff.v1';
+  var AUTH_SESSION_KEY = 'workbuddy.authenticated';
   var config = window.WorkBuddySupabaseConfig;
   if (!config || !config.url || !config.publishableKey || !window.supabase || !window.WorkBuddyAuth) {
     loginShell.style.display = 'none';
@@ -92,6 +93,12 @@
         return;
       }
       if (window.sessionStorage.getItem(LOGIN_HANDOFF_KEY) === '1') {
+        window.WorkBuddyRuntimeMode = 'login-pending';
+        clearBusinessState();
+        openLogin();
+        return;
+      }
+      if (window.sessionStorage.getItem(AUTH_SESSION_KEY) === '1') {
         window.WorkBuddyRuntimeMode = 'login-pending';
         clearBusinessState();
         openLogin();
@@ -194,7 +201,9 @@
   });
 
   controller.restore().catch(function () {
-    if (window.sessionStorage.getItem(LOGIN_HANDOFF_KEY) === '1' || window.sessionStorage.getItem(LOGOUT_INTENT_KEY) === '1') {
+    if (window.sessionStorage.getItem(LOGIN_HANDOFF_KEY) === '1'
+      || window.sessionStorage.getItem(LOGOUT_INTENT_KEY) === '1'
+      || window.sessionStorage.getItem(AUTH_SESSION_KEY) === '1') {
       window.WorkBuddyRuntimeMode = 'login-pending';
       clearBusinessState();
       openLogin();
