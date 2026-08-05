@@ -5,13 +5,25 @@
 })(typeof globalThis !== 'undefined' ? globalThis : window, function createWorkbenchOwners() {
   'use strict';
 
+  function splitOwners(value) {
+    return String(value || '')
+      .split(/[、,，/／|\n;；]+/)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  function hasOwner(value, owner) {
+    const wanted = String(owner || '').trim();
+    return !wanted || splitOwners(value).some(item => item === wanted);
+  }
+
   function collectOwners({ companies = [], positions = [], candidates = [] } = {}) {
     return Array.from(new Set([
-      ...companies.map(item => item.owner),
-      ...positions.map(item => item.owner),
-      ...candidates.map(item => item.owner),
+      ...companies.flatMap(item => splitOwners(item.owner)),
+      ...positions.flatMap(item => splitOwners(item.owner)),
+      ...candidates.flatMap(item => splitOwners(item.owner)),
     ].filter(Boolean)));
   }
 
-  return Object.freeze({ collectOwners });
+  return Object.freeze({ collectOwners, splitOwners, hasOwner });
 });

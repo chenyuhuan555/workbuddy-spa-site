@@ -422,6 +422,7 @@
   function filterCandidates(candidates, filters = {}) {
     const text = value => String(value || '').trim().toLowerCase();
     const includes = (value, query) => text(value).includes(text(query));
+    const ownerMatches = (value, owner) => (globalThis.WorkBuddyWorkbenchOwners?.hasOwner || ((actual, wanted) => String(actual || '').split(/[、,，/／|\n;；]+/).map(item => item.trim()).includes(String(wanted || '').trim())))(value, owner);
     return (candidates || []).filter(candidate => {
       if (candidate.deletedAt && !filters.includeArchived) return false;
       if (filters.query) {
@@ -432,7 +433,7 @@
         if (!includes(haystack, filters.query)) return false;
       }
       if (filters.direction && filters.direction !== 'all' && !(candidate.directions || []).some(item => includes(item, filters.direction))) return false;
-      if (filters.owner && filters.owner !== 'all' && candidate.owner !== filters.owner) return false;
+      if (filters.owner && filters.owner !== 'all' && !ownerMatches(candidate.owner, filters.owner)) return false;
       if (filters.city && filters.city !== 'all' && !includes(candidate.city, filters.city)) return false;
       if (filters.company && !includes(candidate.currentCompany, filters.company)) return false;
       if (filters.title && !includes(candidate.currentTitle, filters.title)) return false;
@@ -580,11 +581,12 @@
   }
 
   function filterApplications(applications, filters = {}) {
+    const ownerMatches = (value, owner) => (globalThis.WorkBuddyWorkbenchOwners?.hasOwner || ((actual, wanted) => String(actual || '').split(/[、,，/／|\n;；]+/).map(item => item.trim()).includes(String(wanted || '').trim())))(value, owner);
     return (applications || []).filter(application => {
       if (filters.companyId && filters.companyId !== 'all' && application.companyId !== filters.companyId) return false;
       if (filters.positionId && filters.positionId !== 'all' && application.positionId !== filters.positionId) return false;
       if (filters.candidateId && filters.candidateId !== 'all' && application.candidateId !== filters.candidateId) return false;
-      if (filters.owner && filters.owner !== 'all' && application.owner !== filters.owner) return false;
+      if (filters.owner && filters.owner !== 'all' && !ownerMatches(application.owner, filters.owner)) return false;
       if (filters.stage && filters.stage !== 'all' && application.stage !== filters.stage) return false;
       if (filters.scoreMin && Number(application.matchScore || 0) < Number(filters.scoreMin)) return false;
       return true;

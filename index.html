@@ -59,6 +59,7 @@
   <script src="./src/ui/talent-search-messages.js?v=20260803-talentsearchmessages1"></script>
   <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
   <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
+  <script src="./src/ui/ai-assessment-report.js?v=20260805-aiassessment1"></script>
   <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
   <script src="./src/ui/position-structured-helpers.js?v=20260803-positionstructured1"></script>
@@ -4457,29 +4458,23 @@
 
                   <div class="mt-4 rounded-xl border border-slate-200 bg-white overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
-                      <span class="text-sm font-bold text-slate-700">输出结果</span>
-                      <div class="flex items-center gap-2">
-                        <button v-if="activeAiToolboxTool?.key === 'pdf-boss-electronic-resume'" @click="downloadAiToolboxElectronicResume" :disabled="!aiToolbox.output" type="button"
-                          class="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition disabled:opacity-40">
-                          导出TXT
-                        </button>
-                        <button @click="copyAiToolboxResult" :disabled="!aiToolbox.output" type="button"
-                          class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition disabled:opacity-40">
-                          复制结果
-                        </button>
-                        <button @click="recordAiToolboxResultToAdvisor" :disabled="!aiToolbox.output" type="button"
-                          :class="`px-3 py-1.5 rounded-lg bg-${aiToolboxTabColor}-50 hover:bg-${aiToolboxTabColor}-100 text-${aiToolboxTabColor}-600 text-xs font-semibold transition disabled:opacity-40`">
-                          记录到顾问助手
-                        </button>
-                        <button @click="openSaveAiAnalysisDialog" :disabled="!aiToolbox.output" type="button"
-                          class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold transition disabled:opacity-40">
-                          保存到AI分析
-                        </button>
-                      </div>
+                  <span class="text-sm font-bold text-slate-700">智能评估报告</span>
+                  <div class="flex items-center gap-2 relative">
+                    <button @click="openSaveAiAnalysisDialog" :disabled="!aiToolbox.output" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition disabled:opacity-40">保存分析</button>
+                    <button @click="copyAiToolboxResult" :disabled="!aiToolbox.output" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition disabled:opacity-40">复制结果</button>
+                    <button @click="aiToolboxMoreOpen = !aiToolboxMoreOpen" :disabled="!aiToolbox.output" type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition disabled:opacity-40">更多⌄</button>
+                    <div v-if="aiToolboxMoreOpen" class="absolute right-0 top-9 z-10 min-w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg"><button v-if="activeAiToolboxTool?.key === 'pdf-boss-electronic-resume'" @click="downloadAiToolboxElectronicResume; aiToolboxMoreOpen = false" type="button" class="block w-full rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">导出TXT</button><button @click="recordAiToolboxResultToAdvisor; aiToolboxMoreOpen = false" type="button" class="block w-full rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">记录到顾问助手</button></div>
+                  </div>
                     </div>
                     <div class="p-5 min-h-[260px] max-h-[560px] overflow-y-auto bg-[#fafafa]">
-                      <div v-if="aiToolbox.output" class="advisor-markdown ai-toolbox-output text-sm leading-relaxed"
-                        v-html="renderAiToolboxMarkdown(aiToolbox.output)"></div>
+                      <template v-if="aiToolbox.output">
+                        <div class="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">AI分析结果</p><p class="mt-1 text-lg font-bold text-slate-900">核心判断</p></div><span v-if="aiAssessmentReport.score !== null" class="rounded-full bg-white px-3 py-1 text-sm font-bold text-emerald-700">★★★★★ 推荐指数 {{ aiAssessmentReport.score }}分</span></div><p class="mt-3 text-base font-semibold leading-7 text-slate-900">{{ aiAssessmentReport.conclusion || '已生成评估，请展开查看详情。' }}</p></div>
+                        <div class="grid gap-4 lg:grid-cols-2"><section v-if="aiAssessmentReport.strengths.length" class="rounded-xl border border-slate-200 bg-white p-4"><h4 class="font-bold text-slate-900">候选人优势</h4><ul class="mt-3 space-y-2 text-sm text-slate-700"><li v-for="item in aiAssessmentReport.strengths" :key="item" class="flex gap-2"><span class="font-bold text-emerald-600">✓</span><strong>{{ item }}</strong></li></ul></section><section v-if="aiAssessmentReport.risks.length" class="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><h4 class="font-bold text-amber-900">风险提示</h4><ul class="mt-3 space-y-2 text-sm text-amber-900"><li v-for="item in aiAssessmentReport.risks" :key="item" class="flex gap-2"><span class="font-bold text-amber-600">⚠</span><strong>{{ item }}</strong></li></ul></section></div>
+                        <section v-if="aiAssessmentReport.recommendation" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><div class="flex items-center justify-between gap-3"><h4 class="font-bold text-slate-900">推荐话术</h4><button @click="copyAiAssessmentRecommendation" type="button" class="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">复制</button></div><p class="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ aiAssessmentReport.recommendation }}</p></section>
+                        <section v-if="aiAssessmentReport.questions.length" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><h4 class="font-bold text-slate-900">待确认问题</h4><ul class="mt-3 space-y-2 text-sm text-slate-700"><li v-for="item in aiAssessmentReport.questions" :key="item" class="flex gap-2"><span class="text-slate-400">□</span>{{ item }}</li></ul></section>
+                        <section v-if="aiAssessmentReport.mermaid || aiAssessmentReport.structure" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><h4 class="font-bold text-slate-900">人才画像 / 能力结构</h4><div v-if="aiAssessmentReport.structure" class="advisor-markdown ai-toolbox-output mt-3 text-sm leading-6" v-html="renderAiToolboxMarkdown(aiAssessmentReport.structure)"></div><div v-if="aiAssessmentReport.mermaid" class="ai-toolbox-output mt-3" v-html="renderAiToolboxMarkdown(aiAssessmentMermaidMarkdown)"></div></section>
+                        <section v-if="aiAssessmentReport.details" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><button @click="aiAssessmentExpanded = !aiAssessmentExpanded" type="button" class="flex w-full items-center justify-between text-left text-sm font-semibold text-slate-700"><span>{{ aiAssessmentExpanded ? '收起详细分析' : '展开查看更多' }}</span><span>{{ aiAssessmentExpanded ? '⌃' : '⌄' }}</span></button><div v-if="aiAssessmentExpanded" class="advisor-markdown ai-toolbox-output mt-3 text-sm leading-6" v-html="renderAiToolboxMarkdown(aiAssessmentReport.details)"></div></section>
+                      </template>
                       <p v-else class="text-sm text-slate-400 leading-relaxed">
                         选择工具后点击生成。打开岗位详情时，工具箱会自动带入当前岗位、候选人画像、电子简历、AI 评分和职业轨迹；没有上下文时也可以直接粘贴文本使用。
                       </p>
@@ -6694,29 +6689,26 @@
 
               <div class="mt-4 rounded-xl border border-slate-200 bg-white overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
-                  <span class="text-sm font-bold text-slate-700">输出结果</span>
-                  <div class="flex items-center gap-2">
-                    <button v-if="activeAiToolboxTool?.key === 'pdf-boss-electronic-resume'" @click="downloadAiToolboxElectronicResume" :disabled="!aiToolbox.output" type="button"
-                      class="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition disabled:opacity-40">
-                      导出TXT
-                    </button>
-                    <button @click="copyAiToolboxResult" :disabled="!aiToolbox.output" type="button"
-                      class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition disabled:opacity-40">
-                      复制结果
-                    </button>
-                    <button @click="recordAiToolboxResultToAdvisor" :disabled="!aiToolbox.output" type="button"
-                      :class="`px-3 py-1.5 rounded-lg bg-${aiToolboxTabColor}-50 hover:bg-${aiToolboxTabColor}-100 text-${aiToolboxTabColor}-600 text-xs font-semibold transition disabled:opacity-40`">
-                      记录到顾问助手
-                    </button>
-                    <button @click="openSaveAiAnalysisDialog" :disabled="!aiToolbox.output" type="button"
-                      class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold transition disabled:opacity-40">
-                      保存到AI分析
-                    </button>
+                  <span class="text-sm font-bold text-slate-700">智能评估报告</span>
+                  <div class="flex items-center gap-2 relative">
+                    <button @click="openSaveAiAnalysisDialog" :disabled="!aiToolbox.output" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition disabled:opacity-40">保存分析</button>
+                    <button @click="copyAiToolboxResult" :disabled="!aiToolbox.output" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition disabled:opacity-40">复制结果</button>
+                    <button @click="aiToolboxMoreOpen = !aiToolboxMoreOpen" :disabled="!aiToolbox.output" type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition disabled:opacity-40">更多⌄</button>
+                    <div v-if="aiToolboxMoreOpen" class="absolute right-0 top-9 z-10 min-w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                      <button v-if="activeAiToolboxTool?.key === 'pdf-boss-electronic-resume'" @click="downloadAiToolboxElectronicResume; aiToolboxMoreOpen = false" type="button" class="block w-full rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">导出TXT</button>
+                      <button @click="recordAiToolboxResultToAdvisor; aiToolboxMoreOpen = false" type="button" class="block w-full rounded-md px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">记录到顾问助手</button>
+                    </div>
                   </div>
                 </div>
                 <div class="p-5 min-h-[260px] max-h-[560px] overflow-y-auto bg-[#fafafa]">
-                  <div v-if="aiToolbox.output" class="advisor-markdown ai-toolbox-output text-sm leading-relaxed"
-                    v-html="renderAiToolboxMarkdown(aiToolbox.output)"></div>
+                  <template v-if="aiToolbox.output">
+                    <div class="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">AI分析结果</p><p class="mt-1 text-lg font-bold text-slate-900">核心判断</p></div><span v-if="aiAssessmentReport.score !== null" class="rounded-full bg-white px-3 py-1 text-sm font-bold text-emerald-700">★★★★★ 推荐指数 {{ aiAssessmentReport.score }}分</span></div><p class="mt-3 text-base font-semibold leading-7 text-slate-900">{{ aiAssessmentReport.conclusion || '已生成评估，请展开查看详情。' }}</p></div>
+                    <div class="grid gap-4 lg:grid-cols-2"><section v-if="aiAssessmentReport.strengths.length" class="rounded-xl border border-slate-200 bg-white p-4"><h4 class="font-bold text-slate-900">候选人优势</h4><ul class="mt-3 space-y-2 text-sm text-slate-700"><li v-for="item in aiAssessmentReport.strengths" :key="item" class="flex gap-2"><span class="font-bold text-emerald-600">✓</span><strong>{{ item }}</strong></li></ul></section><section v-if="aiAssessmentReport.risks.length" class="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><h4 class="font-bold text-amber-900">风险提示</h4><ul class="mt-3 space-y-2 text-sm text-amber-900"><li v-for="item in aiAssessmentReport.risks" :key="item" class="flex gap-2"><span class="font-bold text-amber-600">⚠</span><strong>{{ item }}</strong></li></ul></section></div>
+                    <section v-if="aiAssessmentReport.recommendation" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><div class="flex items-center justify-between gap-3"><h4 class="font-bold text-slate-900">推荐话术</h4><button @click="copyAiAssessmentRecommendation" type="button" class="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">复制</button></div><p class="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ aiAssessmentReport.recommendation }}</p></section>
+                    <section v-if="aiAssessmentReport.questions.length" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><h4 class="font-bold text-slate-900">待确认问题</h4><ul class="mt-3 space-y-2 text-sm text-slate-700"><li v-for="item in aiAssessmentReport.questions" :key="item" class="flex gap-2"><span class="text-slate-400">□</span>{{ item }}</li></ul></section>
+                    <section v-if="aiAssessmentReport.mermaid || aiAssessmentReport.structure" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><h4 class="font-bold text-slate-900">人才画像 / 能力结构</h4><div v-if="aiAssessmentReport.structure" class="advisor-markdown ai-toolbox-output mt-3 text-sm leading-6" v-html="renderAiToolboxMarkdown(aiAssessmentReport.structure)"></div><div v-if="aiAssessmentReport.mermaid" class="ai-toolbox-output mt-3" v-html="renderAiToolboxMarkdown(aiAssessmentMermaidMarkdown)"></div></section>
+                    <section v-if="aiAssessmentReport.details" class="mt-4 rounded-xl border border-slate-200 bg-white p-4"><button @click="aiAssessmentExpanded = !aiAssessmentExpanded" type="button" class="flex w-full items-center justify-between text-left text-sm font-semibold text-slate-700"><span>{{ aiAssessmentExpanded ? '收起详细分析' : '展开查看更多' }}</span><span>{{ aiAssessmentExpanded ? '⌃' : '⌄' }}</span></button><div v-if="aiAssessmentExpanded" class="advisor-markdown ai-toolbox-output mt-3 text-sm leading-6" v-html="renderAiToolboxMarkdown(aiAssessmentReport.details)"></div></section>
+                  </template>
                   <p v-else class="text-sm text-slate-400 leading-relaxed">
                     选择工具后点击生成。打开岗位详情时，工具箱会自动带入当前岗位、候选人画像、电子简历、AI 评分和职业轨迹；没有上下文时也可以直接粘贴文本使用。
                   </p>
@@ -12781,6 +12773,10 @@ ${ocrText}`
       sourceStatus: '',
       qrUrl: '',
     });
+    const aiToolboxMoreOpen = ref(false);
+    const aiAssessmentExpanded = ref(false);
+    const aiAssessmentReport = computed(() => window.WorkBuddyAiAssessmentReport.parseReport(aiToolbox.output));
+    const aiAssessmentMermaidMarkdown = computed(() => aiAssessmentReport.value.mermaid ? '```mermaid\n' + aiAssessmentReport.value.mermaid + '\n```' : '');
 
     // ======== 保存到 AI 分析 ========
     const aiAnalysisSave = reactive({
@@ -18384,7 +18380,7 @@ ${ocrText}`
         content: '你是资深猎头 AI 工具箱。只输出可直接复制使用的中文内容，结构清晰、判断具体、避免空话。没有足够信息时先基于已给信息给出可执行版本，并标明需要补充确认的问题。',
       }, {
         role: 'user',
-        content: `工具名称：${tool.title}\n\n任务要求：${tool.instruction}\n\n上下文：\n${context}\n\n输出要求：\n- 首行必须直接输出核心概要（一句话推荐语或职业定位，60字以内）；禁止任何寒暄、复述任务或引导语，例如“好的，这是为您…”、“以下是…”。\n- 使用 Markdown 小标题、短段落和列表，避免大段空话。\n- 一个输出里要混合多种表现：结论摘要、要点卡片、行动路径、风险提示；能用表格时用简短表格。\n- 请额外输出一个 Mermaid 图块，用流程图 flowchart TD 或思维导图 mindmap 表达核心结构。\n- Mermaid 节点文字要短，优先使用 4-8 个节点，避免复杂长句导致图打不开。\n- 结论要具体到猎头可执行动作。\n- 不要编造公司、薪资、候选人事实；不确定处写“需确认”。`,
+          content: `工具名称：${tool.title}\n\n任务要求：${tool.instruction}\n\n上下文：\n${context}\n\n输出要求：\n- 直接输出结构化「智能评估报告」，不要寒暄、复述任务或聊天式长文。\n- 按以下标题组织：核心判断、优势、推荐话术、风险、待确认、人才画像/能力结构。\n- 核心判断只写一句话；优势、风险、待确认各用 3-6 条短列表；推荐话术单独成段，便于复制。\n- 如能判断匹配度，写“★★★★★ 推荐指数 N分”；无法判断时写“推荐指数：待评估”，不要编造分数。\n- 结构图单独放在最后一个 Mermaid 代码块，节点控制在 4-8 个，禁止把 Mermaid 语句混入普通段落。\n- 重点加粗候选人核心优势、匹配亮点和风险点；不确定处写“需确认”。\n- 不要编造公司、薪资、候选人事实。`,
       }];
     }
 
@@ -18665,6 +18661,8 @@ ${ocrText}`
       aiToolbox.loading = true;
       aiToolbox.error = '';
       aiToolbox.output = '';
+      aiAssessmentExpanded.value = false;
+      aiToolboxMoreOpen.value = false;
       try {
         if (tool.key === 'pdf-boss-electronic-resume') {
           await runAiToolboxElectronicResume();
@@ -18693,6 +18691,17 @@ ${ocrText}`
       try {
         await navigator.clipboard.writeText(aiToolbox.output);
         showToast('工具箱结果已复制');
+      } catch {
+        showToast('复制失败，请手动选中文本', 'error');
+      }
+    }
+
+    async function copyAiAssessmentRecommendation() {
+      const text = String(aiAssessmentReport.value.recommendation || '').trim();
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('推荐话术已复制');
       } catch {
         showToast('复制失败，请手动选中文本', 'error');
       }
@@ -23332,12 +23341,12 @@ ${clipped}`
       generateAiRecruitingWorkflowInsight, clearAiNewsWorkflowInsight,
       getAiNewsTypeLabel, getAiNewsTypeClass,
       // 猎头 AI 工具箱
-      aiToolboxTabs, aiToolboxTools, aiToolbox, aiToolboxTabColor,
+      aiToolboxTabs, aiToolboxTools, aiToolbox, aiToolboxTabColor, aiToolboxMoreOpen, aiAssessmentExpanded, aiAssessmentReport, aiAssessmentMermaidMarkdown,
       aiToolboxPdfInput, aiToolboxDropActive,
       activeAiToolboxTools, activeAiToolboxTool, aiToolboxPositionOptions, aiToolboxSelectedPlacement, aiToolboxResumeOptions,
       selectAiToolboxTab, selectAiToolboxTool, runAiToolboxTool,
       triggerAiToolboxPdfInput, onAiToolboxPdfFileChange, onAiToolboxSourceDragOver, onAiToolboxSourceDragLeave, onAiToolboxSourceDrop,
-      copyAiToolboxResult, recordAiToolboxResultToAdvisor, downloadAiToolboxElectronicResume,
+      copyAiToolboxResult, copyAiAssessmentRecommendation, recordAiToolboxResultToAdvisor, downloadAiToolboxElectronicResume,
       // 保存到 AI 分析
       aiAnalysisSave, aiAnalysisSaveTargetOptions,
       selectedCompanyAiNotes, selectedPositionAiNotes, selectedCandidateAiNotes,

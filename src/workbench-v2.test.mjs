@@ -686,6 +686,12 @@ test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已�
   assert.match(INDEX_HTML, /filterCandidatesByCategory\(.*talentJobMatch\.categoryId/s, '匹配范围需要支持按分类限定');
 });
 
+test('多人负责人筛选支持任一负责人命中', () => {
+  const candidates = [WorkbenchV2.createCandidate({ name: '贝壳候选人', owner: '陈雨欢、史磊' })];
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { owner: '陈雨欢' }).length, 1);
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { owner: '史磊' }).length, 1);
+});
+
 test('推进中心提供批量 AI 评分并回写匹配分', () => {
   assert.match(INDEX_HTML, /一键AI评分/);
   assert.match(INDEX_HTML, /runBulkApplicationAiScoring/);
