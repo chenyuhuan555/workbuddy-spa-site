@@ -3508,7 +3508,7 @@
         </button>
         <button v-else @click="showLegacyWorkbench" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-xs font-semibold text-emerald-700 transition" type="button">
           <span class="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[10px] font-bold">H</span>
-          <span class="wb-v2-sidebar-label">V2 数据已启用 ›</span>
+          <span class="wb-v2-sidebar-label">跳转旧版工作台</span>
         </button>
       </div>
     </nav>
@@ -3564,20 +3564,31 @@
       </header>
 
       <main class="wb-v2-main flex-1 overflow-y-auto p-5 lg:p-6">
-        <div v-if="isGuestMode" role="status" class="mx-auto mb-5 flex max-w-[1400px] flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
-          <div>
-            <p class="text-sm font-bold">当前内容均为虚构演示数据</p>
-            <p class="mt-0.5 text-xs text-amber-800">您可以自由新增、修改和删除；数据仅保存在当前浏览器，不会上传云端。体验 AI 功能请填写 DeepSeek API Key。</p>
-          </div>
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label for="guest-deepseek-api-key" class="text-xs font-semibold text-amber-900 whitespace-nowrap">体验 AI</label>
-              <input id="guest-deepseek-api-key" aria-label="游客 DeepSeek API Key" v-model="aiConfig.apiKey" type="password" autocomplete="off" placeholder="填写 DeepSeek API Key" class="w-full sm:w-80 px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs" @keydown.enter="saveGuestAiKey">
-              <button type="button" @click="saveGuestAiKey" class="self-start whitespace-nowrap rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 sm:self-auto">保存 Key</button>
-              <span v-if="guestAiKeyConfigured" class="text-xs font-semibold text-emerald-800">已启用真实 AI</span>
-              <span v-else class="text-xs text-amber-800">未填写时使用本地模拟结果</span>
+        <div v-if="isGuestMode && guestNoticeVisible" role="status" class="relative mx-auto mb-5 max-w-[1400px] rounded-3xl border border-emerald-100 bg-white/90 px-5 py-5 text-slate-900 shadow-sm sm:px-8">
+          <button type="button" @click="guestNoticeVisible = false" aria-label="关闭游客演示提示" title="关闭提示" class="absolute right-4 top-3 text-2xl leading-none text-slate-400 hover:text-slate-700">×</button>
+          <div class="flex items-start gap-4 pr-8">
+            <div class="hidden h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 sm:flex">
+              <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
             </div>
-            <button type="button" @click="openGuestLogin" class="self-start whitespace-nowrap text-xs font-bold text-emerald-800 hover:text-emerald-900 sm:self-auto">登录查看真实数据 →</button>
+            <div class="min-w-0 flex-1">
+              <p class="text-base font-bold sm:text-lg">当前内容均为虚构演示数据</p>
+              <p class="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">您可以自由新增、修改和删除；数据仅保存在当前浏览器，不会上传云端。体验 AI 功能请填写 DeepSeek API Key。</p>
+            </div>
+          </div>
+          <div class="mt-5 border-t border-slate-100 pt-4">
+            <div v-if="guestAiExpanded" class="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <label for="guest-deepseek-api-key" class="flex items-center gap-2 text-sm font-semibold text-emerald-800 whitespace-nowrap">✧ 体验 AI</label>
+              <input id="guest-deepseek-api-key" aria-label="游客 DeepSeek API Key" v-model="aiConfig.apiKey" type="password" autocomplete="off" placeholder="填写 DeepSeek API Key" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-400 lg:max-w-md" @keydown.enter="saveGuestAiKey">
+              <button type="button" @click="saveGuestAiKey" class="whitespace-nowrap rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800">保存 Key</button>
+              <span v-if="guestAiKeyConfigured" class="text-xs font-semibold text-emerald-800">已启用真实 AI</span>
+              <span v-else class="text-xs text-slate-500">未填写时使用本地模拟结果</span>
+            </div>
+            <div v-else class="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span class="text-sm font-semibold text-emerald-800">✧ 体验 AI</span>
+              <span class="text-xs text-slate-500">{{ guestAiKeyConfigured ? '已启用真实 AI' : '未填写时使用本地模拟结果' }}</span>
+              <button type="button" @click="guestAiExpanded = true" class="text-left text-xs font-semibold text-emerald-700 hover:text-emerald-900">设置 DeepSeek API Key</button>
+            </div>
+            <button type="button" @click="openGuestLogin" class="mt-4 text-sm font-bold text-emerald-800 hover:text-emerald-900 lg:float-right lg:-mt-8">登录查看真实数据 →</button>
           </div>
         </div>
         <!-- ========== Dashboard 首页（截图设计）========== -->
@@ -12363,6 +12374,8 @@ ${ocrText}`
       showSettings: false,
       saved: false
     });
+    const guestNoticeVisible = ref(true);
+    const guestAiExpanded = ref(true);
 
     // 知识库优化状态
     const kbOptimizing = ref(false);
@@ -12419,6 +12432,7 @@ ${ocrText}`
       aiConfig.apiKey = key;
       aiConfig.apiKeyValid = false;
       saveAiConfig();
+      guestAiExpanded.value = false;
       showToast(key ? 'DeepSeek API Key 已保存在当前浏览器' : '已切回本地模拟 AI');
     }
     // 使用函数声明允许前置创建的 AI 动作安全持有该访问器，避免 setup 初始化阶段触发 TDZ。
@@ -23059,7 +23073,7 @@ ${clipped}`
       openKbArticle, openAdvisorForMeeting, closeKbView, deleteKbArticle,
       kbApiKey, kbOptimizing, kbShowApiSettings, optimizeKbText, saveKbApiKey,
       // AI 配置
-      aiConfig, loadAiConfig, saveAiConfig, validateApiKey, testApiKey, guestAiKeyConfigured, saveGuestAiKey,
+      aiConfig, loadAiConfig, saveAiConfig, validateApiKey, testApiKey, guestAiKeyConfigured, saveGuestAiKey, guestNoticeVisible, guestAiExpanded,
       // 活水雷达
       radarLoading, radarNews, radarSignals, radarInsight, radarHotSectors, radarTrend,
       radarLastUpdated, radarFilter, radarIndustryFilter, radarIndustries, radarIndustryCounts, radarSelectedNewsIdx, radarManualInputOpen, radarManualText,

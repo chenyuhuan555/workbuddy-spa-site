@@ -12,6 +12,9 @@ test('guest mode is visibly disclosed in the top bar and content area', () => {
   assert.match(html, /体验 AI 功能请填写 DeepSeek API Key/);
   assert.match(html, /id="guest-deepseek-api-key"/);
   assert.match(html, /workbuddy\.guest\.deepseek_config\.v1/);
+  assert.match(html, /guestNoticeVisible/);
+  assert.match(html, /guestAiExpanded/);
+  assert.match(html, /关闭游客演示提示/);
 });
 
 test('guest top bar exposes login and reset actions', () => {
@@ -20,6 +23,7 @@ test('guest top bar exposes login and reset actions', () => {
   assert.match(html, /function openGuestLogin\(\)[\s\S]*?WorkBuddyAuthUi\.openLogin\(\)/);
   assert.match(html, /function resetGuestDemo\(\)[\s\S]*?confirm\('重置后将删除您在本浏览器中的全部演示修改，确定继续吗？'\)/);
   assert.match(html, /guestDemo\.resetWorkspace\(\)/);
+  assert.match(html, /guestAiExpanded\.value = false/);
 });
 
 test('guest login overlay has a route back to the demo', () => {
@@ -42,4 +46,9 @@ test('guests can use AI features but cannot navigate to real settings', () => {
 test('guest mode hides cloud migration and backup management cards', () => {
   assert.match(html, /<section id="settings-section" v-if="!isGuestMode" class="backup-section">/);
   assert.match(html, /管理设置仅对登录用户开放/);
+});
+
+test('legacy workbench link uses the user-facing label', () => {
+  assert.match(html, /@click="showLegacyWorkbench"[\s\S]*?跳转旧版工作台/);
+  assert.doesNotMatch(html, /V2 数据已启用 ›/);
 });
