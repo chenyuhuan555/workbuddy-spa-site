@@ -684,8 +684,8 @@ test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已�
 });
 
 test('候选人岗位匹配采用卡片布局并展示匹配分与标签', () => {
-  assert.match(INDEX_HTML, /workbenchRoute\.tab === 'matching'[\s\S]*?rounded-3xl/, '岗位匹配应使用大卡片容器');
-  assert.match(INDEX_HTML, /match\.highlights/, '岗位匹配应展示匹配标签');
+  assert.match(INDEX_HTML, /candidate-match-card[^\"]*grid-cols-\[minmax\(0,1fr\)_130px_150px\]/, '岗位匹配应保持三栏卡片布局');
+  assert.match(INDEX_HTML, /positions\.find\(item => item\.id === match\.positionId\)\?\.skills/, '岗位匹配应展示岗位技能标签');
   assert.match(INDEX_HTML, /匹配分/, '岗位匹配应展示匹配分说明');
   assert.match(INDEX_HTML, />创建推荐<\/button>/, '岗位匹配应提供创建推荐操作');
 });
