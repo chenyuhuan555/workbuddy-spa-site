@@ -49,6 +49,16 @@ test('guest mode hides cloud migration and backup management cards', () => {
 });
 
 test('legacy workbench link uses the user-facing label', () => {
-  assert.match(html, /@click="showLegacyWorkbench"[\s\S]*?跳转旧版工作台/);
+  assert.match(html, /@click="accountMenuOpen = false; showLegacyWorkbench\(\)"[\s\S]*?切换到旧版/);
+  assert.match(html, /accountDisplayName/);
+  assert.match(html, /accountRoleLabel/);
+  assert.match(html, /退出登录/);
   assert.doesNotMatch(html, /V2 数据已启用 ›/);
+});
+
+test('company dashboard header keeps a concise subtitle and two focused actions', () => {
+  assert.match(html, /查看岗位需求、候选人进展与业务风险/);
+  assert.match(html, /✧ AI提取关键词/);
+  assert.match(html, /＋ 新建公司/);
+  assert.doesNotMatch(html, /AI 重新提取全部岗位关键词/);
 });

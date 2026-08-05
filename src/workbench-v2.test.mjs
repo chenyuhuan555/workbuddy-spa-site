@@ -175,7 +175,7 @@ test('岗位详情提供基础信息编辑与 AI 匹配关键词提取入口', (
 });
 
 test('公司看板提供全部岗位关键词重新提取并展示进度', () => {
-  assert.match(INDEX_HTML, /重新提取全部岗位关键词/, '应提供全部重新提取入口');
+  assert.match(INDEX_HTML, /AI提取关键词/, '应提供全部重新提取入口');
   assert.match(INDEX_HTML, /runBulkPositionSkillsExtraction/, '应存在批量重提取处理函数');
   assert.match(INDEX_HTML, /positionSkillsBatch\.completed/, '批量操作应展示完成进度');
   assert.match(INDEX_HTML, /extractPositionSkillsForPosition\(position\)/, '批量操作应复用单岗位提取逻辑');

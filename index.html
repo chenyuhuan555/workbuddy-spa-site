@@ -3385,6 +3385,8 @@
       .wb-v2-workspace .wb-v2-sidebar { transition: none; }
       .wb-v2-sidebar-toggle { transition: none; }
     }
+    /* V2 uses the Vue account card in the sidebar footer; keep the auth bridge hidden. */
+    .wb-v2-workspace #wb-account-bar { display: none !important; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -3506,10 +3508,22 @@
           <span class="w-6 h-6 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center text-[10px] font-bold">H</span>
           <span class="wb-v2-sidebar-label">迁移旧数据 →</span>
         </button>
-        <button v-else @click="showLegacyWorkbench" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-xs font-semibold text-emerald-700 transition" type="button">
-          <span class="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[10px] font-bold">H</span>
-          <span class="wb-v2-sidebar-label">跳转旧版工作台</span>
-        </button>
+        <div class="relative mt-3">
+          <button type="button" @click="accountMenuOpen = !accountMenuOpen" :aria-expanded="accountMenuOpen" aria-haspopup="menu" class="w-full rounded-2xl border border-slate-200/80 bg-white/90 px-3 py-3 text-left shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/40">
+            <span class="flex items-center gap-3">
+              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-800 text-sm font-bold text-white">{{ accountInitial }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-semibold text-slate-900">{{ accountDisplayName }}</span>
+                <span class="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{{ accountRoleLabel }}</span>
+              </span>
+              <svg class="h-4 w-4 flex-shrink-0 text-slate-500 transition" :class="{ 'rotate-180': accountMenuOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+          </button>
+          <div v-if="accountMenuOpen" role="menu" class="absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+            <button v-if="workbenchV2.migrationMeta?.executedAt" type="button" role="menuitem" @click="accountMenuOpen = false; showLegacyWorkbench()" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"><span class="text-base">↗</span><span>切换到旧版</span></button>
+            <button type="button" role="menuitem" @click="accountMenuOpen = false; logoutFromAccountMenu()" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"><span class="text-base">↪</span><span>退出登录</span></button>
+          </div>
+        </div>
       </div>
     </nav>
 
@@ -3782,7 +3796,7 @@
         </div>
 
         <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><div><h1 class="text-2xl font-bold">公司看板</h1><p class="text-sm text-slate-500 mt-1">以客户为中心查看岗位需求、候选人推进和业务风险。</p></div><div v-if="canWrite" class="flex flex-wrap gap-2"><button v-if="canConfigureAi" @click="runBulkPositionSkillsExtraction" :disabled="positionSkillsBatch.running" class="px-4 py-2 rounded-lg border border-indigo-200 text-indigo-700 text-sm font-semibold hover:bg-indigo-50 disabled:text-slate-400" type="button">{{ positionSkillsBatch.running ? `AI 重提取 ${positionSkillsBatch.completed}/${positionSkillsBatch.total}` : 'AI 重新提取全部岗位关键词' }}</button><button @click="openCompanyCreate" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800" type="button">＋ 新建公司</button></div></div>
+          <div class="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6"><div><h1 class="text-2xl font-bold text-slate-900">公司看板</h1><p class="mt-1 text-sm text-slate-500">查看岗位需求、候选人进展与业务风险</p></div><div v-if="canWrite" class="flex flex-wrap gap-2"><button v-if="canConfigureAi" @click="runBulkPositionSkillsExtraction" :disabled="positionSkillsBatch.running" class="inline-flex items-center rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:text-slate-400" type="button">{{ positionSkillsBatch.running ? `AI提取中 ${positionSkillsBatch.completed}/${positionSkillsBatch.total}` : '✧ AI提取关键词' }}</button><button @click="openCompanyCreate" class="inline-flex items-center rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800" type="button">＋ 新建公司</button></div></div>
           <form v-if="companyCreate.open && canWrite" @submit.prevent="createWorkbenchCompany()" class="bg-white border border-emerald-200 rounded-xl p-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <label for="wb-company-name" class="text-sm text-slate-600">公司名称<input id="wb-company-name" v-model="companyCreate.name" required autofocus placeholder="例如：远航科技" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500"></label>
             <label for="wb-company-industry" class="text-sm text-slate-600">行业<input id="wb-company-industry" v-model="companyCreate.industry" placeholder="例如：企业服务" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500"></label>
@@ -10361,6 +10375,14 @@ const vueAppConfig = {
     const workbenchMode = ref(isGuestMode ? 'v2' : (localStorage.getItem(STORAGE_KEY + '_workspace_mode') || 'v2'));
     const workbenchNav = ref('dashboard');
     const workbenchSidebarCollapsed = ref(false);
+    const accountMenuOpen = ref(false);
+    const currentUserProfile = computed(() => window.WorkBuddyAccess?.profile || {});
+    const accountDisplayName = computed(() => currentUserProfile.value.display_name || currentUserProfile.value.username || (isGuestMode ? '游客' : '用户'));
+    const accountInitial = computed(() => String(accountDisplayName.value || 'U').trim().slice(0, 1).toUpperCase());
+    const accountRoleLabel = computed(() => ({ admin: '管理员', editor: '高级成员', guest: '演示访客' }[currentUserProfile.value.role] || '普通成员'));
+    function logoutFromAccountMenu() {
+      document.getElementById('wb-logout')?.click();
+    }
     const canWrite = window.WorkBuddyAccess?.canWrite === true;
     const canManageMembers = window.WorkBuddyAccess?.canManageMembers === true;
     const canConfigureAi = window.WorkBuddyAccess?.canConfigureAi === true;
@@ -22974,7 +22996,7 @@ ${clipped}`
     return {
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
-      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, canWrite, canManageMembers, canConfigureAi,
+      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
