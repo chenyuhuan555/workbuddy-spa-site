@@ -4,7 +4,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' blob: https://pskqpgzwifdozaxprpik.supabase.co wss://pskqpgzwifdozaxprpik.supabase.co https://api.deepseek.com https://api.rss2json.com https://api.allorigins.win https://raw.githubusercontent.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src 'self' blob:;">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>猎头工作台</title>
+  <title>AI猎头工作台｜AI Recruiter Workspace</title>
   <link rel="stylesheet" href="./assets/workbuddy.css">
   <script src="./lib/vue.global.prod.js"></script>
   <script src="./lib/supabase.js?v=20260713-auth2"></script>
@@ -3393,8 +3393,8 @@
 
 <div id="wb-auth" style="position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(145deg,#ecfdf5,#f8fafc 55%,#e0f2fe);font-family:'PingFang SC','Microsoft YaHei',sans-serif">
   <section id="wb-login-shell" style="width:min(420px,100%);background:#fff;border:1px solid #dbe5e1;border-radius:24px;padding:36px;box-shadow:0 24px 70px rgba(15,23,42,.12)">
-    <div style="color:#047857;font-size:12px;font-weight:800;letter-spacing:.18em">HEADHUNTER</div>
-    <h1 style="margin:8px 0 6px;color:#0f172a;font-size:28px">猎头工作台</h1>
+    <div style="color:#047857;font-size:12px;font-weight:800;letter-spacing:.18em">AI RECRUITER WORKSPACE</div>
+    <h1 style="margin:8px 0 6px;color:#0f172a;font-size:28px">AI猎头工作台</h1>
     <p style="margin:0 0 26px;color:#64748b;font-size:14px">使用账号密码登录后查看工作数据</p>
     <form id="wb-login-form">
       <label style="display:block;margin-bottom:16px;color:#334155;font-size:14px">用户名
@@ -3450,7 +3450,7 @@
 <!-- 加载兜底：Vue 挂载成功后自动隐藏，12 秒超时显示错误 -->
 <div id="wb-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8fafc;z-index:99999;font-family:'PingFang SC','Microsoft YaHei',sans-serif">
   <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:wb-spin 0.8s linear infinite;margin-bottom:16px"></div>
-  <p style="color:#64748b;font-size:15px">正在加载猎头工作台...</p>
+  <p style="color:#64748b;font-size:15px">正在加载 AI猎头工作台...</p>
   <p id="wb-loader-error" style="display:none;color:#ef4444;font-size:14px;margin-top:8px;max-width:340px;text-align:center;line-height:1.6"></p>
 </div>
 
@@ -3463,8 +3463,8 @@
       <!-- Logo 区域 -->
       <div class="wb-v2-sidebar-brand px-5 py-6 border-b border-slate-100 flex items-start justify-between gap-3">
         <div class="wb-v2-sidebar-brand-copy min-w-0">
-          <p class="text-[10px] font-bold tracking-[0.2em] text-emerald-700 uppercase">Headhunter</p>
-          <h1 class="text-base font-bold text-slate-900 mt-0.5">猎头工作台</h1>
+          <p class="text-[10px] font-bold tracking-[0.2em] text-emerald-700 uppercase">AI Recruiter Workspace</p>
+          <h1 class="text-base font-bold text-slate-900 mt-0.5">AI猎头工作台</h1>
         </div>
         <button class="wb-v2-sidebar-toggle" type="button" aria-controls="workbench-main-navigation"
           :aria-expanded="!workbenchSidebarCollapsed"
@@ -5487,7 +5487,7 @@
   <div v-if="showWelcome" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
        @click.self="dismissWelcome">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in duration-300">
-      <h2 class="text-xl font-bold text-slate-800 mb-4">欢迎使用猎头工作台</h2>
+      <h2 class="text-xl font-bold text-slate-800 mb-4">欢迎使用 AI猎头工作台</h2>
 
       <div class="space-y-4 mb-6">
         <div class="flex items-start gap-3">
@@ -5544,7 +5544,7 @@
         </svg>
       </div>
       <div>
-        <h1 class="text-xl font-bold text-slate-800 leading-tight">猎头工作台</h1>
+        <h1 class="text-xl font-bold text-slate-800 leading-tight">AI猎头工作台</h1>
       </div>
       <div class="ml-auto flex items-center gap-3 text-xs text-slate-400">
         <!-- 倍罗快捷入口 -->
@@ -5604,9 +5604,9 @@
   <section id="home-section" :class="['wb-hero', wbRightRailCollapsed ? 'is-right-collapsed' : 'is-right-expanded']" aria-label="工作台介绍">
     <div class="wb-hero-grid">
       <div class="wb-hero-copy">
-        <p class="wb-hero-eyebrow">HEADHUNTER WORKSPACE</p>
+        <p class="wb-hero-eyebrow">AI RECRUITER WORKSPACE</p>
         <h1 class="wb-hero-title">Build your<br/>hiring pipeline</h1>
-        <p class="wb-hero-subtitle">轻量、高效的猎头工作台，从派发、筛选到画像与搜索，每一步都像呼吸一样自然。</p>
+        <p class="wb-hero-subtitle">轻量、高效的 AI猎头工作台，从派发、筛选到画像与搜索，每一步都像呼吸一样自然。</p>
       </div>
       <div class="wb-hero-side">
         <button type="button" @click="wbRightRailCollapsed = !wbRightRailCollapsed"
@@ -5662,7 +5662,7 @@
 
   <aside class="wb-side-rail" aria-label="功能导航">
     <div class="wb-rail-stack">
-      <button type="button" class="wb-rail-mark" title="Headhunter Workspace" aria-label="Headhunter Workspace"><span></span></button>
+      <button type="button" class="wb-rail-mark" title="AI Recruiter Workspace" aria-label="AI Recruiter Workspace"><span></span></button>
       <button type="button" :class="['wb-rail-btn', activeNav === 'home' ? 'is-active' : '']" title="首页" @click="navigateWorkbench('home')">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 11.25 12 4.5l8.25 6.75v7.5a1.5 1.5 0 0 1-1.5 1.5h-4.5v-5.5h-4.5v5.5h-4.5a1.5 1.5 0 0 1-1.5-1.5v-7.5Z"/></svg>
       </button>
@@ -10055,7 +10055,7 @@ function showFatalError(msg) {
     }
     if (loader) loader.style.opacity = '1';
   } catch (e) {}
-  console.error('[Headhunter Fatal]', msg);
+  console.error('[AI Recruiter Workspace Fatal]', msg);
 }
 window.onerror = function(msg, url, line, col, err) {
   showFatalError(msg + ' (line ' + line + ':' + col + ')' + (err && err.stack ? '\n' + err.stack : ''));
