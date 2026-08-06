@@ -302,6 +302,26 @@
       color: #17382d;
       font-weight: 800;
     }
+    .wb-insight-block {
+      margin: 10px 0;
+      padding: 12px 14px;
+      border: 1px solid rgba(47,111,82,0.14);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.78);
+      box-shadow: 0 3px 12px rgba(15,23,42,0.04);
+    }
+    .wb-insight-block:first-child { margin-top: 0; }
+    .wb-insight-block:last-child { margin-bottom: 0; }
+    .wb-insight-block h5 {
+      margin: 0 0 8px;
+      color: #17382d;
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+    .wb-insight-block p { margin: 6px 0; color: #334155; }
+    .wb-insight-block ul { margin: 6px 0 0; padding-left: 1.1rem; list-style: disc; }
+    .wb-insight-block li { margin: 5px 0; color: #334155; }
     .ai-toolbox-output {
       color: #374151;
       font-family: 'PingFang SC', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -4750,8 +4770,9 @@
                         <span>{{ item.timeLabel }}</span>
                         <span v-if="item.heat">热度 {{ item.heat }}</span>
                       </div>
-                      <div v-if="item.url" class="mt-3 pt-3 border-t border-slate-100">
-                        <a :href="item.url" target="_blank" rel="noopener"
+                      <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                        <button @click="saveAiNewsItemToKnowledgeBase(item)" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition">保存到知识库</button>
+                        <a v-if="item.url" :href="item.url" target="_blank" rel="noopener"
                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold transition">
                           📎 查看原文
                         </a>
@@ -4770,8 +4791,8 @@
                     <div v-if="aiNewsSummary || aiNewsSummaryError" class="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
                       <div class="flex items-center justify-between gap-3 mb-2">
                         <h4 class="text-sm font-bold" :class="aiNewsSummaryError ? 'text-red-700' : 'text-amber-800'">📝 今日AI摘要</h4>
-                        <button v-if="aiNewsSummary || aiNewsSummaryError" @click="clearAiNewsSummary" type="button"
-                          class="text-xs font-semibold text-slate-400 hover:text-slate-600">清空</button>
+                        <div class="flex items-center gap-3"><button v-if="aiNewsSummary" @click="saveAiNewsSummaryToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存到知识库</button><button v-if="aiNewsSummary || aiNewsSummaryError" @click="clearAiNewsSummary" type="button"
+                          class="text-xs font-semibold text-slate-400 hover:text-slate-600">清空</button></div>
                       </div>
                       <p v-if="aiNewsSummaryError" class="text-sm text-red-700">{{ aiNewsSummaryError }}</p>
                       <div v-else class="ai-news-insight" v-html="renderAiNewsInsight(aiNewsSummary)"></div>
@@ -4780,8 +4801,8 @@
                     <div v-if="aiNewsWorkflowInsight || aiNewsWorkflowError" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
                       <div class="flex items-center justify-between gap-3 mb-2">
                         <h4 class="text-sm font-bold" :class="aiNewsWorkflowError ? 'text-red-700' : 'text-emerald-800'">💡 AI猎头工作流启发</h4>
-                        <button @click="clearAiNewsWorkflowInsight" type="button"
-                          class="text-xs font-semibold text-slate-400 hover:text-slate-600">清空</button>
+                        <div class="flex items-center gap-3"><button v-if="aiNewsWorkflowInsight" @click="saveAiNewsWorkflowToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存到知识库</button><button @click="clearAiNewsWorkflowInsight" type="button"
+                          class="text-xs font-semibold text-slate-400 hover:text-slate-600">清空</button></div>
                       </div>
                       <p v-if="aiNewsWorkflowError" class="text-sm text-red-700">{{ aiNewsWorkflowError }}</p>
                       <div v-else class="ai-news-insight" v-html="renderAiNewsInsight(aiNewsWorkflowInsight)"></div>
@@ -4980,6 +5001,7 @@
                       </div>
                       <!-- 展开操作区 -->
                       <div v-if="isRadarNewsExpanded(ni)" class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3">
+                        <button type="button" @click.stop="saveRadarNewsItemToKnowledgeBase(newsItem)" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition">保存到知识库</button>
                         <a v-if="newsItem.link" :href="newsItem.link" target="_blank" rel="noopener"
                           @click.stop
                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold transition">
@@ -5002,8 +5024,8 @@
 
                   <!-- 每日洞察 -->
                   <div v-if="radarInsight" class="mb-4 flex-shrink-0 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-                    <h4 class="text-sm font-bold text-amber-800 mb-2">📝 猎头每日洞察</h4>
-                    <p class="text-sm text-slate-700 leading-relaxed">{{ radarInsight }}</p>
+                    <div class="flex items-center justify-between gap-3 mb-2"><h4 class="text-sm font-bold text-amber-800">📝 猎头每日洞察</h4><button @click="saveRadarInsightToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存到知识库</button></div>
+                    <div class="ai-news-insight" v-html="renderInsightBlocks(radarInsight)"></div>
                     <div v-if="radarHotSectors.length" class="flex gap-2 mt-3 flex-wrap">
                       <span v-for="sector in radarHotSectors" :key="sector"
                         class="px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">
@@ -12538,7 +12560,7 @@ ${ocrText}`
     const kbForm = reactive({ show: false, title: '', category: '', content: '', editingId: null, customCategory: '' });
     const kbView = reactive({ show: false, article: null });
     const kbFilterCat = ref('');
-    const kbCategories = ['会议记录', '工作沉淀', '流程规范', '团队公告', '其他'];
+    const kbCategories = ['会议记录', '工作沉淀', '流程规范', '团队公告', 'AI资讯', '行业动态', '猎头方法', '其他'];
     // ======== AI 配置 ========
     const AI_CONFIG_KEY = isGuestMode ? 'workbuddy.guest.deepseek_config.v1' : STORAGE_KEY + '_ai_config';
 
@@ -13270,6 +13292,48 @@ ${ocrText}`
       kbForm.customCategory = '';
       localSave();
       schedulePush();
+    }
+
+    function saveInsightToKnowledgeBase({ title, category = '行业动态', content, source = '', sourceUrl = '' } = {}) {
+      const cleanTitle = String(title || '').trim();
+      const cleanContent = String(content || '').trim();
+      if (!cleanTitle || !cleanContent) { showToast('暂无可保存的解读内容', 'error'); return null; }
+      const existing = kbArticles.find(article => article.title === cleanTitle && article.content === cleanContent);
+      if (existing) { showToast('这条内容已在团队知识库'); return existing; }
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      const sourceLine = source || sourceUrl ? `\n\n---\n来源：${source || '资讯中心'}${sourceUrl ? `\n原文链接：${sourceUrl}` : ''}` : '';
+      const article = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), title: cleanTitle, category, content: cleanContent + sourceLine, createdAt: timeStr, updatedAt: timeStr };
+      kbArticles.push(article);
+      void localSave();
+      schedulePush();
+      showToast('已保存到团队知识库');
+      return article;
+    }
+
+    function saveAiNewsSummaryToKnowledgeBase() {
+      return saveInsightToKnowledgeBase({ title: `AI资讯摘要 · ${aiNewsLastUpdated.value || '今日'}`, category: 'AI资讯', content: aiNewsSummary.value, source: 'Builders Digest' });
+    }
+
+    function saveAiNewsWorkflowToKnowledgeBase() {
+      return saveInsightToKnowledgeBase({ title: `AI猎头工作流启发 · ${aiNewsLastUpdated.value || '今日'}`, category: '猎头方法', content: aiNewsWorkflowInsight.value, source: 'Builders Digest' });
+    }
+
+    function saveAiNewsItemToKnowledgeBase(item) {
+      if (!item) return null;
+      return saveInsightToKnowledgeBase({ title: item.title || 'AI资讯', category: 'AI资讯', content: item.summary || item.description || item.title, source: `Builders Digest · ${item.source || '资讯'}`, sourceUrl: item.url || '' });
+    }
+
+    function saveRadarInsightToKnowledgeBase() {
+      const parts = [radarInsight.value];
+      if (radarTrend.value) parts.push(`人才流动趋势：${radarTrend.value}`);
+      if (radarHotSectors.length) parts.push(`热门方向：${radarHotSectors.join('、')}`);
+      return saveInsightToKnowledgeBase({ title: `活水雷达情报解读 · ${radarLastUpdated.value || '今日'}`, category: '行业动态', content: parts.filter(Boolean).join('\n\n'), source: '全网动态 · 活水雷达' });
+    }
+
+    function saveRadarNewsItemToKnowledgeBase(item) {
+      if (!item) return null;
+      return saveInsightToKnowledgeBase({ title: item.title || '行业动态', category: '行业动态', content: item.description || item.title, source: `活水雷达 · ${item.source || '行业资讯'}`, sourceUrl: item.link || '' });
     }
 
     function editKbArticle(article) {
@@ -18862,37 +18926,37 @@ ${ocrText}`
         .replace(/`(.+?)`/g, '<code>$1</code>');
     }
 
-    function renderAiNewsInsight(text) {
-      const headingPattern = /^(核心趋势|人才信号|岗位信号|产品机会|创业机会|今日判断|可自动化的环节|可增强的判断|可沉淀的数据资产|下周可试的小实验|今日AI摘要|AI猎头工作流启发)/;
+    function renderInsightBlocks(text) {
+      const knownHeadings = /^(核心趋势|核心判断|人才信号|人才市场信号|岗位信号|岗位与招聘影响|产品机会|创业机会|值得关注的公司|值得关注的方向|今日判断|可自动化的环节|可增强的判断|可沉淀的数据资产|下周可试的小实验|今日AI摘要|AI猎头工作流启发|风险提示|行动建议|猎头行动建议)/;
       const lines = normalizeAiPlainText(text).replace(/\r\n/g, '\n').split('\n');
-      const html = [];
-
+      const blocks = [];
+      let current = null;
+      const flush = () => { if (current && (current.heading || current.items.length)) blocks.push(current); current = null; };
       lines.forEach(raw => {
         const line = raw.trim();
         if (!line) return;
-
-        if (headingPattern.test(line) && line.length <= 32) {
-          html.push(`<h5>${escapeHtml(line.replace(/[：:]\s*$/, ''))}</h5>`);
-          return;
+        const heading = line.replace(/^#{1,4}\s*/, '').replace(/^【|】$/g, '').replace(/[：:]\s*$/, '').trim();
+        const isHeading = heading.length <= 36 && (knownHeadings.test(heading) || /^(风险|优势|机会|建议|影响|判断|信号|趋势|行动|总结)/.test(heading) || /[：:]$/.test(line));
+        if (isHeading && !/^\d+[.、]/.test(line) && !/^[-·•]/.test(line)) {
+          flush(); current = { heading, items: [] }; return;
         }
-
-        const numbered = line.match(/^(\d+)[.、]\s*(.+)$/);
-        const bullet = line.match(/^[·\-]\s*(.+)$/);
-        const body = numbered ? numbered[2] : bullet ? bullet[1] : line;
-        const escapedBody = escapeHtml(body)
-          .replace(/^([^：:]{2,16})([：:])/, '<strong>$1$2</strong>');
-
-        if (numbered || bullet) {
-          const label = numbered ? numbered[1] : '·';
-          html.push(`<p class="ai-news-insight-item"><span class="ai-news-insight-index">${label}</span><span>${escapedBody}</span></p>`);
-          return;
-        }
-
-        html.push(`<p>${escapedBody}</p>`);
+        if (!current) current = { heading: '', items: [] };
+        const numbered = line.match(/^\d+[.、]\s*(.+)$/);
+        const bullet = line.match(/^[-·•]\s*(.+)$/);
+        const body = numbered ? numbered[1] : bullet ? bullet[1] : line;
+        current.items.push(body);
       });
-
-      return html.join('');
+      flush();
+      return blocks.map(block => {
+        const title = block.heading ? `<h5>${escapeHtml(block.heading)}</h5>` : '';
+        const body = block.items.length > 1
+          ? `<ul>${block.items.map(item => `<li>${renderInlineMarkdown(item)}</li>`).join('')}</ul>`
+          : block.items.map(item => `<p>${renderInlineMarkdown(item)}</p>`).join('');
+        return `<section class="wb-insight-block">${title}${body}</section>`;
+      }).join('');
     }
+
+    function renderAiNewsInsight(text) { return renderInsightBlocks(text); }
 
     function renderResumeMarkdown(text) {
       const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
@@ -23316,7 +23380,7 @@ ${clipped}`
       generateSearchStrategies, toggleSearchStrategiesCollapse, searchStrategyVariantLabel, copySearchStrategy,
       saveSearchFeedback, updateSearchStrategiesWithFeedback,
       openSearchStrategyDialog, closeSearchStrategyDialog, getSearchStrategyFullText,
-      renderResumeMarkdown, renderAdvisorMarkdown, renderAiToolboxMarkdown, renderAiNewsInsight,
+      renderResumeMarkdown, renderAdvisorMarkdown, renderAiToolboxMarkdown, renderInsightBlocks, renderAiNewsInsight,
       advisorPanel, advisorMessages, advisorMessagesScroller, advisorConversations, advisorLoading, advisorActions,
       advisorFloatingStyle, advisorPanelStyle, advisorPositionOptions, advisorContextTitle, advisorCurrentConversationTitle,
       advisorMascotRoles, advisorMascotImage, setAdvisorMascot, saveAdvisorMascot, toggleAdvisorMascotPicker,
@@ -23328,7 +23392,7 @@ ${clipped}`
       focusAdvisorResume,
       // 知识库
       kbArticles, kbForm, kbView, kbFilterCat, kbCategories, filteredKbArticles,
-      kbCategoryColor, kbPreview, renderMd, saveKbArticle, editKbArticle,
+      kbCategoryColor, kbPreview, renderMd, saveKbArticle, saveInsightToKnowledgeBase, saveAiNewsSummaryToKnowledgeBase, saveAiNewsWorkflowToKnowledgeBase, saveAiNewsItemToKnowledgeBase, saveRadarInsightToKnowledgeBase, saveRadarNewsItemToKnowledgeBase, editKbArticle,
       openKbArticle, openAdvisorForMeeting, closeKbView, deleteKbArticle,
       kbApiKey, kbOptimizing, kbShowApiSettings, optimizeKbText, saveKbApiKey,
       // AI 配置
