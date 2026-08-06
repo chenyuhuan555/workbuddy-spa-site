@@ -52,6 +52,7 @@
   <script src="./src/storage/indexeddb-cache.js?v=20260729-idb3"></script>
   <script src="./src/ui/list-performance.js?v=20260730-sort1"></script>
   <script src="./src/ui/markdown-safety.js?v=20260803-markdownsafety1"></script>
+  <script src="./src/ui/knowledge-documents.js?v=20260806-knowledgedocs1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
   <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
@@ -4791,7 +4792,7 @@
                     <div v-if="aiNewsSummary || aiNewsSummaryError" class="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
                       <div class="flex items-center justify-between gap-3 mb-2">
                         <h4 class="text-sm font-bold" :class="aiNewsSummaryError ? 'text-red-700' : 'text-amber-800'">📝 今日AI摘要</h4>
-                        <div class="flex items-center gap-3"><button v-if="aiNewsSummary" @click="saveAiNewsSummaryToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存到知识库</button><button v-if="aiNewsSummary || aiNewsSummaryError" @click="clearAiNewsSummary" type="button"
+                        <div class="flex items-center gap-3"><button v-if="aiNewsSummary || aiNewsWorkflowInsight" @click="saveAiNewsBundleToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存 AI资讯与启发</button><button v-if="aiNewsSummary || aiNewsSummaryError" @click="clearAiNewsSummary" type="button"
                           class="text-xs font-semibold text-slate-400 hover:text-slate-600">清空</button></div>
                       </div>
                       <p v-if="aiNewsSummaryError" class="text-sm text-red-700">{{ aiNewsSummaryError }}</p>
@@ -4801,7 +4802,7 @@
                     <div v-if="aiNewsWorkflowInsight || aiNewsWorkflowError" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
                       <div class="flex items-center justify-between gap-3 mb-2">
                         <h4 class="text-sm font-bold" :class="aiNewsWorkflowError ? 'text-red-700' : 'text-emerald-800'">💡 AI猎头工作流启发</h4>
-                        <div class="flex items-center gap-3"><button v-if="aiNewsWorkflowInsight" @click="saveAiNewsWorkflowToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存到知识库</button><button @click="clearAiNewsWorkflowInsight" type="button"
+                        <div class="flex items-center gap-3"><button v-if="aiNewsSummary || aiNewsWorkflowInsight" @click="saveAiNewsBundleToKnowledgeBase" type="button" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">保存 AI资讯与启发</button><button @click="clearAiNewsWorkflowInsight" type="button"
                           class="text-xs font-semibold text-slate-400 hover:text-slate-600">清空</button></div>
                       </div>
                       <p v-if="aiNewsWorkflowError" class="text-sm text-red-700">{{ aiNewsWorkflowError }}</p>
@@ -13314,46 +13315,100 @@ ${ocrText}`
       schedulePush();
     }
 
-    function saveInsightToKnowledgeBase({ title, category = '行业动态', content, source = '', sourceUrl = '' } = {}) {
-      const cleanTitle = String(title || '').trim();
-      const cleanContent = String(content || '').trim();
-      if (!cleanTitle || !cleanContent) { showToast('暂无可保存的解读内容', 'error'); return null; }
-      const existing = kbArticles.find(article => article.title === cleanTitle && article.content === cleanContent);
-      if (existing) { showToast('这条内容已在团队知识库'); return existing; }
+    function knowledgeDateLabel(value = '') {
+      const raw = String(value || '').trim();
+      if (raw) return raw;
       const now = new Date();
-      const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-      const sourceLine = source || sourceUrl ? `\n\n---\n来源：${source || '资讯中心'}${sourceUrl ? `\n原文链接：${sourceUrl}` : ''}` : '';
-      const article = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), title: cleanTitle, category, content: cleanContent + sourceLine, createdAt: timeStr, updatedAt: timeStr };
-      kbArticles.push(article);
+      return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    }
+
+    function formatKnowledgeSection(text) {
+      const clean = window.WorkBuddyKnowledgeDocuments.stripKnowledgeMarkdownMarkers(text);
+      return clean.split('\n').map(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return '';
+        if (/^[·•]\s*/.test(trimmed)) return `- ${trimmed.replace(/^[·•]\s*/, '')}`;
+        return trimmed;
+      }).join('\n').trim();
+    }
+
+    function saveInsightToKnowledgeBase({ documentKey, title, category = '行业动态', content, entryKey, source = '', sourceUrl = '', replaceExisting = false } = {}) {
+      const cleanContent = formatKnowledgeSection(content);
+      if (!documentKey || !entryKey || !cleanContent) { showToast('暂无可保存的解读内容', 'error'); return null; }
+      const sourceLine = source || sourceUrl
+        ? `\n\n### 来源\n- ${source || '资讯中心'}${sourceUrl ? `\n- 原文链接：[查看原文](${sourceUrl})` : ''}`
+        : '';
+      const now = knowledgeDateLabel();
+      const existing = kbArticles.find(article => article && article.documentKey === documentKey);
+      const isDuplicate = !replaceExisting && existing?.entryKeys?.includes(entryKey);
+      const article = window.WorkBuddyKnowledgeDocuments.prependKnowledgeDocumentEntry(kbArticles, {
+        documentKey, title, category, entryKey, now, replaceExisting, content: `${cleanContent}${sourceLine}`,
+      });
+      if (!article) { showToast('这条内容已在团队知识库'); return null; }
+      if (isDuplicate) { showToast('这条内容已在固定知识库文档'); return article; }
       void localSave();
       schedulePush();
-      showToast('已保存到团队知识库');
+      showToast('已保存到固定知识库文档');
       return article;
     }
 
-    function saveAiNewsSummaryToKnowledgeBase() {
-      return saveInsightToKnowledgeBase({ title: `AI资讯摘要 · ${aiNewsLastUpdated.value || '今日'}`, category: 'AI资讯', content: aiNewsSummary.value, source: 'Builders Digest' });
+    function saveAiNewsBundleToKnowledgeBase() {
+      const date = knowledgeDateLabel(aiNewsLastUpdated.value);
+      const sections = [`## ${date}`];
+      if (aiNewsSummary.value) sections.push(`### 今日 AI 摘要\n${formatKnowledgeSection(aiNewsSummary.value)}`);
+      if (aiNewsWorkflowInsight.value) sections.push(`### 猎头工作流启发\n${formatKnowledgeSection(aiNewsWorkflowInsight.value)}`);
+      if (sections.length === 1) { showToast('请先生成 AI 摘要或工作流启发', 'error'); return null; }
+      const entryKey = `ai-news:${date}:${aiNewsItems.map(item => item.url || item.title || '').join('|')}`;
+      return saveInsightToKnowledgeBase({
+        documentKey: 'ai-news-builders-digest', title: 'AI资讯 · Builders Digest', category: 'AI资讯',
+        entryKey, content: sections.join('\n\n'), source: 'Builders Digest', replaceExisting: true,
+      });
     }
 
-    function saveAiNewsWorkflowToKnowledgeBase() {
-      return saveInsightToKnowledgeBase({ title: `AI猎头工作流启发 · ${aiNewsLastUpdated.value || '今日'}`, category: '猎头方法', content: aiNewsWorkflowInsight.value, source: 'Builders Digest' });
-    }
+    function saveAiNewsSummaryToKnowledgeBase() { return saveAiNewsBundleToKnowledgeBase(); }
+    function saveAiNewsWorkflowToKnowledgeBase() { return saveAiNewsBundleToKnowledgeBase(); }
 
     function saveAiNewsItemToKnowledgeBase(item) {
       if (!item) return null;
-      return saveInsightToKnowledgeBase({ title: item.title || 'AI资讯', category: 'AI资讯', content: item.summary || item.description || item.title, source: `Builders Digest · ${item.source || '资讯'}`, sourceUrl: item.url || '' });
+      const date = knowledgeDateLabel(aiNewsLastUpdated.value);
+      return saveInsightToKnowledgeBase({
+        documentKey: 'ai-news-builders-digest', title: 'AI资讯 · Builders Digest', category: 'AI资讯',
+        entryKey: `ai-item:${item.url || item.title || date}`,
+        content: `## ${date}\n### ${item.title || 'AI资讯'}\n${item.summary || item.description || item.title}`,
+        source: `Builders Digest · ${item.source || '资讯'}`, sourceUrl: item.url || '',
+      });
     }
 
     function saveRadarInsightToKnowledgeBase() {
-      const parts = [radarInsight.value];
-      if (radarTrend.value) parts.push(`人才流动趋势：${radarTrend.value}`);
-      if (radarHotSectors.length) parts.push(`热门方向：${radarHotSectors.join('、')}`);
-      return saveInsightToKnowledgeBase({ title: `活水雷达情报解读 · ${radarLastUpdated.value || '今日'}`, category: '行业动态', content: parts.filter(Boolean).join('\n\n'), source: '全网动态 · 活水雷达' });
+      const date = knowledgeDateLabel(radarLastUpdated.value);
+      const parts = [`## ${date}`];
+      if (radarInsight.value) parts.push(`### 活水雷达情报解读\n${formatKnowledgeSection(radarInsight.value)}`);
+      if (radarTrend.value) parts.push(`### 人才流动趋势\n${formatKnowledgeSection(radarTrend.value)}`);
+      if (radarHotSectors.length) parts.push(`### 热门方向\n- ${radarHotSectors.join('\n- ')}`);
+      const news = radarNews.slice(0, 50).map(item => {
+        const title = item.title || '行业动态';
+        const detail = formatKnowledgeSection(item.description || '暂无摘要');
+        const source = item.source || '行业资讯';
+        const link = item.link ? `\n  - 原文：[查看原文](${item.link})` : '';
+        return `- ${title}\n  - ${detail}\n  - 来源：${source}${link}`;
+      });
+      if (news.length) parts.push(`### 本次具体新闻\n${news.join('\n')}`);
+      return saveInsightToKnowledgeBase({
+        documentKey: 'industry-radar', title: '行业动态 · 活水雷达', category: '行业动态',
+        entryKey: `industry:${date}:${radarNews.map(item => item.link || item.title || '').join('|')}:${radarInsight.value}`,
+        content: parts.join('\n\n'), source: '全网动态 · 活水雷达',
+      });
     }
 
     function saveRadarNewsItemToKnowledgeBase(item) {
       if (!item) return null;
-      return saveInsightToKnowledgeBase({ title: item.title || '行业动态', category: '行业动态', content: item.description || item.title, source: `活水雷达 · ${item.source || '行业资讯'}`, sourceUrl: item.link || '' });
+      const date = knowledgeDateLabel(radarLastUpdated.value);
+      return saveInsightToKnowledgeBase({
+        documentKey: 'industry-radar', title: '行业动态 · 活水雷达', category: '行业动态',
+        entryKey: `industry-item:${item.link || item.title || date}`,
+        content: `## ${date}\n### ${item.title || '行业动态'}\n${item.description || '暂无摘要'}`,
+        source: `活水雷达 · ${item.source || '行业资讯'}`, sourceUrl: item.link || '',
+      });
     }
 
     function editKbArticle(article) {
@@ -23412,7 +23467,7 @@ ${clipped}`
       focusAdvisorResume,
       // 知识库
       kbArticles, kbForm, kbView, kbFilterCat, kbCategories, filteredKbArticles,
-      kbCategoryColor, kbPreview, renderMd, saveKbArticle, saveInsightToKnowledgeBase, saveAiNewsSummaryToKnowledgeBase, saveAiNewsWorkflowToKnowledgeBase, saveAiNewsItemToKnowledgeBase, saveRadarInsightToKnowledgeBase, saveRadarNewsItemToKnowledgeBase, editKbArticle,
+      kbCategoryColor, kbPreview, renderMd, saveKbArticle, saveInsightToKnowledgeBase, saveAiNewsBundleToKnowledgeBase, saveAiNewsSummaryToKnowledgeBase, saveAiNewsWorkflowToKnowledgeBase, saveAiNewsItemToKnowledgeBase, saveRadarInsightToKnowledgeBase, saveRadarNewsItemToKnowledgeBase, editKbArticle,
       openKbArticle, openAdvisorForMeeting, closeKbView, deleteKbArticle,
       kbApiKey, kbOptimizing, kbShowApiSettings, optimizeKbText, saveKbApiKey,
       // AI 配置
