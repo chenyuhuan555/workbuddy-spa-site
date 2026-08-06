@@ -5198,6 +5198,20 @@
             <small class="block text-slate-400 mt-1">不支持的格式会逐条提示，不会中断其他文件</small>
           </label>
 
+          <section class="rounded-xl border border-slate-200 bg-slate-50/70">
+            <button type="button" @click="batchCategorySelectorOpen = !batchCategorySelectorOpen" class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700">
+              <span>上传后归类人才 <span v-if="batchUpload.defaultCategoryIds.length" class="ml-1 text-xs font-normal text-emerald-700">已选 {{ batchUpload.defaultCategoryIds.length }} 类</span></span><span class="text-slate-400">{{ batchCategorySelectorOpen ? '收起' : '展开选择' }}⌄</span>
+            </button>
+            <div v-if="batchCategorySelectorOpen" class="border-t border-slate-200 px-4 py-3">
+              <p class="mb-3 text-xs text-slate-500">拖拽或批量上传的简历会默认归入所选人才分类；不选择则保持未分类。</p>
+              <div v-if="talentCategoryPaths.length" class="flex flex-wrap gap-2">
+                <button v-for="category in talentCategoryPaths" :key="category.id" type="button" @click="toggleBatchCategory(category.id)" :class="['rounded-full border px-2.5 py-1 text-xs font-medium transition', batchUpload.defaultCategoryIds.includes(category.id) ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300']">{{ category.path }}</button>
+              </div>
+              <p v-else class="text-xs text-slate-400">暂无分类，请先新增分类。</p>
+              <button type="button" @click="openTalentCategoryManager" class="mt-3 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">＋ 新增人才分类</button>
+            </div>
+          </section>
+
           <button type="button" @click="talentIntakeDirectEntryOpen = !talentIntakeDirectEntryOpen" class="w-full rounded-lg border border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50">
             {{ talentIntakeDirectEntryOpen ? '收起直接录入' : '直接录入 / 粘贴简历文本' }}
           </button>
@@ -10547,9 +10561,10 @@ const vueAppConfig = {
 
     // 阶段 3.5：批量 / 拖拽入库状态（由 WorkbenchV2 批量引擎驱动，复用既有人才写入能力，不复制第二套逻辑）
     const batchUpload = reactive({
-      open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2),
+      open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2), defaultCategoryIds: [],
       tasks: [], hashes: {}, active: 0, gate: Promise.resolve(),
     });
+    const batchCategorySelectorOpen = ref(false);
     const talentIntakeDirectEntryOpen = ref(false);
     const talentIntakeDirectForm = reactive({ name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', profileText: '', status: 'open', categoryIds: [], rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' });
     const talentIntakeDirectExtracting = ref(false);
@@ -10604,8 +10619,13 @@ const vueAppConfig = {
       talentIntakeDirectExtracting.value = false;
       talentIntakeDirectError.value = '';
     }
-    function openBatchUpload() { return talentIntakeActions.openBatchUpload(); }
-    function openTalentIntake() { return talentIntakeActions.openTalentIntake(); }
+    function openBatchUpload() { batchCategorySelectorOpen.value = false; return talentIntakeActions.openBatchUpload(); }
+    function openTalentIntake() { batchCategorySelectorOpen.value = false; batchUpload.defaultCategoryIds = []; return talentIntakeActions.openTalentIntake(); }
+    function toggleBatchCategory(categoryId) {
+      const next = new Set(batchUpload.defaultCategoryIds || []);
+      if (next.has(categoryId)) next.delete(categoryId); else next.add(categoryId);
+      batchUpload.defaultCategoryIds = [...next];
+    }
     async function saveTalentIntakeDirectEntry() { return talentIntakeActions.saveDirectEntry(); }
     function addBatchFiles(fileList) { return talentIntakeActions.addFiles(fileList); }
     function startBatchAll() { return talentIntakeActions.startAll(); }
@@ -23270,7 +23290,7 @@ ${clipped}`
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
-      batchUpload, batchDragOver, batchStatusLabel, openBatchUpload, openTalentIntake, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
+      batchUpload, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, analyzeSelectedApplicationMatch, runBulkApplicationAiScoring, applicationMatchAnalysis, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       operationHistory, recycleBin, historyPanel, undoLastOperation, restoreRecycleItem,

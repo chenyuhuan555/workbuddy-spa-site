@@ -815,7 +815,7 @@
 
   function emptyBatchForm(file) {
     return {
-      name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open',
+      name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', categoryIds: [],
       rawText: '', fileName: file ? file.name : '', fileData: '', fileId: '', fileHash: '', fileSize: file ? file.size || 0 : 0, fileType: file ? file.type || '' : '',
     };
   }
@@ -881,6 +881,7 @@
     const added = [];
     for (const file of (files || [])) {
       const task = batchMakeTask(file);
+      task.form.categoryIds = [...new Set((state.defaultCategoryIds || []).filter(Boolean))];
       const cls = classifyResumeFile(file ? file.name : '', file ? file.type : '');
       if (!cls.ok) {
         task.status = 'error';
@@ -927,10 +928,12 @@
       task.status = 'reading';
       const parsed = await deps.parseFile(task); // 读取 + 文本提取 + 自动补全，可能抛错
       if (task.cancelled) { task.status = 'cancelled'; return; }
+      const selectedCategoryIds = [...new Set((task.form?.categoryIds || state.defaultCategoryIds || []).filter(Boolean))];
       Object.assign(task, {
         form: parsed.form, fileId: parsed.fileId, fileHash: parsed.fileHash,
         fileSize: parsed.fileSize, fileType: parsed.fileType, rawText: parsed.rawText,
       });
+      task.form.categoryIds = selectedCategoryIds;
       task.status = 'parsing';
       task.parsedName = String(task.form.name || '').trim();
       if (task.fileHash) state.hashes[task.fileHash] = state.hashes[task.fileHash] || task.id;
@@ -978,6 +981,7 @@
       currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
       owner: form.owner.trim(), status: form.status, source: '批量上传',
     }, { allowDuplicate: false });
+    if (form.categoryIds?.length) assignTalentCategories(bundle, candidate.id, [...new Set([...(candidate.categoryIds || []), ...form.categoryIds])]);
     const version = buildResumeVersionFromForm(form);
     if (version) appendTalentResumeVersion(bundle, candidate.id, version);
     task.createdId = candidate.id;
@@ -1013,6 +1017,7 @@
       task.status = 'saving';
       await batchPersistFile(state, task, deps);
       const candidate = createTalent(bundle, baseFields, { allowDuplicate: true });
+      if (form.categoryIds?.length) assignTalentCategories(bundle, candidate.id, [...new Set([...(candidate.categoryIds || []), ...form.categoryIds])]);
       applyVersionAndFinish(candidate.id);
       await deps.persist();
       task.status = 'success';
@@ -1029,11 +1034,13 @@
       await batchPersistFile(state, task, deps);
       if (!target) {
         const candidate = createTalent(bundle, baseFields, { allowDuplicate: false });
+        if (form.categoryIds?.length) assignTalentCategories(bundle, candidate.id, [...new Set([...(candidate.categoryIds || []), ...form.categoryIds])]);
         applyVersionAndFinish(candidate.id);
       } else {
         const parsed = { name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, currentTitle: form.currentTitle, city: form.city, owner: form.owner };
         const { merged } = reconcileParsedFields(target, parsed);
         updateTalent(bundle, target.id, merged);
+        if (form.categoryIds?.length) assignTalentCategories(bundle, target.id, [...new Set([...(target.categoryIds || []), ...form.categoryIds])]);
         applyVersionAndFinish(target.id);
       }
       await deps.persist();

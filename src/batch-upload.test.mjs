@@ -83,6 +83,16 @@ test('batchAddFiles：一次选择 3 份文件生成 3 条独立任务', () => {
   assert.ok(state.tasks.every((t) => t.id && t.fileName), '每条都有 id 与文件名');
 });
 
+test('批量上传任务继承弹窗预先选择的人才分类', () => {
+  const state = makeState();
+  state.defaultCategoryIds = ['artificial-intelligence', 'llm', 'llm'];
+  WorkbenchV2.batchAddFiles(state, [fakeFile('a.pdf'), fakeFile('b.pdf')]);
+  assert.deepEqual(state.tasks.map(task => task.form.categoryIds), [
+    ['artificial-intelligence', 'llm'],
+    ['artificial-intelligence', 'llm'],
+  ]);
+});
+
 // ===========================================================================
 // 2) 格式分类
 // ===========================================================================
