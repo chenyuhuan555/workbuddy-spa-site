@@ -49,7 +49,7 @@
    * 合并本地与远端的完整工作区状态（记录级）。
    *
    * 合并策略：
-   *   - workbenchV2 四大集合（companies/positions/candidates/applications）：按 id + updatedAt
+   *   - workbenchV2 核心集合（companies/positions/candidates/applications/aiApplications）：按 id + updatedAt
    *   - kb（知识库文章）：按 id + updatedAt
    *   - deletedRecords：取远端（墓碑由 applyWorkspaceState 统一处理）
    *   - jobs（看板列）：本地为空时取远端
@@ -61,9 +61,9 @@
   function mergeWorkspaceStates(local, remote) {
     const merged = JSON.parse(JSON.stringify(local));
     let totalFromCloud = 0;
-    // 合并 workbenchV2 四大集合
+    // 合并 workbenchV2 核心集合（含 AI 应用中心）
     if (merged.workbenchV2 && remote?.workbenchV2) {
-      ['companies', 'positions', 'candidates', 'applications'].forEach(key => {
+      ['companies', 'positions', 'candidates', 'applications', 'aiApplications'].forEach(key => {
         const { result, fromCloud } = mergeCollectionById(merged.workbenchV2[key], remote.workbenchV2[key]);
         merged.workbenchV2[key] = result;
         totalFromCloud += fromCloud;

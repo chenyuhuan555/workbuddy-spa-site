@@ -41,6 +41,7 @@
       aiArtifacts: [],
       activities: [],
       notes: [],
+      aiApplications: [],
       migrationMeta: {},
       settings: {},
     };

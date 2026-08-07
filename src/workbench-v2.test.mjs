@@ -675,7 +675,8 @@ test('工作台加载后仅在空分类目录时写入 resume-matrix 默认分�
   const loadBlock = INDEX_HTML.match(/function loadWorkbenchV2\(\) \{[\s\S]*?\r?\n    \}\r?\n\r?\n    async function saveWorkbenchV2/);
   assert.ok(loadBlock, '应能定位工作台加载函数');
   assert.match(loadBlock[0], /const categoriesSeeded = WorkbenchV2\.seedDefaultTalentCategories\(workbenchV2\);/, '加载并校验工作台数据后应尝试补齐默认分类');
-  assert.match(loadBlock[0], /if \(categoriesSeeded\) await saveWorkbenchV2\(\);/, '仅实际补齐分类后才应持久化快照');
+  assert.match(loadBlock[0], /const aiAppsSeeded = AiAppCenter\.seedDefaultAiApplications\(workbenchV2\);/, '加载后应尝试补齐 AI 应用中心默认应用');
+  assert.match(loadBlock[0], /if \(categoriesSeeded \|\| aiAppsSeeded\) await saveWorkbenchV2\(\);/, '仅实际补齐种子数据后才应持久化快照');
 });
 
 test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已有岗位可创建推进', () => {
