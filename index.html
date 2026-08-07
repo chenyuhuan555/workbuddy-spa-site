@@ -7092,6 +7092,8 @@
 
     <!-- ======== 备份与恢复 ======== -->
     <section id="settings-section" v-if="!isGuestMode" class="backup-section">
+      <!-- 旧版云端迁移工具：已全部完成，默认隐藏（showLegacyMigrationTools 开关） -->
+      <template v-if="showLegacyMigrationTools">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
         <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4">
           <div class="min-w-0">
@@ -7305,6 +7307,7 @@
           <p v-else-if="candidateReadPathEnabled" class="mt-2 text-sm font-semibold text-emerald-700">候选人列表已从 candidates 表读取；workspace_state 仍保留为过渡期回退。</p>
         </div>
       </div>
+      </template>
 
       <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-3">
@@ -10600,6 +10603,8 @@ const vueAppConfig = {
     const canWrite = window.WorkBuddyAccess?.canWrite === true;
     const canManageMembers = window.WorkBuddyAccess?.canManageMembers === true;
     const canConfigureAi = window.WorkBuddyAccess?.canConfigureAi === true;
+    // 旧版云端迁移工具已全部完成、目前不再使用，默认隐藏；需要时改为 true 恢复显示
+    const showLegacyMigrationTools = false;
     const workbenchNavItems = [
       { key: 'dashboard', label: '工作台', icon: '台' },
       { key: 'companies', label: '公司', icon: '司' },
@@ -23614,6 +23619,7 @@ ${clipped}`
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
+      showLegacyMigrationTools,
       companyFilter, companyPage, companyCreate, companyPositionCreate, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId,
       candidateFilters, candidatePage, talentMoreMenuOpen, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded,

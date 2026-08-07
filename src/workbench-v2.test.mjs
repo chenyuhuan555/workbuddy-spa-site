@@ -679,6 +679,18 @@ test('工作台加载后仅在空分类目录时写入 resume-matrix 默认分�
   assert.match(loadBlock[0], /if \(categoriesSeeded \|\| aiAppsSeeded\) await saveWorkbenchV2\(\);/, '仅实际补齐种子数据后才应持久化快照');
 });
 
+test('旧版云端迁移工具面板默认隐藏，备份与恢复保留显示', () => {
+  assert.match(INDEX_HTML, /const showLegacyMigrationTools = false;/, '旧版迁移工具开关默认关闭');
+  const from = INDEX_HTML.indexOf('<template v-if="showLegacyMigrationTools">');
+  const to = INDEX_HTML.indexOf('<h2 class="font-bold text-slate-800">备份与恢复</h2>');
+  assert.ok(from >= 0, '迁移工具卡片组应被开关包裹');
+  assert.ok(to > from, '备份与恢复应在隐藏区块之后');
+  const gated = INDEX_HTML.slice(from, to);
+  for (const label of ['新版业务数据迁移', '简历文本云端迁移', '候选人云端迁移', '简历版本云端双写', '业务实体云端双写', '候选人增量同步']) {
+    assert.ok(gated.includes(label), `应隐藏：${label}`);
+  }
+});
+
 test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已有岗位可创建推进', () => {
   assert.match(INDEX_HTML, /openTalentJobMatch/, '人才库需要提供岗位匹配入口');
   assert.match(INDEX_HTML, /talentJobMatch\.mode === 'existing'/, '需要区分已有岗位与临时 JD 模式');
