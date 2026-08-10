@@ -3,6 +3,7 @@ import json
 import unittest
 
 from openalex import normalize_work, search_works
+from supabase_writer import write_talent_leads
 
 
 class FakeResponse(io.StringIO):
@@ -37,6 +38,20 @@ class OpenAlexTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertIn("api.openalex.org/works", calls[0][0])
         self.assertEqual(calls[0][1], 20)
+
+    def test_supabase_writer_requires_explicit_credentials_and_writes_upsert(self):
+        with self.assertRaisesRegex(RuntimeError, "SUPABASE_CREDENTIALS_REQUIRED"):
+            write_talent_leads([{"id": "openalex:a1"}])
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            return FakeResponse("")
+
+        count = write_talent_leads([{"id": "openalex:a1", "name": "林若川"}], base_url="https://example.supabase.co", service_role_key="test-key", opener=opener)
+        self.assertEqual(count, 1)
+        self.assertIn("rest/v1/talent_leads", calls[0][0].full_url)
+        self.assertEqual(calls[0][0].get_header("Authorization"), "Bearer test-key")
 
 
 if __name__ == "__main__":
