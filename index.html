@@ -4657,9 +4657,22 @@
                 <article v-for="job in quantumRadarJobs" :key="job.id" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold text-emerald-700">{{ job.company }}</p><h3 class="mt-1 font-bold text-slate-900">{{ job.title }}</h3><p class="mt-1 text-sm text-slate-500">{{ job.location }} · {{ job.quantumDomain }}</p></div><strong class="text-xl text-emerald-700">{{ job.score }}<span class="ml-1 text-xs font-normal text-slate-400">评分</span></strong></div><p class="mt-4 text-xs text-slate-500">状态：{{ job.status }} · 来源：{{ job.source }}</p></article>
               </section>
               <section v-else-if="quantumRadarTab === 'companies'" class="grid gap-4 md:grid-cols-2" aria-label="关注公司"><article v-for="company in quantumRadarCompanies" :key="company.id" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><h3 class="font-bold text-slate-900">{{ company.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ company.domain }}</p></div><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{{ company.hiringStatus }}</span></div><div class="mt-4 flex items-center justify-between text-sm"><span class="text-slate-500">关注方向：{{ company.focus }}</span><strong class="text-slate-900">{{ company.jobCount }} 个岗位</strong></div></article></section>
-              <section v-else-if="quantumRadarTab === 'jobs'" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-label="岗位雷达"><div class="divide-y divide-slate-100"><div v-for="job in quantumRadarJobs" :key="job.id" class="flex flex-wrap items-center justify-between gap-3 p-4"><div><h3 class="font-semibold text-slate-900">{{ job.title }}</h3><p class="mt-1 text-sm text-slate-500">{{ job.company }} · {{ job.location }} · {{ job.quantumDomain }}</p></div><div class="flex items-center gap-3"><span class="text-sm text-slate-500">{{ job.status }}</span><strong class="text-lg text-emerald-700">{{ job.score }}</strong></div></div></div></section>
-              <section v-else-if="quantumRadarTab === 'talents'" class="grid gap-4 md:grid-cols-2" aria-label="人才探索"><article v-for="talent in quantumRadarTalents" :key="talent.id" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><h3 class="font-bold text-slate-900">{{ talent.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ talent.institution }}</p></div><strong class="text-xl text-emerald-700">{{ talent.matchScore }}</strong></div><p class="mt-3 text-sm text-slate-700">{{ talent.researchDirection }}</p><div class="mt-3 flex flex-wrap gap-2"><span v-for="job in talent.matchedJobs" :key="job" class="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-700">{{ job }}</span><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{{ talent.stage }}</span></div></article></section>
+              <section v-else-if="quantumRadarTab === 'jobs'" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-label="岗位雷达"><div class="divide-y divide-slate-100"><div v-for="job in quantumRadarJobs" :key="job.id" class="flex flex-wrap items-center justify-between gap-3 p-4"><div><h3 class="font-semibold text-slate-900">{{ job.title }}</h3><p class="mt-1 text-sm text-slate-500">{{ job.company }} · {{ job.location }} · {{ job.quantumDomain }}</p><p v-if="job.positionId" class="mt-1 text-xs font-semibold text-emerald-700">已关联现有岗位</p></div><div class="flex items-center gap-3"><span class="text-sm text-slate-500">{{ job.status }}</span><strong class="text-lg text-emerald-700">{{ job.score }}</strong><button v-if="!isGuestMode" type="button" @click="openQuantumRadarLink('job', job)" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">{{ job.positionId ? '修改关联' : '关联岗位' }}</button></div></div></div></section>
+              <section v-else-if="quantumRadarTab === 'talents'" class="grid gap-4 md:grid-cols-2" aria-label="人才探索"><article v-for="talent in quantumRadarTalents" :key="talent.id" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><h3 class="font-bold text-slate-900">{{ talent.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ talent.institution }}</p><p v-if="talent.candidateId" class="mt-1 text-xs font-semibold text-emerald-700">已关联现有人才</p></div><strong class="text-xl text-emerald-700">{{ talent.matchScore }}</strong></div><p class="mt-3 text-sm text-slate-700">{{ talent.researchDirection }}</p><div class="mt-3 flex flex-wrap gap-2"><span v-for="job in talent.matchedJobs" :key="job" class="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-700">{{ job }}</span><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{{ talent.stage }}</span></div><button v-if="!isGuestMode" type="button" @click="openQuantumRadarLink('talent', talent)" class="mt-4 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">{{ talent.candidateId ? '修改关联' : '关联人才' }}</button></article></section>
               <section v-else class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-label="采集任务"><div class="divide-y divide-slate-100"><div v-for="task in quantumRadarTasks" :key="task.id" class="flex flex-wrap items-center justify-between gap-3 p-4"><div><h3 class="font-semibold text-slate-900">{{ task.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ task.source }} · {{ task.lastRun }} · {{ task.resultCount }} 条结果</p></div><span :class="task.status === '运行中' ? 'bg-blue-50 text-blue-700' : task.status === '已完成' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'" class="rounded-full px-3 py-1 text-xs font-semibold">{{ task.status }}</span></div></div></section>
+              <div v-if="quantumRadarLinkDialog.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-label="关联量子雷达记录" @click.self="closeQuantumRadarLink">
+                <div class="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+                  <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">业务关联</p><h3 class="mt-1 text-lg font-bold text-slate-900">{{ quantumRadarLinkDialog.type === 'job' ? '关联到现有岗位' : '关联到现有人才' }}</h3><p class="mt-1 text-sm text-slate-500">{{ quantumRadarLinkDialog.source?.title || quantumRadarLinkDialog.source?.name }}</p></div><button type="button" @click="closeQuantumRadarLink" aria-label="关闭关联弹窗" class="text-xl text-slate-400 hover:text-slate-700">×</button></div>
+                  <label class="mt-5 block text-sm font-semibold text-slate-700">{{ quantumRadarLinkDialog.type === 'job' ? '选择岗位' : '选择人才' }}
+                    <select v-model="quantumRadarLinkDialog.targetId" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                      <option value="">请选择…</option>
+                      <option v-for="item in quantumRadarLinkDialog.type === 'job' ? quantumRadarLinkPositions : quantumRadarLinkCandidates" :key="item.id" :value="item.id">{{ item.title || item.name }}{{ item.companyId ? ' · ' + (companyById[item.companyId]?.name || '') : '' }}</option>
+                    </select>
+                  </label>
+                  <p v-if="quantumRadarLinkDialog.error" class="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{{ quantumRadarLinkDialog.error }}</p>
+                  <div class="mt-6 flex justify-end gap-2"><button type="button" @click="closeQuantumRadarLink" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">取消</button><button type="button" @click="saveQuantumRadarLink" :disabled="quantumRadarLinkDialog.saving || !quantumRadarLinkDialog.targetId" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{{ quantumRadarLinkDialog.saving ? '保存中…' : '保存关联' }}</button></div>
+                </div>
+              </div>
             </section>
           </template>
           <template v-else>
@@ -10656,6 +10669,48 @@ const vueAppConfig = {
     });
     const quantumRadarCloudStatus = ref('mock');
     const quantumRadarCloudError = ref('');
+    const quantumRadarLinkDialog = reactive({ open: false, type: 'job', source: null, targetId: '', saving: false, error: '' });
+    const quantumRadarLinkPositions = computed(() => (workbenchV2.positions || []).filter(position => position && position.id && position.status !== 'deleted'));
+    const quantumRadarLinkCandidates = computed(() => (workbenchV2.candidates || []).filter(candidate => candidate && candidate.id && candidate.status !== 'deleted'));
+    function openQuantumRadarLink(type, source) {
+      if (isGuestMode || !source) return;
+      quantumRadarLinkDialog.open = true;
+      quantumRadarLinkDialog.type = type;
+      quantumRadarLinkDialog.source = source;
+      quantumRadarLinkDialog.targetId = type === 'job' ? String(source.positionId || '') : String(source.candidateId || '');
+      quantumRadarLinkDialog.error = '';
+    }
+    function closeQuantumRadarLink() {
+      if (quantumRadarLinkDialog.saving) return;
+      quantumRadarLinkDialog.open = false;
+      quantumRadarLinkDialog.source = null;
+      quantumRadarLinkDialog.error = '';
+    }
+    async function saveQuantumRadarLink() {
+      if (isGuestMode || quantumRadarLinkDialog.saving || !quantumRadarLinkDialog.source || !quantumRadarLinkDialog.targetId) return;
+      quantumRadarLinkDialog.saving = true;
+      quantumRadarLinkDialog.error = '';
+      try {
+        const repo = window.WorkBuddyQuantumRadarRepo.createQuantumRadarRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+          cloudEnabled: true,
+        });
+        if (quantumRadarLinkDialog.type === 'job') {
+          await repo.linkJobToPosition(quantumRadarLinkDialog.source.id, quantumRadarLinkDialog.targetId);
+          quantumRadarLinkDialog.source.positionId = quantumRadarLinkDialog.targetId;
+        } else {
+          await repo.linkTalentToCandidate(quantumRadarLinkDialog.source.id, quantumRadarLinkDialog.targetId);
+          quantumRadarLinkDialog.source.candidateId = quantumRadarLinkDialog.targetId;
+        }
+        showToast('业务关联已保存', 'success');
+        closeQuantumRadarLink();
+      } catch (error) {
+        quantumRadarLinkDialog.error = error?.code === 'WRITE_REQUIRED' ? '当前账号没有编辑权限' : '关联保存失败，请稍后重试';
+      } finally {
+        quantumRadarLinkDialog.saving = false;
+      }
+    }
     async function loadQuantumRadarFromCloud() {
       if (isGuestMode || !window.WorkBuddyQuantumRadarRepo || !window.WorkBuddySupabase || !window.WorkBuddyAccess?.profile) return;
       try {
@@ -23719,7 +23774,7 @@ ${clipped}`
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
-      knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud,
+      knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
