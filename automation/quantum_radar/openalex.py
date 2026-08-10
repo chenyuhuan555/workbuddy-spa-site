@@ -31,7 +31,8 @@ def normalize_work(work: dict) -> ResearchLead | None:
     concepts = [item.get("display_name", "") for item in (work.get("concepts") or [])]
     direction = " / ".join(item for item in concepts[:3] if item) or "量子信息"
     return ResearchLead(
-        id=f"openalex:{author.get('id', author['display_name'])}",
+        # OpenAlex 可能返回 id=null；不能让多个无 ID 作者落到同一个 None 主键。
+        id=f"openalex:{author.get('id') or author['display_name']}",
         name=author["display_name"],
         institution=institution,
         research_direction=direction,

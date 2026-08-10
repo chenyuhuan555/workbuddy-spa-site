@@ -23,6 +23,10 @@ class OpenAlexTests(unittest.TestCase):
         self.assertEqual(lead.id, "openalex:a1")
         self.assertEqual(lead.institution, "中国科学技术大学")
 
+    def test_normalize_work_falls_back_when_author_id_is_null(self):
+        lead = normalize_work({"authorships": [{"author": {"id": None, "display_name": "无 ID 作者"}}]})
+        self.assertEqual(lead.id, "openalex:无 ID 作者")
+
     def test_search_works_is_read_only_and_deduplicates(self):
         payload = {"results": [
             {"authorships": [{"author": {"id": "a1", "display_name": "林若川"}}]},
