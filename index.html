@@ -4631,7 +4631,7 @@
                     <h2 class="mt-2 text-2xl font-bold text-slate-900">量子人才雷达</h2>
                     <p class="mt-1 text-sm text-slate-500">聚合量子行业机会、公司动向与人才线索，帮助你优先找到值得推进的机会。</p>
                   </div>
-                  <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500">演示数据 · 尚未连接真实采集</span>
+                  <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500">{{ quantumRadarCloudStatus === 'cloud' ? '云端演示数据' : '本地演示数据 · 尚未连接真实采集' }}</span>
                 </div>
                 <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <div v-for="metric in [{label:'今日新增岗位',value: quantumRadarMetrics.newJobs},{label:'重点机会',value: quantumRadarMetrics.priorityJobs},{label:'招聘活跃公司',value: quantumRadarMetrics.activeCompanies},{label:'内部匹配人才',value: quantumRadarMetrics.matchedTalents},{label:'Talent Lead',value: quantumRadarMetrics.talentLeads}]" :key="metric.label" class="rounded-2xl bg-slate-50 p-4">
@@ -10647,7 +10647,42 @@ const vueAppConfig = {
     const workbenchNav = ref('dashboard');
     const knowledgeSubmodule = ref('library');
     const quantumRadarTab = ref('opportunities');
-    const quantumRadarData = window.WorkBuddyQuantumDemoData || { quantumCompanies: [], externalJobs: [], talentLeads: [], crawlTasks: [] };
+    const quantumRadarDemoData = window.WorkBuddyQuantumDemoData || { quantumCompanies: [], externalJobs: [], talentLeads: [], crawlTasks: [] };
+    const quantumRadarData = reactive({
+      quantumCompanies: [...(quantumRadarDemoData.quantumCompanies || [])],
+      externalJobs: [...(quantumRadarDemoData.externalJobs || [])],
+      talentLeads: [...(quantumRadarDemoData.talentLeads || [])],
+      crawlTasks: [...(quantumRadarDemoData.crawlTasks || [])],
+    });
+    const quantumRadarCloudStatus = ref('mock');
+    const quantumRadarCloudError = ref('');
+    async function loadQuantumRadarFromCloud() {
+      if (isGuestMode || !window.WorkBuddyQuantumRadarRepo || !window.WorkBuddySupabase || !window.WorkBuddyAccess?.profile) return;
+      try {
+        const repo = window.WorkBuddyQuantumRadarRepo.createQuantumRadarRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+          cloudEnabled: true,
+        });
+        const [companies, jobs, talents, tasks] = await Promise.all([
+          repo.list('companies'),
+          repo.list('jobs'),
+          repo.list('talents'),
+          repo.list('tasks'),
+        ]);
+        if (!companies.length && !jobs.length && !talents.length && !tasks.length) return;
+        quantumRadarData.quantumCompanies = companies;
+        quantumRadarData.externalJobs = jobs;
+        quantumRadarData.talentLeads = talents;
+        quantumRadarData.crawlTasks = tasks.map(task => ({ ...task, lastRun: task.lastRun || task.lastRunAt || '' }));
+        quantumRadarCloudStatus.value = 'cloud';
+        quantumRadarCloudError.value = '';
+      } catch (error) {
+        quantumRadarCloudStatus.value = 'mock';
+        quantumRadarCloudError.value = '云端读取失败，已回退到本地演示数据';
+        console.warn('[quantum-radar] cloud read fallback', error);
+      }
+    }
     const quantumRadarMetrics = computed(() => window.WorkBuddyQuantumRadarDashboard?.buildMetrics(quantumRadarData) || {});
     const quantumRadarPriorityJobs = computed(() => window.WorkBuddyQuantumRadarDashboard?.getPriorityJobs(quantumRadarData.externalJobs, 5) || []);
     const quantumRadarCompanies = computed(() => window.WorkBuddyQuantumRadarCompany?.filterCompanies(quantumRadarData.quantumCompanies, '') || []);
@@ -16152,6 +16187,7 @@ ${ocrText}`
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
+      await loadQuantumRadarFromCloud(); // Sprint 2：登录用户读取独立量子雷达表，失败回退演示数据
       startWorkbenchEntityPolling();
       startCandidatePolling();
       await reconcileMigratedPositionDescriptions();
@@ -23683,7 +23719,7 @@ ${clipped}`
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
-      knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks,
+      knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
