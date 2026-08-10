@@ -38,7 +38,10 @@ test('AI应用中心页面与弹窗存在，且管理操作受 canManageMembers 
   assert.match(html, /workbenchNav === 'aiApps' && workbenchRoute\.type === 'list'/);
   assert.match(html, /v-if="aiAppForm\.open && canManageMembers"/);
   assert.match(html, /v-if="canManageMembers" @click="openAiAppCreate\(\)"/);
-  assert.match(html, /v-if="canManageMembers" @click="openAiAppEdit\(app\)"/);
+  assert.match(html, /v-if="canManageMembers" @click\.stop="openAiAppEdit\(app\)"/);
+  assert.match(html, /@click="openAiApplication\(app\)"/, '整张应用卡片应可点击跳转');
+  assert.match(html, /function openAiApplication\(app\)/, '整卡跳转方法应存在');
+  assert.match(html, /rel="noopener" @click\.stop class=/, '打开应用链接应阻止冒泡避免重复打开');
   const saveFn = block('async function saveAiAppForm()', 'async function deleteAiAppForm()');
   assert.match(saveFn, /if \(!canManageMembers \|\| isGuestMode/);
   const deleteFn = block('async function deleteAiAppForm()', 'const memberManagement');
