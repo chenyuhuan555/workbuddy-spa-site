@@ -30,3 +30,11 @@ test('Sprint 2 SQL 创建独立表并启用 RLS', () => {
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /candidates|positions/i);
 });
+
+test('量子雷达种子数据使用可重复执行的 UPSERT', () => {
+  const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/quantum-radar-seed.sql'), 'utf8');
+  assert.match(sql, /insert into public\.external_jobs/i);
+  assert.match(sql, /on conflict \(id\) do update/i);
+  assert.match(sql, /qt-001/);
+  assert.match(sql, /qtask-001/);
+});
