@@ -1,0 +1,20 @@
+name: Quantum Radar dry-run
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: 'OpenAlex query (dry-run only)'
+        required: false
+        default: 'quantum computing'
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run local dry-run
+        run: python automation/quantum_radar/run.py --query "${{ inputs.query }}"
