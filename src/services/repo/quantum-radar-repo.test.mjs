@@ -24,6 +24,19 @@ test('量子雷达仓储映射 Supabase 行并保留扩展字段', async () => {
   assert.equal(calls[0], 'external_jobs');
 });
 
+test('量子雷达业务关联只更新雷达表，不自动创建现有岗位或人才', async () => {
+  const calls = [];
+  const builder = {
+    update(payload) { calls.push({ op: 'update', payload }); return builder; },
+    eq(column, value) { calls.push({ op: 'eq', column, value }); return calls.filter(call => call.op === 'eq').length % 2 === 0 ? Promise.resolve({ error: null }) : builder; },
+  };
+  const api = repo.createQuantumRadarRepo({ supabase: { from(table) { calls.push({ op: 'from', table }); return builder; } }, cloudEnabled: true, getProfile: () => ({ status: 'active', role: 'editor' }) });
+  assert.deepEqual(await api.linkJobToPosition('qj-001', 'position-1'), { jobId: 'qj-001', positionId: 'position-1' });
+  assert.deepEqual(await api.linkTalentToCandidate('qt-001', 'candidate-1'), { talentId: 'qt-001', candidateId: 'candidate-1' });
+  assert.deepEqual(calls.filter(call => call.op === 'from').map(call => call.table), ['external_jobs', 'talent_leads']);
+  assert.equal(calls.filter(call => call.op === 'update').length, 2);
+});
+
 test('Sprint 2 SQL 创建独立表并启用 RLS', () => {
   const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/quantum-radar.sql'), 'utf8');
   for (const table of ['quantum_radar_companies', 'external_jobs', 'talent_leads', 'quantum_company_sources', 'quantum_crawl_tasks']) assert.match(sql, new RegExp(`create table if not exists public\\.${table}`, 'i'));

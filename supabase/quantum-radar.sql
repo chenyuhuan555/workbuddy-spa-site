@@ -60,6 +60,15 @@ create table if not exists public.talent_leads (
   deleted_at timestamptz
 );
 
+alter table public.external_jobs
+  add column if not exists position_id text;
+
+create index if not exists idx_external_jobs_position
+on public.external_jobs(workspace_id, position_id);
+
+create index if not exists idx_talent_leads_candidate
+on public.talent_leads(workspace_id, candidate_id);
+
 create table if not exists public.quantum_company_sources (
   id text primary key,
   workspace_id text not null default 'main',

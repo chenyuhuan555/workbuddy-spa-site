@@ -8,7 +8,7 @@
   const TABLES = Object.freeze({ companies: 'quantum_radar_companies', jobs: 'external_jobs', talents: 'talent_leads', sources: 'quantum_company_sources', tasks: 'quantum_crawl_tasks' });
   const CONTRACTS = Object.freeze({
     companies: { name: 'name', domain: 'domain', hiringStatus: 'hiring_status', jobCount: 'job_count', focus: 'focus', source: 'source' },
-    jobs: { title: 'title', company: 'company', location: 'location', quantumDomain: 'quantum_domain', score: 'score', status: 'status', postedDays: 'posted_days', source: 'source', sourceUrl: 'source_url', publishedAt: 'published_at' },
+    jobs: { title: 'title', company: 'company', location: 'location', quantumDomain: 'quantum_domain', score: 'score', status: 'status', postedDays: 'posted_days', source: 'source', sourceUrl: 'source_url', publishedAt: 'published_at', positionId: 'position_id' },
     talents: { name: 'name', institution: 'institution', researchDirection: 'research_direction', matchedJobs: 'matched_jobs', matchScore: 'match_score', stage: 'stage', source: 'source', candidateId: 'candidate_id' },
     sources: { companyId: 'company_id', sourceType: 'source_type', sourceUrl: 'source_url', enabled: 'enabled', lastCrawledAt: 'last_crawled_at' },
     tasks: { name: 'name', status: 'status', lastRunAt: 'last_run_at', source: 'source', resultCount: 'result_count', errorMessage: 'error_message' },
@@ -57,7 +57,29 @@
       if (error) throw appError('BACKEND_REQUEST_FAILED', error);
       return rows.length;
     }
-    return Object.freeze({ list, upsert, cloudEnabled });
+    async function linkJobToPosition(jobId, positionId) {
+      if (!cloudEnabled) throw appError('CLOUD_WRITE_DISABLED');
+      const profile = requireProfile(getProfile);
+      if (!['admin', 'editor'].includes(profile.role)) throw appError('WRITE_REQUIRED');
+      const id = String(jobId || '').trim();
+      const target = String(positionId || '').trim();
+      if (!id || !target) throw appError('INVALID_ARGUMENT');
+      const { error } = await supabase.from(TABLES.jobs).update({ position_id: target, updated_at: new Date().toISOString() }).eq('id', id).eq('workspace_id', 'main');
+      if (error) throw appError('BACKEND_REQUEST_FAILED', error);
+      return { jobId: id, positionId: target };
+    }
+    async function linkTalentToCandidate(talentId, candidateId) {
+      if (!cloudEnabled) throw appError('CLOUD_WRITE_DISABLED');
+      const profile = requireProfile(getProfile);
+      if (!['admin', 'editor'].includes(profile.role)) throw appError('WRITE_REQUIRED');
+      const id = String(talentId || '').trim();
+      const target = String(candidateId || '').trim();
+      if (!id || !target) throw appError('INVALID_ARGUMENT');
+      const { error } = await supabase.from(TABLES.talents).update({ candidate_id: target, updated_at: new Date().toISOString() }).eq('id', id).eq('workspace_id', 'main');
+      if (error) throw appError('BACKEND_REQUEST_FAILED', error);
+      return { talentId: id, candidateId: target };
+    }
+    return Object.freeze({ list, upsert, linkJobToPosition, linkTalentToCandidate, cloudEnabled });
   }
   return Object.freeze({ TABLES, CONTRACTS, createQuantumRadarRepo });
 });
