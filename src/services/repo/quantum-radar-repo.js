@@ -37,6 +37,42 @@
     return model;
   }
 
+  function normalizeSearchText(value) {
+    return String(value || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ').trim();
+  }
+  function textScore(left, right) {
+    const a = normalizeSearchText(left);
+    const b = normalizeSearchText(right);
+    if (!a || !b) return 0;
+    if (a === b) return 100;
+    if (a.includes(b) || b.includes(a)) return 80;
+    const aTokens = new Set(a.split(/\s+/).filter(Boolean));
+    const bTokens = new Set(b.split(/\s+/).filter(Boolean));
+    const overlap = [...aTokens].filter(token => bTokens.has(token)).length;
+    return overlap ? Math.round((overlap / Math.max(aTokens.size, bTokens.size)) * 70) : 0;
+  }
+  function suggestJobPositions(job, positions, companyNameById = {}) {
+    const sourceTitle = job?.title || '';
+    const sourceCompany = job?.company || '';
+    return (Array.isArray(positions) ? positions : []).filter(Boolean).map(position => {
+      const titleScore = textScore(sourceTitle, position.title);
+      const companyScore = textScore(sourceCompany, companyNameById[position.companyId] || position.company || '');
+      const score = Math.min(99, Math.round(titleScore * 0.7 + companyScore * 0.3));
+      return { item: position, score, reason: titleScore >= 80 ? '岗位名称高度匹配' : companyScore >= 80 ? '公司高度匹配' : '岗位信息部分匹配' };
+    }).filter(result => result.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+  }
+  function suggestTalentCandidates(talent, candidates) {
+    const sourceName = talent?.name || '';
+    const sourceDirection = talent?.researchDirection || '';
+    return (Array.isArray(candidates) ? candidates : []).filter(Boolean).map(candidate => {
+      const nameScore = textScore(sourceName, candidate.name);
+      const profileText = [candidate.skills, candidate.directions, candidate.summary, candidate.currentCompany].flat().join(' ');
+      const directionScore = textScore(sourceDirection, profileText);
+      const score = Math.min(99, Math.round(nameScore * 0.65 + directionScore * 0.35));
+      return { item: candidate, score, reason: nameScore >= 80 ? '姓名高度匹配' : directionScore >= 40 ? '方向/技能部分匹配' : '候选人信息部分匹配' };
+    }).filter(result => result.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+  }
+
   function createQuantumRadarRepo({ supabase, getProfile, cloudEnabled = false } = {}) {
     async function list(kind, { limit = 500 } = {}) {
       if (!cloudEnabled) throw appError('CLOUD_READ_DISABLED');
@@ -81,5 +117,5 @@
     }
     return Object.freeze({ list, upsert, linkJobToPosition, linkTalentToCandidate, cloudEnabled });
   }
-  return Object.freeze({ TABLES, CONTRACTS, createQuantumRadarRepo });
+  return Object.freeze({ TABLES, CONTRACTS, createQuantumRadarRepo, normalizeSearchText, textScore, suggestJobPositions, suggestTalentCandidates });
 });

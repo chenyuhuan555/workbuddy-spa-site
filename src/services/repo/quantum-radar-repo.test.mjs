@@ -37,6 +37,21 @@ test('量子雷达业务关联只更新雷达表，不自动创建现有岗位�
   assert.equal(calls.filter(call => call.op === 'update').length, 2);
 });
 
+test('量子雷达关联建议按岗位/公司和人才方向返回排序结果', () => {
+  const jobSuggestions = repo.suggestJobPositions(
+    { title: 'Quantum Compiler Engineer', company: '本源量子' },
+    [{ id: 'p1', title: 'Quantum Compiler Engineer', companyId: 'c1' }, { id: 'p2', title: 'HRBP', companyId: 'c2' }],
+    { c1: '本源量子', c2: '其他公司' },
+  );
+  assert.equal(jobSuggestions[0].item.id, 'p1');
+  assert.ok(jobSuggestions[0].score >= 80);
+  const talentSuggestions = repo.suggestTalentCandidates(
+    { name: '林若川', researchDirection: '量子编译器 / 量子算法' },
+    [{ id: 'c1', name: '林若川', skills: ['量子算法'] }, { id: 'c2', name: '王某', skills: ['财务'] }],
+  );
+  assert.equal(talentSuggestions[0].item.id, 'c1');
+});
+
 test('Sprint 2 SQL 创建独立表并启用 RLS', () => {
   const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/quantum-radar.sql'), 'utf8');
   for (const table of ['quantum_radar_companies', 'external_jobs', 'talent_leads', 'quantum_company_sources', 'quantum_crawl_tasks']) assert.match(sql, new RegExp(`create table if not exists public\\.${table}`, 'i'));

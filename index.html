@@ -4663,6 +4663,7 @@
               <div v-if="quantumRadarLinkDialog.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-label="关联量子雷达记录" @click.self="closeQuantumRadarLink">
                 <div class="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
                   <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">业务关联</p><h3 class="mt-1 text-lg font-bold text-slate-900">{{ quantumRadarLinkDialog.type === 'job' ? '关联到现有岗位' : '关联到现有人才' }}</h3><p class="mt-1 text-sm text-slate-500">{{ quantumRadarLinkDialog.source?.title || quantumRadarLinkDialog.source?.name }}</p></div><button type="button" @click="closeQuantumRadarLink" aria-label="关闭关联弹窗" class="text-xl text-slate-400 hover:text-slate-700">×</button></div>
+                  <div v-if="quantumRadarLinkSuggestions.length" class="mt-5 rounded-2xl bg-emerald-50/70 p-3"><p class="text-xs font-semibold text-emerald-800">智能建议（仅供确认）</p><div class="mt-2 space-y-2"><button v-for="suggestion in quantumRadarLinkSuggestions" :key="suggestion.item.id" type="button" @click="quantumRadarLinkDialog.targetId = suggestion.item.id" class="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-left text-sm hover:ring-2 hover:ring-emerald-200"><span class="min-w-0 truncate text-slate-700">{{ suggestion.item.title || suggestion.item.name }}<span class="ml-2 text-xs text-slate-400">{{ suggestion.reason }}</span></span><strong class="shrink-0 text-emerald-700">{{ suggestion.score }}</strong></button></div></div>
                   <label class="mt-5 block text-sm font-semibold text-slate-700">{{ quantumRadarLinkDialog.type === 'job' ? '选择岗位' : '选择人才' }}
                     <select v-model="quantumRadarLinkDialog.targetId" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
                       <option value="">请选择…</option>
@@ -10670,6 +10671,7 @@ const vueAppConfig = {
     const quantumRadarCloudStatus = ref('mock');
     const quantumRadarCloudError = ref('');
     const quantumRadarLinkDialog = reactive({ open: false, type: 'job', source: null, targetId: '', saving: false, error: '' });
+    const quantumRadarLinkSuggestions = ref([]);
     const quantumRadarLinkPositions = computed(() => (workbenchV2.positions || []).filter(position => position && position.id && position.status !== 'deleted'));
     const quantumRadarLinkCandidates = computed(() => (workbenchV2.candidates || []).filter(candidate => candidate && candidate.id && candidate.status !== 'deleted'));
     function openQuantumRadarLink(type, source) {
@@ -10679,12 +10681,19 @@ const vueAppConfig = {
       quantumRadarLinkDialog.source = source;
       quantumRadarLinkDialog.targetId = type === 'job' ? String(source.positionId || '') : String(source.candidateId || '');
       quantumRadarLinkDialog.error = '';
+      if (type === 'job') {
+        const companyNames = Object.fromEntries(Object.entries(companyById.value || {}).map(([id, company]) => [id, company?.name || '']));
+        quantumRadarLinkSuggestions.value = window.WorkBuddyQuantumRadarRepo.suggestJobPositions(source, quantumRadarLinkPositions.value, companyNames);
+      } else {
+        quantumRadarLinkSuggestions.value = window.WorkBuddyQuantumRadarRepo.suggestTalentCandidates(source, quantumRadarLinkCandidates.value);
+      }
     }
     function closeQuantumRadarLink() {
       if (quantumRadarLinkDialog.saving) return;
       quantumRadarLinkDialog.open = false;
       quantumRadarLinkDialog.source = null;
       quantumRadarLinkDialog.error = '';
+      quantumRadarLinkSuggestions.value = [];
     }
     async function saveQuantumRadarLink() {
       if (isGuestMode || quantumRadarLinkDialog.saving || !quantumRadarLinkDialog.source || !quantumRadarLinkDialog.targetId) return;
@@ -23774,7 +23783,7 @@ ${clipped}`
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
       workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
-      knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
+      knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkSuggestions, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
