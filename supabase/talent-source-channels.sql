@@ -20,6 +20,25 @@ create table if not exists public.talent_source_channels (
   updated_at timestamptz not null default now()
 );
 
+-- 可重复执行的升级声明：名称按 trim + 不区分大小写唯一，且不能是空白。
+-- CHECK 使用 NOT VALID 兼容已有表；后续可在清理历史空白值后单独 VALIDATE。
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'talent_source_channels_name_not_blank'
+      and conrelid = 'public.talent_source_channels'::regclass
+  ) then
+    alter table public.talent_source_channels
+      add constraint talent_source_channels_name_not_blank
+      check (btrim(name) <> '') not valid;
+  end if;
+end $$;
+
+create unique index if not exists talent_source_channels_name_key_idx
+  on public.talent_source_channels (lower(btrim(name)));
+
 create or replace function public.talent_source_channel_key_exists(target_id text)
 returns boolean
 language sql
