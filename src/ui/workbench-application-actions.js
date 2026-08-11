@@ -5,6 +5,7 @@ export function createWorkbenchApplicationActions({
   saveWorkbenchV2 = async () => true,
   ensureResumeTexts = () => {},
   stages = { DISCOVERED: 'discovered', CLOSED: 'closed' },
+  stageActions = null,
   workbenchV2Api = {},
   requireWritePermission = () => true,
   now = () => new Date().toISOString(),
@@ -57,16 +58,26 @@ export function createWorkbenchApplicationActions({
     }
   }
 
-  function changeWorkbenchApplicationStage(application, toStage) {
+  async function changeWorkbenchApplicationStage(application, toStage) {
     try {
-      workbenchV2Api.changeApplicationStage(application, {
-        toStage,
-        reasonCode: toStage === stages.CLOSED ? 'other' : '',
-        reasonNote: toStage === stages.CLOSED ? '从推进中心结束' : '',
-      });
-      void saveWorkbenchV2();
+      if (stageActions && typeof stageActions.changeStage === 'function') {
+        await stageActions.changeStage(application, {
+          toStage,
+          reasonCode: toStage === stages.CLOSED ? 'other' : '',
+          reasonNote: toStage === stages.CLOSED ? '从推进中心结束' : '',
+          manualConfirmed: true,
+        });
+      } else {
+        workbenchV2Api.changeApplicationStage(application, {
+          toStage,
+          reasonCode: toStage === stages.CLOSED ? 'other' : '',
+          reasonNote: toStage === stages.CLOSED ? '从推进中心结束' : '',
+        });
+      }
+      return await saveWorkbenchV2();
     } catch (error) {
       showToast(error.message, 'error');
+      return false;
     }
   }
 
