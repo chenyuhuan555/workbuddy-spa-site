@@ -152,7 +152,22 @@
       status: 'idle',
       error: '',
       model: emptyModel(),
+      analytics: null,
+      ai: { loading: false, error: '', summary: '', suggestions: [] },
     };
+  }
+
+  function formatLoadError(kind, error) {
+    const code = normalizeString(error?.code || error?.message);
+    const subject = kind === 'channels' ? '渠道字典' : '漏斗事件';
+    if (code === 'BACKEND_REQUEST_FAILED') {
+      const file = kind === 'channels' ? 'supabase/talent-source-channels.sql' : 'supabase/talent-funnel-events.sql';
+      return `${subject}读取失败：请先在 Supabase SQL Editor 执行 ${file}，并确认当前账号有读取权限。`;
+    }
+    if (code === 'AUTH_REQUIRED') return `${subject}读取失败：登录状态已失效，请重新登录后再试。`;
+    if (code === 'ACCOUNT_DISABLED') return `${subject}读取失败：当前账号已被停用，请联系管理员。`;
+    if (code === 'WRITE_FORBIDDEN') return `${subject}读取失败：当前账号没有访问该数据的权限，请联系管理员。`;
+    return `${subject}读取失败：${code || '请检查登录状态和网络连接'}。`;
   }
 
   function createTalentFunnelDashboardController({
@@ -173,6 +188,8 @@
         status: id ? 'loading' : 'idle',
         error: '',
         model: emptyModel({ companyId: id, companyName: typeof getCompanyName === 'function' ? getCompanyName(id) : '' }),
+        analytics: null,
+        ai: { loading: false, error: '', summary: '', suggestions: [] },
       });
     }
 
@@ -182,11 +199,18 @@
       reset(id);
       if (!id) return state;
       try {
-        const [channels, events] = await Promise.all([
+        const [channelResult, eventResult] = await Promise.allSettled([
           typeof getChannels === 'function' ? getChannels() : [],
           typeof getEventsByCompany === 'function' ? getEventsByCompany(id) : [],
         ]);
+        const errors = [];
+        const channels = channelResult.status === 'fulfilled' ? channelResult.value : (errors.push(formatLoadError('channels', channelResult.reason)), []);
+        const events = eventResult.status === 'fulfilled' ? eventResult.value : (errors.push(formatLoadError('events', eventResult.reason)), []);
         if (currentRequestId !== requestId) return state;
+        if (errors.length) {
+          Object.assign(state, { loading: false, status: 'error', error: errors.join('；'), model: emptyModel({ companyId: id, companyName: typeof getCompanyName === 'function' ? getCompanyName(id) : '' }) });
+          return state;
+        }
         const scope = typeof getScope === 'function' ? getScope() : {};
         const result = analytics.buildTalentFunnelAnalytics({
           events: Array.isArray(events) ? events : [],
@@ -197,6 +221,8 @@
         Object.assign(state, {
           loading: false,
           status: 'ready',
+          analytics: result,
+          ai: { loading: false, error: '', summary: '', suggestions: [] },
           model: buildTalentFunnelDashboardModel({
             companyId: id,
             companyName: typeof getCompanyName === 'function' ? getCompanyName(id) : '',
@@ -211,12 +237,26 @@
           status: 'error',
           error: error?.message || '渠道漏斗加载失败',
           model: emptyModel({ companyId: id, companyName: typeof getCompanyName === 'function' ? getCompanyName(id) : '' }),
+          analytics: null,
+          ai: { loading: false, error: '', summary: '', suggestions: [] },
         });
       }
       return state;
     }
 
-    return Object.freeze({ state, reset, loadCompany });
+    async function analyzeWithAi({ aiService } = {}) {
+      if (!aiService?.analyze || !state.model.hasData || !state.analytics) return state;
+      state.ai = { loading: true, error: '', summary: '', suggestions: [] };
+      try {
+        const result = await aiService.analyze({ companyName: state.model.companyName, analytics: state.analytics });
+        state.ai = { loading: false, error: '', summary: result.summary, suggestions: result.suggestions };
+      } catch (error) {
+        state.ai = { loading: false, error: error?.message || 'AI 优化建议生成失败', summary: '', suggestions: [] };
+      }
+      return state;
+    }
+
+    return Object.freeze({ state, reset, loadCompany, analyzeWithAi });
   }
 
   return Object.freeze({

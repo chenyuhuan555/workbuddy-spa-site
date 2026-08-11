@@ -1,4 +1,4 @@
-function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCreate, companyPositionCreate, selectedCompany, selectedPosition, WorkbenchV2, save, schedulePush, cloudReady, showToast, openCompanyDetail, openPositionDetail, workbenchMode, aiToolbox, getAiToolbox, positionApplications, confirmAction = globalThis.confirm }) {
+function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCreate, companyPositionCreate, companyProfileEdit, selectedCompany, selectedPosition, WorkbenchV2, save, schedulePush, cloudReady, showToast, openCompanyDetail, openPositionDetail, workbenchMode, aiToolbox, getAiToolbox, positionApplications, confirmAction = globalThis.confirm }) {
   const routeCompany = typeof openCompanyDetail === 'function'
     ? openCompanyDetail
     : id => { nav.value = 'companies'; Object.assign(route, { type: 'company', id, parentId: '', tab: 'overview' }); };
@@ -34,6 +34,22 @@ function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCrea
   function openCompanyPositionCreateAction() {
     if (!canWrite || !selectedCompany.value) return;
     Object.assign(companyPositionCreate, { open: true, title: '', city: '', salary: '', owner: selectedCompany.value.owner || '' });
+  }
+  function openCompanyProfileEditAction() {
+    if (!canWrite || !selectedCompany.value || !companyProfileEdit) return;
+    Object.assign(companyProfileEdit, { open: true, text: selectedCompany.value.profileText || '' });
+  }
+  function cancelCompanyProfileEditAction() {
+    if (!companyProfileEdit) return;
+    Object.assign(companyProfileEdit, { open: false, text: '' });
+  }
+  async function saveCompanyProfileEditAction() {
+    if (!canWrite || !selectedCompany.value || !companyProfileEdit) return;
+    selectedCompany.value.profileText = String(companyProfileEdit.text || '').trim();
+    selectedCompany.value.updatedAt = new Date().toISOString();
+    const saved = await persist('公司介绍已保存');
+    Object.assign(companyProfileEdit, { open: false, text: '' });
+    return saved;
   }
   async function createCompanyPosition() {
     if (!selectedCompany.value) return;
@@ -81,7 +97,7 @@ function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCrea
     route.tab = 'positions';
     showToast('岗位已永久删除');
   }
-  return { openCompanyCreate: openCompanyCreateAction, createWorkbenchCompany, openCompanyPositionCreate: openCompanyPositionCreateAction, createCompanyPosition, openCompanyDetail: openCompanyDetailAction, openPositionDetail: openPositionDetailAction, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, persistWorkbenchPosition: persist };
+  return { openCompanyCreate: openCompanyCreateAction, createWorkbenchCompany, openCompanyPositionCreate: openCompanyPositionCreateAction, createCompanyPosition, openCompanyProfileEdit: openCompanyProfileEditAction, cancelCompanyProfileEdit: cancelCompanyProfileEditAction, saveCompanyProfileEdit: saveCompanyProfileEditAction, openCompanyDetail: openCompanyDetailAction, openPositionDetail: openPositionDetailAction, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, persistWorkbenchPosition: persist };
 }
 
 if (typeof window !== 'undefined') window.WorkBuddyWorkbenchEntityActions = { createWorkbenchEntityActions };

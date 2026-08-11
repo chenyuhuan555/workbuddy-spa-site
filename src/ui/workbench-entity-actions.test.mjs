@@ -32,3 +32,39 @@ test('workbench entity actions reject empty company names without saving', async
   assert.equal(saved, false);
   assert.deepEqual(messages[0], ['请填写公司名称', 'error']);
 });
+
+test('workbench entity actions edit and persist the selected company profile', async () => {
+  const selectedCompany = { value: { id: 'co_1', profileText: '旧介绍', updatedAt: '2026-01-01T00:00:00.000Z' } };
+  const companyProfileEdit = { open: false, text: '' };
+  const messages = [];
+  let saves = 0;
+  const actions = createWorkbenchEntityActions({
+    canWrite: true, state: { companies: [], positions: [] }, route: {}, nav: { value: 'companies' },
+    companyCreate: {}, companyPositionCreate: {}, companyProfileEdit, selectedCompany, selectedPosition: { value: null },
+    WorkbenchV2: {}, save: async () => { saves += 1; return true; }, schedulePush: () => {}, cloudReady: false,
+    showToast: message => messages.push(message),
+  });
+  actions.openCompanyProfileEdit();
+  assert.deepEqual(companyProfileEdit, { open: true, text: '旧介绍' });
+  companyProfileEdit.text = '  新的公司介绍  ';
+  await actions.saveCompanyProfileEdit();
+  assert.equal(selectedCompany.value.profileText, '新的公司介绍');
+  assert.notEqual(selectedCompany.value.updatedAt, '2026-01-01T00:00:00.000Z');
+  assert.equal(saves, 1);
+  assert.equal(companyProfileEdit.open, false);
+  assert.equal(messages[0], '公司介绍已保存');
+});
+
+test('workbench entity actions do not edit company profile without write access', async () => {
+  const selectedCompany = { value: { id: 'co_1', profileText: '旧介绍' } };
+  const companyProfileEdit = { open: false, text: '' };
+  const actions = createWorkbenchEntityActions({
+    canWrite: false, state: { companies: [], positions: [] }, route: {}, nav: { value: 'companies' },
+    companyCreate: {}, companyPositionCreate: {}, companyProfileEdit, selectedCompany, selectedPosition: { value: null },
+    WorkbenchV2: {}, save: async () => { throw new Error('should not save'); }, schedulePush: () => {}, cloudReady: false, showToast: () => {},
+  });
+  actions.openCompanyProfileEdit();
+  assert.equal(companyProfileEdit.open, false);
+  assert.equal(await actions.saveCompanyProfileEdit(), undefined);
+  assert.equal(selectedCompany.value.profileText, '旧介绍');
+});
