@@ -85,6 +85,7 @@ with check (
     from public.profiles p
     where p.id = auth.uid()
       and p.status = 'active'
+      and p.role in ('admin', 'editor')
   )
   and actor_id = (auth.uid())::text
 );

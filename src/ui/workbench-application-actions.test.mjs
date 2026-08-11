@@ -65,3 +65,48 @@ test('deletes a pipeline event and persists the fallback stage', async () => {
   assert.equal(application.stageEnteredAt, '2026-01-02T00:00:00.000Z');
   assert.equal(saves, 1);
 });
+
+test('现有阶段入口优先调用 talent funnel stage actions 并在成功后保存', async () => {
+  const application = { id: 'app-1', companyId: 'co-1', stage: 'contacted' };
+  let saves = 0;
+  const calls = [];
+  const actions = createWorkbenchApplicationActions({
+    state: { applications: [application], route: {} },
+    findApplication: id => id === application.id ? application : null,
+    saveWorkbenchV2: async () => { saves += 1; return true; },
+    showToast: () => {},
+    stages: { CLOSED: 'closed' },
+    stageActions: {
+      async changeStage(target, payload) {
+        calls.push({ target, payload });
+        target.stage = payload.toStage;
+        return { ok: true };
+      },
+    },
+  });
+
+  await actions.changeWorkbenchApplicationStage(application, 'screening');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].payload.toStage, 'screening');
+  assert.equal(calls[0].payload.manualConfirmed, true, '手动点击阶段入口应显式标记人工确认');
+  assert.equal(saves, 1);
+});
+
+test('阶段事件写入失败时，现有入口不继续保存成功状态', async () => {
+  const application = { id: 'app-1', companyId: 'co-1', stage: 'contacted' };
+  let saves = 0;
+  const actions = createWorkbenchApplicationActions({
+    state: { applications: [application], route: {} },
+    findApplication: id => id === application.id ? application : null,
+    saveWorkbenchV2: async () => { saves += 1; return true; },
+    showToast: () => {},
+    stageActions: {
+      async changeStage() {
+        throw Object.assign(new Error('阶段事件写入失败'), { code: 'FUNNEL_EVENT_WRITE_FAILED' });
+      },
+    },
+  });
+
+  await actions.changeWorkbenchApplicationStage(application, 'screening');
+  assert.equal(saves, 0);
+});

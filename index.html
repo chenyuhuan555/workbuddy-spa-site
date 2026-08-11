@@ -42,6 +42,8 @@
   <script src="./src/services/repo/resume-search-repo.js?v=20260802-searchrepo1"></script>
   <script src="./src/services/repo/candidate-matching-repo.js?v=20260802-matchrepo1"></script>
   <script src="./src/services/repo/talent-source-channel-repo.js?v=20260811-talentsourcechannelrepo1"></script>
+  <script src="./src/services/repo/talent-funnel-event-repo.js?v=20260811-talentfunneleventrepo1"></script>
+  <script src="./src/services/talent-funnel-scope.js?v=20260811-talentfunnelscope1"></script>
   <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
   <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
   <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
@@ -92,6 +94,7 @@
   <script src="./src/ui/resume-reprocess-actions.js?v=20260803-resumereprocessactions1"></script>
   <script src="./src/ui/talent-intake-actions.js?v=20260803-talentintakeactions1"></script>
   <script src="./src/ui/talent-funnel-channel-actions.js?v=20260811-talentfunnelchannelactions1"></script>
+  <script src="./src/ui/talent-funnel-stage-actions.js?v=20260811-talentfunnelstageactions1"></script>
   <script src="./src/ui/candidate-profile-actions.js?v=20260803-candidateprofileactions1"></script>
   <script src="./src/ui/candidate-pipeline-actions.js?v=20260803-candidatepipelineactions1"></script>
   <script src="./src/ui/candidate-resume-actions.js?v=20260803-candidateresumeactions1"></script>
@@ -12037,6 +12040,25 @@ const vueAppConfig = {
       globalCreateMenu.value = false;
       if (key === 'settings' && canManageMembers) loadMembers();
     }
+    let talentFunnelEventRepo = null;
+    function getTalentFunnelEventRepo() {
+      if (isGuestMode || !window.WorkBuddyTalentFunnelEventRepo || !window.WorkBuddySupabase || !window.WorkBuddyAccess?.profile) return null;
+      if (!talentFunnelEventRepo) {
+        talentFunnelEventRepo = window.WorkBuddyTalentFunnelEventRepo.createTalentFunnelEventRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+        });
+      }
+      return talentFunnelEventRepo;
+    }
+    function getTalentFunnelPilotScope() {
+      const settingsScope = workbenchV2.settings?.talentFunnelPilotScope || {};
+      const globalScope = window.WorkBuddyTalentFunnelPilotScope || {};
+      return {
+        companyIds: settingsScope.companyIds || settingsScope.allowlist || globalScope.companyIds || globalScope.allowlist || [],
+        baselineAt: settingsScope.baselineAt || globalScope.baselineAt || '',
+      };
+    }
     const workbenchEntityActions = window.WorkBuddyWorkbenchEntityActions.createWorkbenchEntityActions({
       canWrite, state: workbenchV2, route: workbenchRoute, nav: workbenchNav, companyCreate, companyPositionCreate,
       selectedCompany, selectedPosition, WorkbenchV2, save: saveWorkbenchV2, schedulePush, cloudReady, showToast,
@@ -12044,11 +12066,16 @@ const vueAppConfig = {
       openPositionDetail: id => workbenchEntityActions.openPositionDetail(id),
       workbenchMode, getAiToolbox: () => aiToolbox, positionApplications: filteredPositionApplications,
     });
+    const talentFunnelStageActions = window.WorkBuddyTalentFunnelStageActions.createTalentFunnelStageActions({
+      getEventRepo: getTalentFunnelEventRepo,
+      getScope: getTalentFunnelPilotScope,
+      applyStageChange: (application, payload) => WorkbenchV2.changeApplicationStage(application, payload),
+    });
     const workbenchApplicationActions = window.WorkBuddyWorkbenchApplicationActions.createWorkbenchApplicationActions({
       state: { applications: workbenchV2.applications, nav: workbenchNav, route: workbenchRoute },
       findApplication: id => workbenchV2.applications.find(item => item.id === id),
       showToast, saveWorkbenchV2, requireWritePermission: requireTalentWritePermission,
-      stages: SK, workbenchV2Api: WorkbenchV2,
+      stages: SK, stageActions: talentFunnelStageActions, workbenchV2Api: WorkbenchV2,
     });
     function openCompanyCreate() { globalCreateMenu.value = false; return workbenchEntityActions.openCompanyCreate(); }
     async function createWorkbenchCompany(input = null) { return workbenchEntityActions.createWorkbenchCompany(input); }
