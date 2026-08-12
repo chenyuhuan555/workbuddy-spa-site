@@ -35,7 +35,7 @@ test('workbench entity actions reject empty company names without saving', async
 
 test('workbench entity actions edit and persist the selected company profile', async () => {
   const selectedCompany = { value: { id: 'co_1', profileText: '旧介绍', updatedAt: '2026-01-01T00:00:00.000Z' } };
-  const companyProfileEdit = { open: false, text: '' };
+  const companyProfileEdit = { open: false, name: '', text: '' };
   const messages = [];
   let saves = 0;
   const actions = createWorkbenchEntityActions({
@@ -45,19 +45,21 @@ test('workbench entity actions edit and persist the selected company profile', a
     showToast: message => messages.push(message),
   });
   actions.openCompanyProfileEdit();
-  assert.deepEqual(companyProfileEdit, { open: true, text: '旧介绍' });
+  assert.deepEqual(companyProfileEdit, { open: true, name: '', text: '旧介绍' });
+  companyProfileEdit.name = '新公司名称';
   companyProfileEdit.text = '  新的公司介绍  ';
   await actions.saveCompanyProfileEdit();
+  assert.equal(selectedCompany.value.name, '新公司名称');
   assert.equal(selectedCompany.value.profileText, '新的公司介绍');
   assert.notEqual(selectedCompany.value.updatedAt, '2026-01-01T00:00:00.000Z');
   assert.equal(saves, 1);
   assert.equal(companyProfileEdit.open, false);
-  assert.equal(messages[0], '公司介绍已保存');
+  assert.equal(messages[0], '公司信息已保存');
 });
 
 test('workbench entity actions do not edit company profile without write access', async () => {
   const selectedCompany = { value: { id: 'co_1', profileText: '旧介绍' } };
-  const companyProfileEdit = { open: false, text: '' };
+  const companyProfileEdit = { open: false, name: '', text: '' };
   const actions = createWorkbenchEntityActions({
     canWrite: false, state: { companies: [], positions: [] }, route: {}, nav: { value: 'companies' },
     companyCreate: {}, companyPositionCreate: {}, companyProfileEdit, selectedCompany, selectedPosition: { value: null },

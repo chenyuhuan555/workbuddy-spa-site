@@ -39,6 +39,14 @@ test('首页渠道卡片将查看详情与导入人才拆分', () => {
   assert.match(INDEX_HTML, /@click="exportChannelDetails"/);
 });
 
+test('公司编辑支持修改名称，顾问助手头像编辑菜单支持隐藏', () => {
+  assert.match(INDEX_HTML, /id="wb-company-profile-name"/);
+  assert.match(INDEX_HTML, /companyProfileEdit\.name/);
+  assert.match(INDEX_HTML, /隐藏顾问助手/);
+  assert.match(INDEX_HTML, /@click="hideAdvisorPanel"/);
+  assert.match(INDEX_HTML, /!advisorPanel\.meetingArticle && !advisorPanel\.hidden/);
+});
+
 function analyticsFor(companyId, inputEvents = events) {
   return buildTalentFunnelAnalytics({
     events: inputEvents,

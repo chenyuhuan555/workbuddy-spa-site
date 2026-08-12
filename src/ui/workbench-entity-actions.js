@@ -37,18 +37,21 @@ function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCrea
   }
   function openCompanyProfileEditAction() {
     if (!canWrite || !selectedCompany.value || !companyProfileEdit) return;
-    Object.assign(companyProfileEdit, { open: true, text: selectedCompany.value.profileText || '' });
+    Object.assign(companyProfileEdit, { open: true, name: selectedCompany.value.name || '', text: selectedCompany.value.profileText || '' });
   }
   function cancelCompanyProfileEditAction() {
     if (!companyProfileEdit) return;
-    Object.assign(companyProfileEdit, { open: false, text: '' });
+    Object.assign(companyProfileEdit, { open: false, name: '', text: '' });
   }
   async function saveCompanyProfileEditAction() {
     if (!canWrite || !selectedCompany.value || !companyProfileEdit) return;
+    const name = String(companyProfileEdit.name || '').trim();
+    if (!name) { showToast('请填写公司名称', 'error'); return; }
+    selectedCompany.value.name = name;
     selectedCompany.value.profileText = String(companyProfileEdit.text || '').trim();
     selectedCompany.value.updatedAt = new Date().toISOString();
-    const saved = await persist('公司介绍已保存');
-    Object.assign(companyProfileEdit, { open: false, text: '' });
+    const saved = await persist('公司信息已保存');
+    Object.assign(companyProfileEdit, { open: false, name: '', text: '' });
     return saved;
   }
   async function createCompanyPosition() {
