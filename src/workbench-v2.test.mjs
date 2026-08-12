@@ -361,6 +361,12 @@ test('人才库支持当前页多选并批量软删除关联推进', () => {
   assert.match(INDEX_HTML, /关联岗位推进会被隐藏/);
 });
 
+test('人才总数只统计未删除候选人', () => {
+  assert.match(INDEX_HTML, /人才总数[\s\S]*?\{\{ activeCandidateCount \}\}/);
+  assert.match(INDEX_HTML, /const activeCandidateCount = computed\(\(\) => workbenchV2\.candidates\.filter\(candidate => !candidate\.deletedAt\)\.length\)/);
+  assert.match(INDEX_HTML, /for \(const candidate of workbenchV2\.candidates\) \{\s*if \(candidate\.deletedAt\) continue;/);
+});
+
 test('批量删除候选人后会立即安排云端推送，避免刷新恢复', () => {
   const start = INDEX_HTML.indexOf('async function bulkDeleteSelectedCandidates');
   const end = INDEX_HTML.indexOf('function talentCloudSearchErrorMessage', start);
