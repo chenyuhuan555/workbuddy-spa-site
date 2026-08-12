@@ -46,6 +46,7 @@
   <script src="./src/services/talent-funnel-scope.js?v=20260811-talentfunnelscope1"></script>
   <script src="./src/services/talent-funnel-analytics.js?v=20260811-talentfunnelanalytics1"></script>
   <script src="./src/services/talent-funnel-ai.js?v=20260811-talentfunnelai1"></script>
+  <script src="./src/services/position-bulk-import.js?v=20260812-positionbulkimport1"></script>
   <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
   <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
   <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
@@ -3890,7 +3891,7 @@
 
           <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'company' && selectedCompany" class="max-w-7xl mx-auto space-y-4">
           <button @click="backToWorkbenchList" class="text-sm text-slate-500 hover:text-emerald-700" type="button">← 返回公司列表</button>
-          <div class="bg-white border border-slate-200 rounded-xl p-5"><div class="flex flex-col lg:flex-row gap-4 lg:items-start"><div class="w-12 h-12 rounded-lg bg-emerald-900 text-white flex items-center justify-center text-xl font-bold">{{ selectedCompany.name?.slice(0,1) }}</div><div class="flex-1"><h1 class="text-2xl font-bold">{{ selectedCompany.name }}</h1><p class="text-sm text-slate-500 mt-1">{{ selectedCompany.industry || '行业待补充' }} · {{ selectedCompany.city || '地区待补充' }} · 负责人 {{ selectedCompany.owner || '未分配' }}</p></div><button v-if="canWrite" @click="openCompanyPositionCreate" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold" type="button">新建岗位</button></div>
+          <div class="bg-white border border-slate-200 rounded-xl p-5"><div class="flex flex-col lg:flex-row gap-4 lg:items-start"><div class="w-12 h-12 rounded-lg bg-emerald-900 text-white flex items-center justify-center text-xl font-bold">{{ selectedCompany.name?.slice(0,1) }}</div><div class="flex-1"><h1 class="text-2xl font-bold">{{ selectedCompany.name }}</h1><p class="text-sm text-slate-500 mt-1">{{ selectedCompany.industry || '行业待补充' }} · {{ selectedCompany.city || '地区待补充' }} · 负责人 {{ selectedCompany.owner || '未分配' }}</p></div><div v-if="canWrite" class="flex flex-wrap gap-2"><button @click="openCompanyBulkPositionImport" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50" type="button">批量导入岗位</button><button @click="openCompanyPositionCreate" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold" type="button">新建岗位</button></div></div>
             <form v-if="companyPositionCreate.open && canWrite" @submit.prevent="createCompanyPosition" class="mt-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3 border-t border-slate-100 pt-4"><label for="wb-company-position-title" class="text-sm text-slate-600">岗位名称<input id="wb-company-position-title" v-model="companyPositionCreate.title" required autofocus placeholder="例如：销售总监" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-company-position-city" class="text-sm text-slate-600">工作城市<input id="wb-company-position-city" v-model="companyPositionCreate.city" placeholder="例如：北京" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-company-position-salary" class="text-sm text-slate-600">薪资范围<input id="wb-company-position-salary" v-model="companyPositionCreate.salary" placeholder="例如：30-50K" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-company-position-owner" class="text-sm text-slate-600">岗位负责人<input id="wb-company-position-owner" v-model="companyPositionCreate.owner" placeholder="负责人姓名" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><div class="flex gap-2 items-end"><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">创建岗位</button><button type="button" @click="companyPositionCreate.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div></form>
             <nav aria-label="公司详情页签" class="wb-v2-company-tabs text-sm">
               <template v-for="(tab, index) in [{ id: 'overview', label: '公司概览' }, { id: 'ai', label: 'AI分析' }, { id: 'positions', label: '岗位' }, { id: 'applications', label: '候选人推进' }, { id: 'activity', label: '动态与备注' }]" :key="tab.id">
@@ -3905,6 +3906,17 @@
                 <i v-if="index !== 4" aria-hidden="true" class="wb-v2-company-tab-separator"></i>
               </template>
             </nav>
+          </div>
+          <div v-if="companyBulkPositionImport.open && canWrite" class="fixed inset-0 z-[120] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="closeCompanyBulkPositionImport">
+            <section role="dialog" aria-modal="true" aria-labelledby="company-bulk-position-title" class="w-full max-w-6xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+              <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5"><div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">岗位批量入库</p><h2 id="company-bulk-position-title" class="mt-1 text-xl font-bold text-slate-900">AI 批量导入岗位</h2><p class="mt-1 text-sm text-slate-500">当前公司：{{ selectedCompany?.name }}。AI 只生成预览，确认后才会写入。</p></div><button type="button" @click="closeCompanyBulkPositionImport" aria-label="关闭批量导入岗位" class="h-8 w-8 rounded-lg bg-slate-100 text-lg text-slate-500">×</button></div>
+              <div class="space-y-4 px-6 py-5"><div class="grid gap-4 lg:grid-cols-[1fr_1.2fr]"><div><label class="block text-sm font-semibold text-slate-700">上传 CSV / Excel<input type="file" accept=".csv,.xlsx,.xls" class="mt-2 block w-full text-sm" @change="onCompanyBulkPositionFile"></label><p class="mt-2 text-xs leading-5 text-slate-500">表头建议：岗位名称、工作城市、薪资范围、岗位职责、岗位负责人、技能关键词。</p><p v-if="companyBulkPositionImport.fileName" class="mt-2 text-xs text-emerald-700">已选择：{{ companyBulkPositionImport.fileName }}</p></div><label class="block text-sm font-semibold text-slate-700">或直接粘贴岗位文本<textarea v-model="companyBulkPositionImport.rawText" rows="8" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500" placeholder="岗位：量子算法工程师&#10;工作地点：北京&#10;岗位职责：负责量子算法研发&#10;---&#10;岗位：量子软件工程师&#10;工作地点：上海"></textarea></label></div>
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">{{ companyBulkPositionImport.rows.length ? `已解析 ${companyBulkPositionImport.rows.length} 个岗位` : '请先上传文件或粘贴岗位内容' }}</p><div class="flex gap-2"><button type="button" @click="parseCompanyBulkPositions" :disabled="companyBulkPositionImport.parsing" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{{ companyBulkPositionImport.parsing ? 'AI 解析中…' : '✦ AI 解析并预览' }}</button><button type="button" @click="closeCompanyBulkPositionImport" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">取消</button></div></div>
+                <p v-if="companyBulkPositionImport.error" role="alert" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ companyBulkPositionImport.error }}</p>
+                <div v-if="companyBulkPositionImport.rows.length" class="overflow-x-auto rounded-xl border border-slate-200"><table class="min-w-[980px] w-full text-left text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-3 py-2">状态</th><th class="px-3 py-2">岗位名称 *</th><th class="px-3 py-2">城市</th><th class="px-3 py-2">薪资</th><th class="px-3 py-2">负责人</th><th class="px-3 py-2">职责 / 要求</th><th class="px-3 py-2">技能关键词</th><th class="px-3 py-2">操作</th></tr></thead><tbody><tr v-for="(row, index) in companyBulkPositionImport.rows" :key="`${index}-${row.title}`" class="border-t border-slate-100 align-top"><td class="px-3 py-3"><span v-if="row.duplicateType === 'existing'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">已有岗位</span><span v-else-if="row.duplicateType === 'batch'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">本批次重复</span><span v-else class="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-800">待入库</span></td><td class="px-3 py-3"><input v-model="row.title" class="w-44 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="批量岗位名称"></td><td class="px-3 py-3"><input v-model="row.city" class="w-28 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="批量岗位城市"></td><td class="px-3 py-3"><input v-model="row.salary" class="w-28 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="批量岗位薪资"></td><td class="px-3 py-3"><input v-model="row.owner" class="w-28 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="批量岗位负责人"></td><td class="px-3 py-3"><textarea v-model="row.description" rows="3" class="w-64 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="批量岗位职责"></textarea></td><td class="px-3 py-3"><input :value="row.skills.join('、')" @input="row.skills = $event.target.value.split(/[、,，]/).map(item => item.trim()).filter(Boolean)" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="批量岗位技能"></td><td class="px-3 py-3"><button type="button" @click="removeCompanyBulkPositionRow(index)" class="text-xs font-semibold text-rose-600">删除</button></td></tr></tbody></table></div>
+                <div v-if="companyBulkPositionImport.rows.length" class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">已有岗位或本批次重复项不会入库；请先修改或删除重复项。</p><button type="button" @click="confirmCompanyBulkPositions" :disabled="companyBulkPositionImport.importing" class="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{{ companyBulkPositionImport.importing ? '正在入库…' : `确认入库（${companyBulkPositionImport.rows.filter(row => !row.duplicateType && row.title.trim()).length} 个）` }}</button></div>
+              </div>
+            </section>
           </div>
           <div v-if="workbenchRoute.tab === 'overview'" class="space-y-4">
             <section aria-labelledby="talent-funnel-title" class="bg-white border border-slate-200 rounded-xl p-5">
@@ -10972,6 +10984,7 @@ const vueAppConfig = {
     const companyPage = ref(1);
     const companyCreate = reactive({ open: false, name: '', industry: '', city: '', owner: '', status: 'potential' });
     const companyPositionCreate = reactive({ open: false, title: '', city: '', salary: '', owner: '' });
+    const companyBulkPositionImport = reactive({ open: false, fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' });
     const positionDescriptionEdit = reactive({ open: false, value: '', city: '', salary: '', owner: '', skills: '' });
     const positionSkillsExtracting = ref(false);
     const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, industrySucceeded: 0, industryFailed: 0, current: '' });
@@ -12162,6 +12175,93 @@ const vueAppConfig = {
     async function createWorkbenchCompany(input = null) { return workbenchEntityActions.createWorkbenchCompany(input); }
     function openCompanyPositionCreate() { return workbenchEntityActions.openCompanyPositionCreate(); }
     async function createCompanyPosition() { return workbenchEntityActions.createCompanyPosition(); }
+    function openCompanyBulkPositionImport() {
+      if (!canWrite || !selectedCompany.value) return;
+      Object.assign(companyBulkPositionImport, { open: true, fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' });
+    }
+    function closeCompanyBulkPositionImport() {
+      Object.assign(companyBulkPositionImport, { open: false, fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' });
+    }
+    async function onCompanyBulkPositionFile(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      companyBulkPositionImport.fileName = file.name;
+      companyBulkPositionImport.error = '';
+      try {
+        if (/\.xlsx?$/i.test(file.name)) {
+          const XLSXLib = await ensureXlsxDependency();
+          const workbook = XLSXLib.read(await file.arrayBuffer(), { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          companyBulkPositionImport.rawText = XLSXLib.utils.sheet_to_csv(firstSheet);
+        } else {
+          companyBulkPositionImport.rawText = await file.text();
+        }
+      } catch (error) {
+        companyBulkPositionImport.error = error?.message || '读取岗位文件失败';
+      } finally {
+        if (event.target) event.target.value = '';
+      }
+    }
+    function refreshCompanyBulkPositionDuplicates(rows) {
+      const helper = window.WorkBuddyPositionBulkImport;
+      const existing = workbenchV2.positions.filter(position => position.companyId === selectedCompany.value?.id);
+      companyBulkPositionImport.rows = helper.markDuplicatePositions(rows, existing);
+    }
+    async function parseCompanyBulkPositions() {
+      if (!canWrite || !selectedCompany.value) return;
+      const rawText = String(companyBulkPositionImport.rawText || '').trim();
+      if (!rawText) { companyBulkPositionImport.error = '请先上传文件或粘贴岗位内容'; return; }
+      companyBulkPositionImport.parsing = true;
+      companyBulkPositionImport.error = '';
+      try {
+        const helper = window.WorkBuddyPositionBulkImport;
+        let rows = /^(岗位名称|岗位|职位|title|position)[,，]/im.test(rawText)
+          ? helper.parsePositionCsv(rawText)
+          : helper.splitPositionText(rawText);
+        if (canConfigureAi) {
+          try {
+            const result = await callDeepSeekWithProgress({
+              task: 'position-bulk-import', getApiKey: requireDeepSeekApiKey, temperature: 0.1,
+              timeout: 90000, schema: 'json', responseFormat: { type: 'json_object' },
+              messages: helper.buildPositionBulkImportMessages({ companyName: selectedCompany.value.name, rawText }),
+            });
+            rows = helper.normalizePositionBulkAiResult(result);
+          } catch (error) {
+            if (!rows.length) throw error;
+            showToast('AI 解析暂不可用，已使用本地规则生成预览', 'error');
+          }
+        }
+        if (!rows.length) throw new Error('未识别到带岗位名称的内容，请检查输入格式');
+        refreshCompanyBulkPositionDuplicates(rows);
+      } catch (error) {
+        companyBulkPositionImport.error = error?.message || '岗位解析失败';
+      } finally {
+        companyBulkPositionImport.parsing = false;
+      }
+    }
+    function removeCompanyBulkPositionRow(index) { companyBulkPositionImport.rows.splice(index, 1); refreshCompanyBulkPositionDuplicates(companyBulkPositionImport.rows); }
+    async function confirmCompanyBulkPositions() {
+      if (!canWrite || !selectedCompany.value || companyBulkPositionImport.importing) return;
+      refreshCompanyBulkPositionDuplicates(companyBulkPositionImport.rows);
+      const rows = companyBulkPositionImport.rows.filter(row => !row.duplicateType && String(row.title || '').trim());
+      if (!rows.length) { companyBulkPositionImport.error = '没有可入库的岗位，请修改或删除重复项'; return; }
+      companyBulkPositionImport.importing = true;
+      companyBulkPositionImport.error = '';
+      try {
+        rows.forEach(row => workbenchV2.positions.push(WorkbenchV2.createPosition({
+          companyId: selectedCompany.value.id, title: String(row.title).trim(), city: String(row.city || '').trim(),
+          salary: String(row.salary || '').trim(), owner: String(row.owner || '').trim(), description: String(row.description || '').trim(), skills: Array.isArray(row.skills) ? row.skills : [],
+        })));
+        const saved = await saveWorkbenchV2();
+        if (cloudReady) schedulePush();
+        closeCompanyBulkPositionImport();
+        showToast(saved ? `已批量创建 ${rows.length} 个岗位` : `已批量创建 ${rows.length} 个岗位，已暂存到浏览器`);
+      } catch (error) {
+        companyBulkPositionImport.error = error?.message || '岗位批量入库失败';
+      } finally {
+        companyBulkPositionImport.importing = false;
+      }
+    }
     function openCompanyProfileEdit() { return workbenchEntityActions.openCompanyProfileEdit(); }
     function cancelCompanyProfileEdit() { return workbenchEntityActions.cancelCompanyProfileEdit(); }
     async function saveCompanyProfileEdit() { return workbenchEntityActions.saveCompanyProfileEdit(); }
@@ -23901,7 +24001,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, formatTalentFunnelRate, reloadTalentFunnelDashboard, runTalentFunnelAi,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, formatTalentFunnelRate, reloadTalentFunnelDashboard, runTalentFunnelAi,
       candidateFilters, candidatePage, talentMoreMenuOpen, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
@@ -23913,7 +24013,7 @@ ${clipped}`
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches, applicationBatchScoring,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressPeriod, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
-      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
+      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
       batchUpload, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
