@@ -25,6 +25,11 @@
     return String(value || '').trim();
   }
 
+  function normalizeNullableString(value) {
+    const normalized = normalizeString(value);
+    return normalized || null;
+  }
+
   function normalizeBoolean(value) {
     return value === true;
   }
@@ -78,8 +83,8 @@
         stage,
         occurred_at: event?.occurredAt || null,
         result: normalizeString(event?.result) || null,
-        reason_code: normalizeString(event?.reasonCode),
-        reason_note: normalizeString(event?.reasonNote),
+        reason_code: normalizeNullableString(event?.reasonCode),
+        reason_note: normalizeNullableString(event?.reasonNote),
         is_pilot: normalizeBoolean(event?.isPilot),
       };
       if (!row.occurred_at) delete row.occurred_at;
