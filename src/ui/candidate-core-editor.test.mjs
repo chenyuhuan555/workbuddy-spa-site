@@ -213,10 +213,10 @@ test('核心信息卡同时展示手机号和邮箱，并保留独立人才分�
   assert.doesNotMatch(INDEX_HTML, /Object\.assign\(selectedCandidate[^,]*,\s*candidateCoreEdit\.draft/);
 });
 
-test('核心信息卡将人才方向和手动选择放在右侧，并将沟通人与联系方式分层展示', () => {
-  assert.match(INDEX_HTML, /<div class="sm:col-start-2"><dt class="font-medium text-slate-600 flex items-center gap-2">人才方向/);
+test('核心信息卡将人才方向和沟通人放在左侧，并将联系方式分层展示', () => {
+  assert.match(INDEX_HTML, /<div><dt class="font-medium text-slate-600 flex items-center gap-2">人才方向/);
   assert.match(INDEX_HTML, /候选人分类展开|candidateCategoriesExpanded/);
-  assert.match(INDEX_HTML, /class="sm:col-start-2"><dt class="font-medium text-slate-600">沟通人/);
+  assert.match(INDEX_HTML, /class="wb-v2-candidate-info grid sm:grid-cols-2 text-base">[\s\S]*<div><dt class="font-medium text-slate-600">沟通人/);
   assert.match(INDEX_HTML, /class="sm:col-span-2"><dt class="font-medium text-slate-600">联系方式/);
 });
 
