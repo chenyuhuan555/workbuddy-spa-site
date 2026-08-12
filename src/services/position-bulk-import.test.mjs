@@ -61,4 +61,6 @@ test('production entry loads the bulk import helper before app startup', async (
   assert.match(html, /src\/services\/position-bulk-import\.js/);
   assert.match(html, /openCompanyBulkPositionImport/);
   assert.match(html, /confirmCompanyBulkPositions/);
+  assert.match(html, /table-fixed/);
+  assert.match(html, /inline-flex whitespace-nowrap[^>]*>待入库/);
 });
