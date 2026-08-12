@@ -11135,7 +11135,7 @@ const vueAppConfig = {
     // 阶段 3.5：批量 / 拖拽入库状态（由 WorkbenchV2 批量引擎驱动，复用既有人才写入能力，不复制第二套逻辑）
     const batchUpload = reactive({
       open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2), defaultCategoryIds: [],
-      tasks: [], hashes: {}, active: 0, gate: Promise.resolve(), sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '',
+      tasks: [], hashes: {}, active: 0, gate: Promise.resolve(), sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '', excelPreview: false,
     });
     const candidateExcelImport = reactive({ open: false, fileName: '', rows: [], parsing: false, progress: 0, progressLabel: '', importing: false, error: '' });
     const batchCategorySelectorOpen = ref(false);
@@ -11160,6 +11160,7 @@ const vueAppConfig = {
       return false;
     }
     async function recordBatchCandidateSource(candidateId, versionId) {
+      if (batchUpload.excelPreview) return;
       scheduleResumePostSaveTasks(candidateId, versionId);
       const companyId = String(batchUpload.sourceCompanyId || '').trim();
       const channelId = String(batchUpload.sourceChannelId || '').trim();
@@ -11222,14 +11223,14 @@ const vueAppConfig = {
     }
     function openBatchUpload() {
       batchCategorySelectorOpen.value = false;
-      Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '' });
+      Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '', excelPreview: false });
       return talentIntakeActions.openBatchUpload();
     }
     function openChannelCandidateImport(companyId, channelId, channelName) {
       if (!requireTalentWritePermission()) return;
       Object.assign(batchUpload, {
         open: false, running: false, tasks: Array.from({ length: 0 }), hashes: {}, active: 0, gate: Promise.resolve(),
-        sourceCompanyId: String(companyId || ''), sourceChannelId: String(channelId || ''), sourceChannelName: String(channelName || ''),
+        sourceCompanyId: String(companyId || ''), sourceChannelId: String(channelId || ''), sourceChannelName: String(channelName || ''), excelPreview: true,
       });
       Object.assign(candidateExcelImport, { open: true, fileName: '', rows: [], parsing: false, progress: 0, progressLabel: '', importing: false, error: '' });
       batchCategorySelectorOpen.value = false;
@@ -11237,6 +11238,7 @@ const vueAppConfig = {
     }
     function closeCandidateExcelImport() {
       Object.assign(candidateExcelImport, { open: false, fileName: '', rows: [], parsing: false, progress: 0, progressLabel: '', importing: false, error: '' });
+      Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '', excelPreview: false });
     }
     function refreshCandidateExcelDuplicates(rows) {
       const helper = window.WorkBuddyCandidateExcelImport;
@@ -11340,7 +11342,7 @@ const vueAppConfig = {
         candidateExcelImport.importing = false;
       }
     }
-    function openTalentIntake() { batchCategorySelectorOpen.value = false; batchUpload.defaultCategoryIds = []; Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '' }); return talentIntakeActions.openTalentIntake(); }
+    function openTalentIntake() { batchCategorySelectorOpen.value = false; batchUpload.defaultCategoryIds = []; Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '', excelPreview: false }); return talentIntakeActions.openTalentIntake(); }
     function toggleBatchCategory(categoryId) {
       const next = new Set(batchUpload.defaultCategoryIds || []);
       if (next.has(categoryId)) next.delete(categoryId); else next.add(categoryId);

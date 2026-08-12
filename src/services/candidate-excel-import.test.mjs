@@ -65,3 +65,14 @@ test('Excel 导入展示分阶段进度状态', () => {
   assert.match(INDEX_HTML, /正在读取 Excel 文件/);
   assert.match(INDEX_HTML, /AI 正在整理候选人字段/);
 });
+
+test('Excel 预览阶段不会写入人才库，只有确认时才允许创建候选人', () => {
+  const previewStart = INDEX_HTML.indexOf('async function onCandidateExcelFile');
+  const confirmStart = INDEX_HTML.indexOf('async function confirmCandidateExcelImport');
+  assert.ok(previewStart >= 0 && confirmStart > previewStart);
+  const previewCode = INDEX_HTML.slice(previewStart, confirmStart);
+  assert.doesNotMatch(previewCode, /createTalent|saveWorkbenchV2/);
+  assert.match(INDEX_HTML, /excelPreview: true/);
+  assert.match(INDEX_HTML, /if \(batchUpload\.excelPreview\) return;/);
+  assert.match(INDEX_HTML, /async function confirmCandidateExcelImport[\s\S]*?WorkbenchV2\.createTalent/);
+});
