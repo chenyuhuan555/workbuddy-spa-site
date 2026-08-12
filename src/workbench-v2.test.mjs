@@ -372,7 +372,18 @@ test('批量删除候选人后会立即安排云端推送，避免刷新恢复',
   const end = INDEX_HTML.indexOf('function talentCloudSearchErrorMessage', start);
   const code = INDEX_HTML.slice(start, end);
   assert.match(code, /await saveWorkbenchV2\(\)/);
-  assert.match(code, /if \(cloudReady\) await doPush\(\)/);
+  assert.match(code, /if \(cloudReady\) \{/);
+  assert.match(code, /if \(!await doPush\(\)\)/);
+});
+
+test('批量删除必须等待同步空闲并确认云端与候选人表均保存成功', () => {
+  const start = INDEX_HTML.indexOf('async function bulkDeleteSelectedCandidates');
+  const end = INDEX_HTML.indexOf('function talentCloudSearchErrorMessage', start);
+  const code = INDEX_HTML.slice(start, end);
+  assert.match(code, /await waitForCloudSyncIdle\(\)/);
+  assert.match(code, /if \(!await doPush\(\)\)/);
+  assert.match(code, /await syncCandidatesWithCloud\(\)/);
+  assert.match(INDEX_HTML, /async function waitForCloudSyncIdle\(timeoutMs = 30000\)/);
 });
 
 // ---------------------------------------------------------------------------

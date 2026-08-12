@@ -11619,7 +11619,15 @@ const vueAppConfig = {
         const result = WorkbenchV2.softDeleteTalents(workbenchV2, ids);
         if (!result.candidateIds.length) { clearCandidateSelection(); return; }
         if (!(await saveWorkbenchV2())) throw new Error('保存失败，请重试');
-        if (cloudReady) await doPush();
+        if (cloudReady) {
+          if (!await waitForCloudSyncIdle()) throw new Error('云端仍在同步，请稍后重试');
+          if (!await doPush()) throw new Error('删除已暂存，但云端保存失败，请确认同步状态后重试');
+          if (!await waitForCloudSyncIdle()) throw new Error('候选人云端同步超时，请稍后重试');
+          if (!candidateReadPathEnabled.value) {
+            const candidateSync = await syncCandidatesWithCloud();
+            if (candidateSync.failed || candidateSync.skipped) throw new Error('候选人删除标记尚未同步到云端，请稍后重试');
+          }
+        }
         clearCandidateSelection();
         showToast(`已隐藏 ${result.candidateIds.length} 名候选人及 ${result.applicationIds.length} 条岗位推进`, 'success');
       } catch (error) {
@@ -15423,8 +15431,16 @@ ${ocrText}`
       cloudPushTimer = setTimeout(() => { void doPush(); }, delay);
     }
 
+    async function waitForCloudSyncIdle(timeoutMs = 30000) {
+      const deadline = Date.now() + timeoutMs;
+      while (syncStatus.value === 'syncing' && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return syncStatus.value !== 'syncing';
+    }
+
     async function doPush() {
-      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || !window.WorkBuddyAccess?.canAccessCloud || syncStatus.value === 'syncing') return;
+      if (!cloudReady || !window.WorkBuddyAccess?.canWrite || !window.WorkBuddyAccess?.canAccessCloud || syncStatus.value === 'syncing') return false;
       syncStatus.value = 'syncing';
       try {
         if (candidateReadPathEnabled.value) await requireCandidateRowsSynced();
@@ -15439,6 +15455,7 @@ ${ocrText}`
         void syncResumeVersionsWithCloud(); // Phase 2c 双写：版本元数据同步到 resume_versions 表
         void syncWorkbenchEntitiesWithCloud(); // Phase 3 双写：公司/岗位/推进记录同步到独立表
         if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
+        return true;
       } catch (error) {
         if (error?.code === 'WORKSPACE_VERSION_CONFLICT') {
           // 版本冲突：其他成员已推送新数据。尝试合并后重试一次。
@@ -15464,13 +15481,16 @@ ${ocrText}`
             void syncWorkbenchEntitiesWithCloud(); // Phase 3 双写
             if (!candidateReadPathEnabled.value) void syncCandidatesWithCloud(); // Phase 2a 双写预览
             if (stats.fromCloud) showToast(`已自动合并其他成员的 ${stats.fromCloud} 条更新`, 'info');
+            return true;
           } catch (retryError) {
             syncStatus.value = 'error';
             syncError.value = '云端合并失败，请刷新页面后重试';
+            return false;
           }
         } else {
           syncStatus.value = 'error';
           syncError.value = '云端保存失败，请稍后重试';
+          return false;
         }
       }
     }
