@@ -37,6 +37,9 @@ test('首页渠道卡片将查看详情与导入人才拆分', () => {
   assert.doesNotMatch(INDEX_HTML, /@click="openHomeFunnelChannel\(channel\)"/);
   assert.match(INDEX_HTML, /渠道详情/);
   assert.match(INDEX_HTML, /@click="exportChannelDetails"/);
+  assert.match(INDEX_HTML, /v-for="candidate in homeChannelDetailCandidates"/);
+  assert.doesNotMatch(INDEX_HTML, /homeChannelDetailCandidates\.slice\(0, 8\)/);
+  assert.doesNotMatch(INDEX_HTML, /仅展示最近 8 人/);
 });
 
 test('公司编辑支持修改名称，顾问助手头像编辑菜单支持隐藏', () => {
