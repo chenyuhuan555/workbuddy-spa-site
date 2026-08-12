@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 globalThis.window = globalThis;
 await import('../services/talent-funnel-analytics.js');
@@ -11,6 +12,7 @@ const {
   buildTalentFunnelDashboardModel,
   createTalentFunnelDashboardController,
 } = globalThis.WorkBuddyTalentFunnelDashboard;
+const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
 const channels = [
   { id: 'career_site', name: '外宣网站' },
@@ -23,6 +25,11 @@ const events = [
   { id: 'a-matched', applicationId: 'app-a', companyId: 'company-a', channelId: 'career_site', stage: 'matched', result: 'failed', reasonCode: 'salary_mismatch', isPilot: true, occurredAt: '2026-08-11T10:00:00.000Z' },
   { id: 'b-imported', applicationId: 'app-b', companyId: 'company-b', channelId: 'community', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
 ];
+
+test('默认试点范围包含中科量枢并从今天开始统计新增事件', () => {
+  assert.match(INDEX_HTML, /String\(company\.name \|\| ''\)\.trim\(\) === '中科量枢'/);
+  assert.match(INDEX_HTML, /'2026-08-12T00:00:00\+08:00'/);
+});
 
 function analyticsFor(companyId, inputEvents = events) {
   return buildTalentFunnelAnalytics({

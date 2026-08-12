@@ -12431,9 +12431,12 @@ const vueAppConfig = {
     function getTalentFunnelPilotScope() {
       const settingsScope = workbenchV2.settings?.talentFunnelPilotScope || {};
       const globalScope = window.WorkBuddyTalentFunnelPilotScope || {};
+      const configuredCompanyIds = [settingsScope.companyIds, settingsScope.allowlist, globalScope.companyIds, globalScope.allowlist]
+        .find(value => Array.isArray(value) && value.length) || [];
+      const defaultPilotCompany = workbenchV2.companies.find(company => String(company?.name || '').trim() === '中科量枢');
       return {
-        companyIds: settingsScope.companyIds || settingsScope.allowlist || globalScope.companyIds || globalScope.allowlist || [],
-        baselineAt: settingsScope.baselineAt || globalScope.baselineAt || '',
+        companyIds: configuredCompanyIds.length ? configuredCompanyIds : (defaultPilotCompany?.id ? [defaultPilotCompany.id] : []),
+        baselineAt: settingsScope.baselineAt || globalScope.baselineAt || '2026-08-12T00:00:00+08:00',
       };
     }
     const companyProfileEdit = reactive({ open: false, text: '' });
