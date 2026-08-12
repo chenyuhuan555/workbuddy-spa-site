@@ -92,6 +92,7 @@
       };
       if (cand.createdAt != null) row.created_at = String(cand.createdAt);
       if (cand.updatedAt != null) row.updated_at = String(cand.updatedAt);
+      if (cand.deletedAt != null) row.deleted_at = String(cand.deletedAt);
       return row;
     }
 

@@ -77,6 +77,14 @@ test('upsertCandidate 写入 text 主键行并剥离版本文本', async () => {
   assert.equal(up.row.resume_versions[0].fileName, 'a.pdf');
 });
 
+test('upsertCandidate 保留 deletedAt 墓碑，避免刷新后候选人复活', async () => {
+  const sb = mockSupabase();
+  const repo = Repo.createCandidateRepo({ supabase: sb, getProfile: () => adminProfile });
+  await repo.upsertCandidate({ id: 'cand-deleted', name: '已删除', deletedAt: '2026-08-12T00:00:00.000Z' });
+  const up = sb.calls.find(c => c.op === 'upsert');
+  assert.equal(up.row.deleted_at, '2026-08-12T00:00:00.000Z');
+});
+
 test('候选人行通过 extra 无损保留兼容字段，但不复制候选人级和版本级大文本', async () => {
   const sb = mockSupabase({
     singleResult: {

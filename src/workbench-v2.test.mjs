@@ -361,6 +361,14 @@ test('人才库支持当前页多选并批量软删除关联推进', () => {
   assert.match(INDEX_HTML, /关联岗位推进会被隐藏/);
 });
 
+test('批量删除候选人后会立即安排云端推送，避免刷新恢复', () => {
+  const start = INDEX_HTML.indexOf('async function bulkDeleteSelectedCandidates');
+  const end = INDEX_HTML.indexOf('function talentCloudSearchErrorMessage', start);
+  const code = INDEX_HTML.slice(start, end);
+  assert.match(code, /await saveWorkbenchV2\(\)/);
+  assert.match(code, /if \(cloudReady\) await doPush\(\)/);
+});
+
 // ---------------------------------------------------------------------------
 // (5) 阶段 2：人才(Talent) × 岗位候选关系(Application) 对齐
 // ---------------------------------------------------------------------------
