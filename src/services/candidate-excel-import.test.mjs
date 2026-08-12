@@ -57,3 +57,11 @@ test('Excel 候选人入库不因渠道漏斗事件失败而回滚候选人', ()
   assert.match(INDEX_HTML, /try \{[\s\S]*?await repo\.appendEvent\([\s\S]*?\} catch \(error\) \{[\s\S]*?funnelEventFailures\.push/s);
   assert.match(INDEX_HTML, /已从 Excel 导入 \$\{created\.length\} 名候选人，但/);
 });
+
+test('Excel 导入展示分阶段进度状态', () => {
+  assert.match(INDEX_HTML, /candidateExcelImport\.parsing/);
+  assert.match(INDEX_HTML, /candidateExcelImport\.progressLabel/);
+  assert.match(INDEX_HTML, /candidateExcelImport\.progress/);
+  assert.match(INDEX_HTML, /正在读取 Excel 文件/);
+  assert.match(INDEX_HTML, /AI 正在整理候选人字段/);
+});
