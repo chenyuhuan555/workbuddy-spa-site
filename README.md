@@ -1,119 +1,164 @@
-# AI猎头工作台 · AI Recruiter Workspace
+# WorkBuddy · AI 猎头工作台
 
-一款**单文件 SPA** AI猎头工作台，用于快速筛选简历、构建候选人画像，并在多设备、多成员之间云端协同。
+WorkBuddy 是面向猎头团队的人才寻访、候选人入库、岗位匹配和推进管理工作台。当前以量子计算领域为试点，通过“公司维度”的渠道漏斗，回答三个问题：哪个渠道带来的候选人最多、哪个渠道转化最好、哪个阶段存在卡点以及应该如何优化。
 
-## 功能特性
+线上地址：<https://chenyuhuan555.github.io/workbuddy-spa-site/>
 
-- 📄 **简历快速筛选** —— Swipe 左右滑 + PDF 内联预览
-- 👤 **候选人画像库** —— 集成 pdf.js、OCR 与 DeepSeek API 自动解析简历
-- 📥 **BOSS 直聘导入** —— 一键抓取候选人投递信息
-- ☁️ **Supabase 云端同步** —— 业务数据整包上云，多设备实时一致
-- 🔄 **跨设备原件预览** —— 本机缺失时自动从 Supabase Storage 拉取原件（IndexedDB → Storage → 兼容回退）
-- 🗂️ **简历文本独立云表** —— `resume_texts` 分表存储，云端同步体积瘦身 90%+，并为全文检索打底
-- 🧾 **简历版本独立元数据表** —— `resume_versions` 双写版本状态与文件索引；原文/排版文本仍由 `resume_texts` 保存
-- 👤 **候选人独立云表** —— `candidates` 按人存储；严格一致性校验通过后可切换为候选人权威读取源
-- 👥 **多用户协作** —— `profiles` 角色体系（admin / editor / member），RLS 行级权限隔离
-- 🛠️ **一键迁移工具** —— 设置页「简历文本云端迁移」，指纹扫描批量回填历史文本
-- 🚦 **候选人推进中心** —— 管理人才与岗位的阶段、匹配度、备注、沟通记录和推进时间线
-- 👤 **推进负责人分配** —— 推进详情支持输入、重新分配和清空；新建推进按岗位负责人 → 公司负责人 → 候选人负责人自动继承
-- 🧹 **失效关联自动隐藏** —— 公司、岗位或候选人已删除时，不在前端展示失效推进记录，同时保留原始业务历史
-- 🧪 **游客演示模式** —— 未登录可直接体验虚构数据并新增、修改、删除；改动仅长期保存在当前浏览器，可随时重置
-- 🔒 **真实数据完全隔离** —— 游客不读取或写入业务云表，AI 功能使用预设虚构结果，不调用真实 AI 服务
+## 当前核心流程
 
-## 技术栈
+```text
+选择合作公司
+  → 查看该公司的渠道漏斗
+  → 点击外宣网站 / 小蜜蜂 / 倍罗 / 传统猎头等渠道
+  → AI 批量解析和整理候选人简历
+  → 候选人进入人才库，并记录首次来源与所属公司
+  → 后续再进行岗位匹配和候选人推进
+```
 
-- **前端**：单文件 SPA（`index.html` 内嵌 Vue3 IIFE，~2.3 万行）+ `src/` 下挂载 `window` 的 IIFE 模块（经典 `<script>` 引入，非打包）
-- **云端后端**：Supabase（PostgreSQL + Storage + Row Level Security）
-  - `workspace_state`：业务整包 JSON（乐观锁 RPC `save_workspace_state`）
-  - `resume_texts`：简历文本独立表（Phase 1）
-  - `candidates`：候选人业务字段和简历版本元数据（Phase 2a/2b）
-  - `resume_versions`：简历版本元数据独立表（Phase 2c，兼容双写；通过回填和一致性校验后可切换读取）
-  - `profiles` / `private_settings`：成员与私有配置
-  - Storage bucket `workbuddy-files`：路径 `workspace/main/resumes/{candidateId}/{versionId}/{fileId}`
-- **AI 解析**：登录用户使用 DeepSeek API（Key 暂存前端，后续迁入 Edge Function）；游客使用本地预设模拟结果
-- **PDF 处理**：pdf.js + OCR
-- **构建/部署**：Tailwind CSS + `scripts/build.js`（纯拷贝到 `dist/`）；GitHub Actions 自动测试 → 构建 → GitHub Pages 发布
+### 公司渠道漏斗
+
+- 首页直接展示一家公司的漏斗，可通过公司下拉框切换。
+- 不同公司的数据完全分开，不合并成一个总漏斗。
+- 所有启用渠道都会展示，没有数据时显示 `0`。
+- 漏斗包含：入库数量、触达、人才匹配成功、约面、Offer、入职。
+- 系统按固定规则生成渠道统计、转化率、卡点和结论。
+- AI 只负责解释统计事实并补充优化建议，不修改原始统计结果。
+
+### 候选人渠道导入
+
+首页点击渠道卡片后，会打开批量简历导入弹窗，并自动带入：
+
+- 当前合作公司
+- 当前首次来源渠道
+- AI 简历解析上下文
+
+候选人先进入人才库，不要求导入时选择岗位。后续在人才库中进行岗位匹配，并单独创建推进记录。
+
+首次来源示例：
+
+| 渠道 | 说明 |
+| --- | --- |
+| 外宣网站 | 分享量子计算外宣网站后，候选人主动投递 |
+| 小蜜蜂 | 从论文网站等外部信息源搜寻联系方式并入库 |
+| 倍罗 | 使用 AI 搜索简历工具寻找匹配候选人 |
+| 传统猎头 | 通过已认识的量子计算人才进行推荐 |
+
+渠道名称可以在渠道管理中修改，也支持新增一级渠道。候选人只记录首次来源，避免重复触达导致统计口径漂移。
+
+## 功能模块
+
+- **公司与岗位**：维护合作公司、公司介绍、岗位信息；支持 AI 批量解析 CSV / Excel / 文本岗位。
+- **人才库**：批量上传 PDF、Word、图片或文本简历；支持查重、合并、新版本和 AI 信息整理。
+- **岗位匹配**：从人才库筛选候选人，再创建候选人与岗位之间的推进记录。
+- **推进中心**：管理推荐、面试、Offer、入职等阶段和负责人。
+- **渠道漏斗**：按公司和首次来源统计人才来源及阶段转化。
+- **卡点诊断**：展示失败掉点、原因码、掉点阶段和覆盖范围。
+- **AI 建议**：基于当前公司的统计事实生成解释和优化方向。
+- **游客演示模式**：未登录时使用虚构数据，数据只保存在当前浏览器，不访问真实业务数据。
+
+## 快速开始
+
+```powershell
+npm install
+npm run dev
+```
+
+开发服务器启动后打开终端显示的本地地址。生产构建：
+
+```powershell
+npm test
+npm run build
+npm run preview
+```
+
+## 常用命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `npm run dev` | 启动本地开发服务器 |
+| `npm test` | 执行完整回归测试 |
+| `npm run build` | 生成生产构建并复制到 `dist/` |
+| `npm run preview` | 预览生产构建 |
+| `npm run test:modularization` | 执行模块化相关测试 |
+
+## Supabase 初始化
+
+项目使用 Supabase PostgreSQL、Storage、RLS 和成员角色控制。首次部署数据库时，按依赖顺序执行：
+
+1. `supabase/workbench-entities.sql`
+2. `supabase/resume-texts.sql`
+3. `supabase/candidates.sql`
+4. `supabase/resume-versions.sql`
+5. `supabase/talent-source-channels.sql`
+6. `supabase/talent-funnel-reasons.sql`
+7. `supabase/talent-funnel-events.sql`
+8. `supabase/workbuddy-files-storage.sql`
+
+渠道漏斗试点只统计满足当前试点范围和基线时间的数据。建议先在设置中配置量子计算试点公司的 ID 和开始时间，再开始录入新候选人。
+
+## 技术架构
+
+- 前端是单文件 Vue 3 SPA，主入口为 `index.html`。
+- `src/` 下的业务模块通过经典 `<script>` 挂载到 `window`，不依赖前端打包器运行。
+- Supabase 负责云端数据、成员权限、RLS 和私有简历文件。
+- 候选人、简历文本、简历版本、公司 / 岗位 / 推进记录和渠道漏斗事件分别提供独立仓储。
+- 渠道漏斗事件采用追加式记录，阶段统计由 `src/services/talent-funnel-analytics.js` 统一计算。
+- AI 解析和漏斗建议使用现有 AI 网关；游客模式使用本地模拟结果。
 
 ## 目录结构
 
-```
+```text
 .
-├── index.html                 # 应用源码（单文件入口）
+├── index.html                         # SPA 主入口与工作台页面
 ├── src/
-│   ├── guest-demo.js                     # 游客虚构数据、本地持久化与重置
-│   ├── guest-demo-ai.js                  # 游客本地模拟 AI，不发出真实 AI 请求
-│   └── services/
-│       ├── repo/resume-text-repo.js      # resume_texts 表读写模块
-│       ├── repo/candidate-repo.js        # candidates 行级读写与分页
-│       ├── repo/candidate-read-path.js   # 严格校验和权威读路径策略
-│       ├── repo/resume-version-repo.js   # resume_versions 元数据读写与分页
-│       ├── repo/workbench-entity-repo.js # companies/positions/applications 行级仓储
-│       ├── repo/workbench-entity-read-path.js # 三类实体严格对账闸门
-│       └── resume-file-sync.js           # 跨设备原件拉取
-├── supabase/
-│   ├── resume-texts.sql       # resume_texts 建表 + RLS
-│   ├── candidates.sql         # candidates 建表/兼容升级 + RLS + 索引
-│   ├── resume-versions.sql    # resume_versions 建表/兼容升级 + RLS + 索引
-│   └── workbench-entities.sql # companies/positions/applications 建表 + RLS + 索引
-├── scripts/build.js           # 构建脚本
-├── .github/workflows/         # 部署流水线
-└── README.md
+│   ├── workbench-v2.js                 # 工作台核心数据和人才操作
+│   ├── services/
+│   │   ├── talent-funnel-analytics.js  # 漏斗统计与卡点计算
+│   │   ├── talent-funnel-ai.js         # AI 诊断提示和结果整理
+│   │   ├── position-bulk-import.js     # AI 批量导入岗位
+│   │   └── repo/                       # Supabase 数据仓储
+│   └── ui/                             # 页面动作和展示模型
+├── supabase/                           # SQL、RLS、索引和初始化脚本
+├── scripts/build.js                    # 生产构建脚本
+└── .github/workflows/deploy.yml       # 测试、构建和 GitHub Pages 部署
 ```
-
-## 使用方法
-
-1. 浏览器打开线上地址后，未登录用户直接进入带明确标识的游客演示模式，**无需本地安装**。
-2. 游客可以新增、修改和删除虚构数据；修改只保存在当前浏览器，不会同步到云端。点击右上角「重置演示数据」可恢复初始内容。
-3. 点击右上角「登录查看真实数据」并登录后，才会读取真实业务数据；首次使用可在设置页配置 **DeepSeek API Key**。
-4. **管理员（admin）** 登录后，设置页点击「简历文本云端迁移」执行一次性历史回填（失败可重复执行）。
-5. 在「推进中心」打开任意推进记录，可编辑「推进负责人」并点击「保存推进记录」；已有负责人不会被新建规则覆盖。
-
 
 ## 部署
 
-- **生产环境（GitHub Pages）**：https://chenyuhuan555.github.io/workbuddy-spa-site/
-- 提交 `main` 分支 → GitHub Actions 自动 `test` + `build` + 发布 Pages；当前线上地址以该流水线产物为准。
-- `dist/` 已被 gitignore，构建产物由 CI 生成，无需手动提交。
-- （CloudStudio 曾作为预览环境，现以 GitHub Pages 为准。）
+推送 `main` 分支会自动触发 GitHub Actions：
 
-## 云端架构演进路线
+```text
+安装依赖 → npm test → npm run build → 发布 dist/ 到 GitHub Pages
+```
 
-| 阶段 | 内容 | 状态 |
-|------|------|------|
-| Phase 0 | 跨设备原件预览链路修复 | ✅ 已完成 |
-| Phase 1 | 简历文本分表 + 双写 + 同步瘦身 + 迁移工具 | ✅ 已完成 |
-| Phase 2a | candidates 独立表 + 双写 + 历史回填 | ✅ 代码完成 |
-| Phase 2b.1 | 候选人增量拉取与对账预览 | ✅ 代码完成 |
-| Phase 2b.2 | 严格一致性闸门 + candidates 权威读路径 + workspace_state 回退 | ✅ 代码、迁移、严格校验和切换流程完成；生产启用状态以设置页为准 |
-| Phase 2c | resume_versions 独立分表 + 双写 + 迁移/一致性校验 | ✅ 代码、迁移、校验和切换流程完成；生产启用状态以设置页为准 |
-| Phase 3 | companies / positions / applications 分表，workspace_state 仅留 UI 配置 | ✅ 表、仓储、双写、严格对账、受闸门保护的读切换和增量冲突处理完成；生产启用状态以设置页为准 |
-| Phase 4 | pg_trgm 全文检索 RPC + pgvector 语义匹配 | ⏸️ 暂缓部署：基础 RPC 已准备，但 Supabase Compute/CPU 接近满载；pgvector 语义匹配待补齐 |
+部署记录：<https://github.com/chenyuhuan555/workbuddy-spa-site/actions/workflows/deploy.yml>
 
-> 状态说明：Phase 2b.2、Phase 2c 和 Phase 3 的代码及安全启用流程已经完成，但是否已在当前 Supabase 项目切换为权威读路径，必须以应用设置页显示的“已启用”状态为准。Phase 4 基础 RPC 已具备部署脚本，但因当前 Supabase Compute/CPU 接近满载，暂不执行部署；后续仍需部署 RPC，并补齐真正的 pgvector 语义匹配。
+`dist/` 是构建产物，不需要手动提交。生产页面以 GitHub Pages 流水线产物为准。
+
+## 数据口径约束
+
+1. 漏斗按公司分别计算，不把多家公司混成一个总漏斗。
+2. 候选人先入人才库，岗位匹配和推进是后续独立动作。
+3. 渠道统计使用候选人的首次来源。
+4. 系统事实由固定规则生成，AI 不直接改写数量、转化率或阶段状态。
+5. 当前试点只看新产生的数据，历史数据不会自动混入试点统计。
+6. 失败阶段需要填写原因码；原因码为“其他”时还需要补充说明。
 
 ## 更新日志
 
-- **2026-08-05**：新增游客演示模式；虚构数据可在浏览器本地长期编辑和重置，真实业务云数据完全隔离，AI 操作使用本地预设模拟结果
+### 2026-08-12
 
-- **2026-08-04**：根据 Supabase 基础设施监控结果暂缓 Phase 4 部署；当前 Compute/CPU 约 98%，先处理资源负载，再上线基础搜索 RPC
+- 首页新增公司渠道漏斗和公司切换。
+- 渠道卡片支持点击进入候选人批量导入。
+- 候选人批量入库支持记录公司和首次来源。
+- 候选人尚未匹配岗位时，入库事件也可以进入渠道漏斗统计。
+- 首页接入渠道漏斗 AI 卡点诊断和优化建议。
+- 新增 AI 批量导入岗位能力和状态排版优化。
 
-- **2026-08-04**：推进中心新增推进负责人编辑、清空和自动继承规则；隐藏公司、岗位或候选人已删除的失效推进记录
+### 2026-08-05
 
-- **2026-08-02**：完成 Phase 2c 简历版本元数据仓储、双写、迁移进度和一致性校验；SQL 可与后续阶段统一执行，当前不切换读路径
-- **2026-08-02**：开始 Phase 3；完成公司、岗位、推进记录独立表 SQL/RLS 和通用行级仓储，页面仍保持现有 workspace_state 读取
-- **2026-08-02**：Phase 3 增加三类实体指纹双写、迁移进度卡片和串行同步，页面仍保持 workspace_state 读取
-- **2026-08-02**：Phase 3 增加三类实体严格一致性报告；只有迁移完成且对账通过才允许后续切换读取
-- **2026-08-02**：Phase 3 增加受迁移/对账闸门保护的云端权威读取与 workspace_state 回退
-- **2026-08-02**：Phase 3 增加增量拉取的按时间戳合并与冲突报告；本地较新记录不会被旧云端数据覆盖，并在设置页明确提示
-- **2026-08-02**：Phase 3 增加 30 秒后台增量轮询和可持久化离线写队列；断网时业务实体进入 localStorage 重试队列，恢复联网后按序回放
-- **2026-08-02**：Phase 2a candidates 双写接入同一离线队列，候选人记录断网时可持久化排队，恢复联网后按指纹增量回放
-- **2026-08-02**：Phase 2b candidates 读路径增加 30 秒后台增量拉取，并在轮询时自动回放候选人离线写队列
-- **2026-08-02**：完成代码基础收口：workspace_state UI-only 瘦身闸门、Phase 4 搜索/匹配 Repository 与 RPC 契约、AI Edge Function 网关骨架；默认保持回退，待 SQL 和函数部署
-- **2026-08-02**：完成 Phase 2b.2 候选人云端读取切换代码；新增完整字段保真、确定性分页、严格一致性闸门和失败回退
-- **2026-08-02**：读路径启用后，候选人行写入成为整包同步成功的前置条件，避免 workspace_state 显示成功但 candidates 写入失败
-- **2026-07-31**：接入 Supabase 云端后端（`workspace_state` 整包同步 + `resume_texts` 文本分表）
-- **2026-07-31**：Phase 0 跨设备原件预览打通；Phase 1 简历文本双写、同步瘦身、新增「简历文本云端迁移」工具
-- **2026-07-31**：设置页新增迁移卡片与进度条
-- **2026-06-09**：优化 Gist 云同步 `CLEANUP_GRACE` 机制
-- **2026-06-09**：增加 fetch 超时逻辑
-- **2026-06-09**：修复 `applyRemote` 数据覆盖问题
+- 新增游客演示模式，真实云端数据与游客数据完全隔离。
+
+### 2026-08-02
+
+- 完成候选人、简历版本和公司 / 岗位 / 推进记录的独立仓储及迁移保护。
