@@ -31,6 +31,14 @@ test('默认试点范围包含中科量枢并从今天开始统计新增事件',
   assert.match(INDEX_HTML, /'2026-08-12T00:00:00\+08:00'/);
 });
 
+test('首页渠道卡片将查看详情与导入人才拆分', () => {
+  assert.match(INDEX_HTML, /@click="openHomeFunnelChannelDetails\(channel\)"/);
+  assert.match(INDEX_HTML, /@click="openHomeFunnelChannelImport\(channel\)"/);
+  assert.doesNotMatch(INDEX_HTML, /@click="openHomeFunnelChannel\(channel\)"/);
+  assert.match(INDEX_HTML, /渠道详情/);
+  assert.match(INDEX_HTML, /@click="exportChannelDetails"/);
+});
+
 function analyticsFor(companyId, inputEvents = events) {
   return buildTalentFunnelAnalytics({
     events: inputEvents,
