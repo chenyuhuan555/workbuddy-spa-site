@@ -86,7 +86,7 @@ test('渠道模型来自动态渠道字典，不硬编码渠道名称', () => {
         channelName: '新渠道名称',
         counts: { imported: 2, contacted: 1, matched: 0, interviewed: 0, offered: 0, hired: 0 },
         adjacentRates: { importedToContacted: 0.5 },
-        cumulativeRates: { importedToContacted: 0.5 },
+        cumulativeRates: { importedToContacted: 0.5, importedToHired: 0.2 },
       }],
       bottlenecks: [],
     },
@@ -96,6 +96,7 @@ test('渠道模型来自动态渠道字典，不硬编码渠道名称', () => {
   assert.deepEqual(model.channels.map(channel => channel.channelName), ['新渠道名称']);
   assert.equal(model.channels[0].stages[0].count, 2);
   assert.equal(model.channels[0].stages[1].adjacentRate, 0.5);
+  assert.equal(model.channels[0].conversionRate, 0.2);
 });
 
 test('没有事件时显示明确空态', () => {

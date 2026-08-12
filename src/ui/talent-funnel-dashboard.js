@@ -128,10 +128,12 @@
       : (Array.isArray(channels) ? channels : []);
     const normalizedChannels = sourceChannels.map(channel => {
       const channelId = normalizeString(channel?.channelId || channel?.id);
+      const stages = buildStageRows(channel);
       return {
         channelId,
         channelName: dictionary.get(channelId) || normalizeString(channel?.channelName || channel?.name) || channelId,
-        stages: buildStageRows(channel),
+        stages,
+        conversionRate: stages[stages.length - 1]?.cumulativeRate ?? null,
       };
     });
     const bottlenecks = buildBottlenecks(analytics.bottlenecks);
