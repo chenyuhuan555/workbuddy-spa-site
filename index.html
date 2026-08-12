@@ -3676,12 +3676,11 @@
           </div>
 
           <!-- 首页直接展示单家公司漏斗；切换公司时仍保持公司维度隔离 -->
-          <section aria-labelledby="home-talent-funnel-title" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <section aria-labelledby="home-talent-funnel-title" class="min-h-[calc(100vh-8rem)] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:p-8">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">公司渠道经营</p>
-                <h2 id="home-talent-funnel-title" class="mt-1 text-lg font-bold text-slate-900">渠道漏斗</h2>
-                <p class="mt-1 text-sm text-slate-500">按首次来源统计；点击任一渠道即可批量导入候选人，AI 会先整理简历信息再入库。</p>
+                <h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2>
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="home-funnel-company">选择公司</label>
@@ -3696,13 +3695,13 @@
             <p v-if="homeFunnelDashboard.error" role="alert" class="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ homeFunnelDashboard.error }}</p>
             <p v-else-if="homeFunnelDashboard.loading" class="mt-4 rounded-xl bg-slate-50 px-3 py-8 text-center text-sm text-slate-400">正在加载该公司的渠道漏斗…</p>
             <p v-else-if="!homeFunnelCompanyId" class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">请先创建或选择一家合作公司。</p>
-            <div v-else class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <button v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" type="button" @click="openHomeFunnelChannel(channel)" class="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-sm">
-                <div class="flex items-center justify-between gap-2 border-b border-slate-200/80 bg-white px-4 py-3"><h3 class="truncate text-sm font-bold text-slate-800">{{ channel.channelName }}</h3><span class="shrink-0 text-xs font-semibold text-emerald-700">导入 →</span></div>
-                <div class="grid grid-cols-3 gap-2 px-4 py-3 text-center">
-                  <div v-for="stage in channel.stages.slice(0, 3)" :key="stage.key"><p class="text-[11px] text-slate-500">{{ stage.label }}</p><p class="mt-1 text-xl font-bold text-slate-900">{{ stage.count }}</p></div>
+            <div v-else class="mt-8 grid gap-6 md:grid-cols-2">
+              <button v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" type="button" @click="openHomeFunnelChannel(channel)" class="group min-h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-sm">
+                <div class="flex items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-5 py-4"><h3 class="truncate text-base font-bold text-slate-800">{{ channel.channelName }}</h3><span class="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">点击导入</span></div>
+                <div class="grid grid-cols-3 gap-x-4 gap-y-5 px-5 py-6 text-center">
+                  <div v-for="stage in channel.stages" :key="stage.key"><p class="text-xs text-slate-500">{{ stage.label }}</p><p class="mt-1.5 text-2xl font-bold text-slate-900">{{ stage.count }}</p></div>
                 </div>
-                <div class="flex items-center justify-between border-t border-slate-200/80 px-4 py-2 text-xs text-slate-500"><span>候选人 {{ channel.stages[0]?.count || 0 }}</span><span>入职 {{ channel.stages[channel.stages.length - 1]?.count || 0 }}</span></div>
+                <div class="flex items-center justify-between border-t border-slate-200/80 px-5 py-3 text-xs text-slate-500"><span>候选人 {{ channel.stages[0]?.count || 0 }}</span><span>入职 {{ channel.stages[channel.stages.length - 1]?.count || 0 }}</span></div>
               </button>
               <p v-if="!homeFunnelDashboard.model.channels.length" class="md:col-span-2 xl:col-span-4 rounded-xl border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-500">暂无可用渠道，请先在渠道设置中启用渠道。</p>
             </div>
