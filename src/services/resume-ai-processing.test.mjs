@@ -367,7 +367,7 @@ test('页面加载处理器并为单份和批量入库提供统一后台入口',
   assert.match(INDEX_HTML, /src\/services\/resume-ai-processing\.js\?v=20260730-resumeai2/);
   assert.match(INDEX_HTML, /const ResumeAiProcessing = window\.WorkBuddyResumeAiProcessing/);
   assert.match(INDEX_HTML, /function enqueueResumeAiProcessing\(candidateId, versionId, options = \{\}\)/);
-  assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => scheduleResumePostSaveTasks\(candidateId, versionId\)/);
+  assert.match(INDEX_HTML, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => recordBatchCandidateSource\(candidateId, versionId\)/);
   assert.match(INDEX_HTML, /scheduleResumePostSaveTasks\(candidate\.id, version\.id\)/);
 });
 

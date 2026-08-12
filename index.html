@@ -3675,6 +3675,40 @@
             <p class="text-sm text-slate-500 mt-1">聚焦关键数据，掌握业务进展，高效推进每一步。</p>
           </div>
 
+          <!-- 首页直接展示单家公司漏斗；切换公司时仍保持公司维度隔离 -->
+          <section aria-labelledby="home-talent-funnel-title" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">公司渠道经营</p>
+                <h2 id="home-talent-funnel-title" class="mt-1 text-lg font-bold text-slate-900">渠道漏斗</h2>
+                <p class="mt-1 text-sm text-slate-500">按首次来源统计；点击任一渠道即可批量导入候选人，AI 会先整理简历信息再入库。</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="sr-only" for="home-funnel-company">选择公司</label>
+                <select id="home-funnel-company" v-model="homeFunnelCompanyId" class="min-w-56 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-400">
+                  <option value="" disabled>请选择公司</option>
+                  <option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option>
+                </select>
+                <button v-if="homeFunnelCompanyId" type="button" @click="reloadHomeTalentFunnelDashboard" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">刷新</button>
+                <button v-if="canConfigureAi && homeFunnelDashboard.model.hasData" type="button" @click="runHomeTalentFunnelAi" :disabled="homeFunnelDashboard.ai.loading" class="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">{{ homeFunnelDashboard.ai.loading ? '分析中…' : 'AI诊断' }}</button>
+              </div>
+            </div>
+            <p v-if="homeFunnelDashboard.error" role="alert" class="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ homeFunnelDashboard.error }}</p>
+            <p v-else-if="homeFunnelDashboard.loading" class="mt-4 rounded-xl bg-slate-50 px-3 py-8 text-center text-sm text-slate-400">正在加载该公司的渠道漏斗…</p>
+            <p v-else-if="!homeFunnelCompanyId" class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">请先创建或选择一家合作公司。</p>
+            <div v-else class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <button v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" type="button" @click="openHomeFunnelChannel(channel)" class="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-sm">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-200/80 bg-white px-4 py-3"><h3 class="truncate text-sm font-bold text-slate-800">{{ channel.channelName }}</h3><span class="shrink-0 text-xs font-semibold text-emerald-700">导入 →</span></div>
+                <div class="grid grid-cols-3 gap-2 px-4 py-3 text-center">
+                  <div v-for="stage in channel.stages.slice(0, 3)" :key="stage.key"><p class="text-[11px] text-slate-500">{{ stage.label }}</p><p class="mt-1 text-xl font-bold text-slate-900">{{ stage.count }}</p></div>
+                </div>
+                <div class="flex items-center justify-between border-t border-slate-200/80 px-4 py-2 text-xs text-slate-500"><span>候选人 {{ channel.stages[0]?.count || 0 }}</span><span>入职 {{ channel.stages[channel.stages.length - 1]?.count || 0 }}</span></div>
+              </button>
+              <p v-if="!homeFunnelDashboard.model.channels.length" class="md:col-span-2 xl:col-span-4 rounded-xl border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-500">暂无可用渠道，请先在渠道设置中启用渠道。</p>
+            </div>
+            <div v-if="homeFunnelDashboard.ai.summary || homeFunnelDashboard.ai.error" class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3"><p v-if="homeFunnelDashboard.ai.error" class="text-sm text-rose-700">{{ homeFunnelDashboard.ai.error }}</p><template v-else><p class="text-sm leading-6 text-indigo-900">{{ homeFunnelDashboard.ai.summary }}</p><ul v-if="homeFunnelDashboard.ai.suggestions.length" class="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-indigo-800"><li v-for="suggestion in homeFunnelDashboard.ai.suggestions" :key="suggestion">{{ suggestion }}</li></ul></template></div>
+          </section>
+
           <!-- 统计卡片行 -->
           <div class="wb-v2-metric-grid grid grid-cols-3 lg:grid-cols-6 gap-3">
             <!-- 合作公司 -->
@@ -5398,6 +5432,7 @@
             <p class="text-xs font-semibold text-orange-700">人才入库</p>
             <h2 class="text-xl font-bold mt-1">上传简历</h2>
             <p class="text-sm text-slate-500 mt-1">可一次选择或拖拽多份简历；也可直接录入人才资料。</p>
+            <p v-if="batchUpload.sourceChannelId" class="mt-2 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">首次来源：{{ batchUpload.sourceChannelName }} · 公司：{{ companyById.get(batchUpload.sourceCompanyId)?.name || '当前公司' }}</p>
           </div>
           <button @click="batchUpload.open = false" aria-label="关闭上传简历弹窗" class="w-8 h-8 rounded-lg bg-slate-100" type="button">×</button>
         </div>
@@ -11069,7 +11104,7 @@ const vueAppConfig = {
     // 阶段 3.5：批量 / 拖拽入库状态（由 WorkbenchV2 批量引擎驱动，复用既有人才写入能力，不复制第二套逻辑）
     const batchUpload = reactive({
       open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2), defaultCategoryIds: [],
-      tasks: [], hashes: {}, active: 0, gate: Promise.resolve(),
+      tasks: [], hashes: {}, active: 0, gate: Promise.resolve(), sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '',
     });
     const batchCategorySelectorOpen = ref(false);
     const talentIntakeDirectEntryOpen = ref(false);
@@ -11092,6 +11127,33 @@ const vueAppConfig = {
       showToast('当前账号无 AI 功能权限', 'error');
       return false;
     }
+    async function recordBatchCandidateSource(candidateId, versionId) {
+      scheduleResumePostSaveTasks(candidateId, versionId);
+      const companyId = String(batchUpload.sourceCompanyId || '').trim();
+      const channelId = String(batchUpload.sourceChannelId || '').trim();
+      if (!candidateId || !companyId || !channelId) return;
+      const candidate = workbenchV2.candidates.find(item => String(item.id) === String(candidateId));
+      if (!candidate || candidate.sourceChannelId) return;
+      candidate.sourceChannelId = channelId;
+      candidate.sourceChannelName = String(batchUpload.sourceChannelName || '').trim();
+      candidate.sourceCompanyId = companyId;
+      candidate.sourceAttribution = '首次来源';
+      candidate.updatedAt = new Date().toISOString();
+      await saveWorkbenchV2();
+      const repo = getTalentFunnelEventRepo();
+      if (repo) {
+        await repo.appendEvent({
+          id: `funnel_evt_import_${candidateId}_${channelId}`,
+          companyId,
+          candidateId,
+          channelId,
+          stage: 'imported',
+          result: 'success',
+          occurredAt: new Date().toISOString(),
+          isPilot: true,
+        });
+      }
+    }
     const batchDeps = {
       bundle: workbenchV2,
       parseFile: async (task) => readAndParseResumeFile(task.file, { persistBlob: false }),
@@ -11104,7 +11166,7 @@ const vueAppConfig = {
         });
       },
       persist: saveWorkbenchV2,
-      afterTalentSaved: ({ candidateId, versionId }) => scheduleResumePostSaveTasks(candidateId, versionId),
+      afterTalentSaved: ({ candidateId, versionId }) => recordBatchCandidateSource(candidateId, versionId),
     };
     const talentIntakeActions = window.WorkBuddyTalentIntakeActions.createTalentIntakeActions({
       batchUpload, candidateUpload, directForm: talentIntakeDirectForm,
@@ -11126,8 +11188,21 @@ const vueAppConfig = {
       talentIntakeDirectExtracting.value = false;
       talentIntakeDirectError.value = '';
     }
-    function openBatchUpload() { batchCategorySelectorOpen.value = false; return talentIntakeActions.openBatchUpload(); }
-    function openTalentIntake() { batchCategorySelectorOpen.value = false; batchUpload.defaultCategoryIds = []; return talentIntakeActions.openTalentIntake(); }
+    function openBatchUpload() {
+      batchCategorySelectorOpen.value = false;
+      Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '' });
+      return talentIntakeActions.openBatchUpload();
+    }
+    function openChannelCandidateImport(companyId, channelId, channelName) {
+      if (!requireTalentWritePermission()) return;
+      Object.assign(batchUpload, {
+        open: true, running: false, tasks: Array.from({ length: 0 }), hashes: {}, active: 0, gate: Promise.resolve(),
+        sourceCompanyId: String(companyId || ''), sourceChannelId: String(channelId || ''), sourceChannelName: String(channelName || ''),
+      });
+      batchCategorySelectorOpen.value = false;
+      talentIntakeDirectEntryOpen.value = false;
+    }
+    function openTalentIntake() { batchCategorySelectorOpen.value = false; batchUpload.defaultCategoryIds = []; Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '' }); return talentIntakeActions.openTalentIntake(); }
     function toggleBatchCategory(categoryId) {
       const next = new Set(batchUpload.defaultCategoryIds || []);
       if (next.has(categoryId)) next.delete(categoryId); else next.add(categoryId);
@@ -12139,17 +12214,58 @@ const vueAppConfig = {
       getScope: getTalentFunnelPilotScope,
       getCompanyName: companyId => companyById.value.get(companyId)?.name || '',
     });
+    const homeFunnelDashboard = reactive(window.WorkBuddyTalentFunnelDashboard.createState());
+    const homeFunnelCompanyId = ref('');
+    const homeFunnelDashboardController = window.WorkBuddyTalentFunnelDashboard.createTalentFunnelDashboardController({
+      state: homeFunnelDashboard,
+      analytics: window.WorkBuddyTalentFunnelAnalytics,
+      getChannels: async () => {
+        const repo = getTalentSourceChannelRepo();
+        return repo ? repo.listActive() : [];
+      },
+      getEventsByCompany: async companyId => {
+        const repo = getTalentFunnelEventRepo();
+        return repo ? repo.listEventsByCompany(companyId) : [];
+      },
+      getScope: getTalentFunnelPilotScope,
+      getCompanyName: companyId => companyById.value.get(companyId)?.name || '',
+    });
     function formatTalentFunnelRate(value) { return window.WorkBuddyTalentFunnelDashboard.formatRate(value); }
     function reloadTalentFunnelDashboard() { return talentFunnelDashboardController.loadCompany(workbenchRoute.id); }
     function runTalentFunnelAi() {
       if (!canConfigureAi) { showToast('当前账号无 AI 功能权限', 'error'); return; }
       return talentFunnelDashboardController.analyzeWithAi({ aiService: talentFunnelAiService });
     }
+    function reloadHomeTalentFunnelDashboard() {
+      return homeFunnelCompanyId.value ? homeFunnelDashboardController.loadCompany(homeFunnelCompanyId.value) : homeFunnelDashboardController.reset('');
+    }
+    function runHomeTalentFunnelAi() {
+      if (!canConfigureAi) { showToast('当前账号无 AI 功能权限', 'error'); return; }
+      return homeFunnelDashboardController.analyzeWithAi({ aiService: talentFunnelAiService });
+    }
+    function openHomeFunnelChannel(channel) {
+      if (!homeFunnelCompanyId.value || !channel?.channelId) return;
+      openChannelCandidateImport(homeFunnelCompanyId.value, channel.channelId, channel.channelName);
+    }
     watch(
       () => [workbenchRoute.type, workbenchRoute.id],
       ([type, id]) => {
         if (type === 'company' && id) void talentFunnelDashboardController.loadCompany(id);
         else talentFunnelDashboardController.reset('');
+      },
+      { immediate: true },
+    );
+    watch(
+      () => workbenchV2.companies.map(company => company.id).filter(Boolean),
+      companyIds => {
+        if (!companyIds.includes(homeFunnelCompanyId.value)) homeFunnelCompanyId.value = companyIds[0] || '';
+      },
+      { immediate: true },
+    );
+    watch(
+      () => [workbenchNav.value, workbenchRoute.type, homeFunnelCompanyId.value],
+      ([nav, routeType, companyId]) => {
+        if (nav === 'dashboard' && routeType === 'list' && companyId) void homeFunnelDashboardController.loadCompany(companyId);
       },
       { immediate: true },
     );
@@ -24001,7 +24117,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, formatTalentFunnelRate, reloadTalentFunnelDashboard, runTalentFunnelAi,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelChannel,
       candidateFilters, candidatePage, talentMoreMenuOpen, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
@@ -24016,7 +24132,7 @@ ${clipped}`
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
-      batchUpload, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
+      batchUpload, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, openChannelCandidateImport, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, analyzeSelectedApplicationMatch, runBulkApplicationAiScoring, applicationMatchAnalysis, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       operationHistory, recycleBin, historyPanel, undoLastOperation, restoreRecycleItem,

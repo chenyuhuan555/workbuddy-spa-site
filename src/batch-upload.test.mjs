@@ -558,7 +558,7 @@ test('页面在可靠入库后分别排队原件同步和 AI', () => {
   assert.match(source, /const ResumeFileSync = window\.WorkBuddyResumeFileSync/);
   assert.match(source, /function enqueueResumeFileSync\(candidateId, versionId\)/);
   assert.match(source, /function scheduleResumePostSaveTasks\(candidateId, versionId\)/);
-  assert.match(source, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => scheduleResumePostSaveTasks\(candidateId, versionId\)/);
+  assert.match(source, /afterTalentSaved:\s*\(\{ candidateId, versionId \}\) => recordBatchCandidateSource\(candidateId, versionId\)/);
   const scheduler = source.match(/function scheduleResumePostSaveTasks\(candidateId, versionId\) \{([\s\S]*?)\n    \}/)?.[1] || '';
   assert.match(scheduler, /void enqueueResumeFileSync\(candidateId, versionId\)\.catch/);
   assert.match(scheduler, /void enqueueResumeAiProcessing\(candidateId, versionId\)\.catch/);

@@ -316,6 +316,19 @@ test('未知 channelId 的成功和失败事件都被排除，不进入 channels
   assert.deepEqual(analytics.bottlenecks, []);
 });
 
+test('候选人尚未匹配岗位时，只有 candidateId 的已导入事件也计入渠道漏斗', () => {
+  const analytics = buildTalentFunnelAnalytics({
+    companyId: 'co_A',
+    baselineAt: '2026-08-11T00:00:00.000Z',
+    channels: [{ id: 'beiluo', name: '倍罗' }],
+    events: [{
+      id: 'evt_candidate_import', candidateId: 'cand_1', companyId: 'co_A', channelId: 'beiluo',
+      stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z',
+    }],
+  });
+  assert.equal(analytics.channels[0].counts.imported, 1);
+});
+
 test('bottleneck dropRate 使用 failed / (success + failed) 的有界比例，不会大于 1', () => {
   const analytics = buildTalentFunnelAnalytics({
     channels: [{ id: 'referral', name: '内推' }],

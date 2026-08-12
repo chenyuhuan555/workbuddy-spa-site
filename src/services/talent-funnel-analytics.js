@@ -98,9 +98,11 @@
       const stage = normalizeString(event?.stage);
       const result = normalizeString(event?.result);
       const applicationId = normalizeString(event?.applicationId);
+      const candidateId = normalizeString(event?.candidateId);
       const channelId = normalizeString(event?.channelId);
-      if (!applicationId || !STAGES.includes(stage) || !result || !knownChannelIds.has(channelId)) return;
-      const key = `${applicationId}__${stage}__${result}`;
+      const identity = applicationId || (stage === 'imported' ? candidateId : '');
+      if (!identity || !STAGES.includes(stage) || !result || !knownChannelIds.has(channelId)) return;
+      const key = `${identity}__${stage}__${result}`;
       const current = byKey.get(key);
       if (!current || compareEvents(event, current) < 0) {
         byKey.set(key, event);
