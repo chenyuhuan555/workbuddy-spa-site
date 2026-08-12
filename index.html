@@ -47,6 +47,7 @@
   <script src="./src/services/talent-funnel-analytics.js?v=20260811-talentfunnelanalytics1"></script>
   <script src="./src/services/talent-funnel-ai.js?v=20260811-talentfunnelai1"></script>
   <script src="./src/services/position-bulk-import.js?v=20260812-positionbulkimport1"></script>
+  <script src="./src/services/candidate-excel-import.js?v=20260812-candidateexcelimport1"></script>
   <script src="./src/services/radar-rss-config.js?v=20260803-radarrss1"></script>
   <script src="./src/services/radar-cache.js?v=20260803-radarcache1"></script>
   <script src="./src/services/metrics-snapshot.js?v=20260803-metricssnapshot1"></script>
@@ -5405,6 +5406,20 @@
       </main>
     </section>
   </div>
+
+  <teleport to="body">
+    <div v-if="candidateExcelImport.open && canWrite" class="fixed inset-0 z-[125] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="closeCandidateExcelImport">
+      <section role="dialog" aria-modal="true" aria-labelledby="candidate-excel-import-title" class="w-full max-w-7xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5"><div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">候选人批量入库</p><h2 id="candidate-excel-import-title" class="mt-1 text-xl font-bold text-slate-900">Excel 导入候选人</h2><p class="mt-1 text-sm text-slate-500">当前来源：{{ batchUpload.sourceChannelName }} · 当前公司：{{ companyById.get(batchUpload.sourceCompanyId)?.name || '当前公司' }}。AI 会整理字段，确认后才会写入人才库。</p></div><button type="button" @click="closeCandidateExcelImport" aria-label="关闭 Excel 候选人导入" class="h-8 w-8 rounded-lg bg-slate-100 text-lg text-slate-500">×</button></div>
+        <div class="space-y-4 px-6 py-5">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-4"><div><label for="candidate-excel-file" class="text-sm font-semibold text-slate-700">上传候选人 Excel</label><p class="mt-1 text-xs text-slate-500">支持 .xlsx / .xls；每一行识别为一名候选人，可识别姓名、职位、公司、城市、学历、邮箱和电话。</p><p v-if="candidateExcelImport.fileName" class="mt-1 text-xs font-semibold text-emerald-700">已选择：{{ candidateExcelImport.fileName }}</p></div><input id="candidate-excel-file" type="file" accept=".xlsx,.xls" class="block max-w-full text-sm" @change="onCandidateExcelFile"></div>
+          <p v-if="candidateExcelImport.error" role="alert" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ candidateExcelImport.error }}</p>
+          <div v-if="candidateExcelImport.rows.length" class="overflow-x-auto rounded-xl border border-slate-200"><table class="min-w-[1180px] w-full text-left text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-3 py-3">状态</th><th class="px-3 py-3">姓名 *</th><th class="px-3 py-3">当前职位</th><th class="px-3 py-3">当前公司</th><th class="px-3 py-3">城市</th><th class="px-3 py-3">邮箱</th><th class="px-3 py-3">电话</th><th class="px-3 py-3">学历</th><th class="px-3 py-3">匹配度</th><th class="px-3 py-3">来源备注</th></tr></thead><tbody><tr v-for="row in candidateExcelImport.rows" :key="row.rowNumber" class="border-t border-slate-100 align-top"><td class="whitespace-nowrap px-3 py-3"><span v-if="row.duplicateType === 'existing'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">已有候选人</span><span v-else-if="row.duplicateType === 'batch'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">本批次重复</span><span v-else-if="row.status === 'invalid'" class="rounded-full bg-rose-100 px-2 py-1 text-xs text-rose-700">缺少姓名</span><span v-else-if="row.status === 'needs_review'" class="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">待确认</span><span v-else class="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">待入库</span></td><td class="px-3 py-3"><input v-model.trim="row.name" aria-label="Excel 候选人姓名" class="w-36 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.currentTitle" aria-label="Excel 候选人职位" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.currentCompany" aria-label="Excel 候选人公司" class="w-48 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.city" aria-label="Excel 候选人城市" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.email" aria-label="Excel 候选人邮箱" class="w-48 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.phone" aria-label="Excel 候选人电话" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.education" aria-label="Excel 候选人学历" class="w-32 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model.number="row.matchScore" type="number" aria-label="Excel 候选人匹配度" class="w-20 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><p class="max-w-64 text-xs leading-5 text-slate-500">{{ row.verificationStatus }}{{ row.note ? ` · ${row.note}` : '' }}</p></td></tr></tbody></table></div>
+          <div v-if="candidateExcelImport.rows.length" class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">共 {{ candidateExcelImport.rows.length }} 人 · 可入库 {{ candidateExcelImport.rows.filter(row => !row.duplicateType && row.status !== 'invalid' && row.name.trim()).length }} 人 · 重复或缺少姓名的记录不会自动入库</p><div class="flex gap-2"><button type="button" @click="closeCandidateExcelImport" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">取消</button><button type="button" @click="confirmCandidateExcelImport" :disabled="candidateExcelImport.importing" class="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{{ candidateExcelImport.importing ? '正在入库…' : '确认批量入库' }}</button></div></div>
+        </div>
+      </section>
+    </div>
+  </teleport>
 
   <teleport to="body">
     <div v-if="candidateUpload.open && canWrite && (!batchUpload.open || candidateUpload.step !== 'form')" class="fixed inset-0 z-[110] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" :style="(candidateUpload.batchTaskId || batchUpload.open) ? { zIndex: 120 } : null" @click.self="candidateUpload.open = false">
@@ -11105,6 +11120,7 @@ const vueAppConfig = {
       open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2), defaultCategoryIds: [],
       tasks: [], hashes: {}, active: 0, gate: Promise.resolve(), sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '',
     });
+    const candidateExcelImport = reactive({ open: false, fileName: '', rows: [], parsing: false, importing: false, error: '' });
     const batchCategorySelectorOpen = ref(false);
     const talentIntakeDirectEntryOpen = ref(false);
     const talentIntakeDirectForm = reactive({ name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', profileText: '', status: 'open', categoryIds: [], rawText: '', fileName: '', fileData: '', fileId: '', fileHash: '', fileSize: 0, fileType: '' });
@@ -11195,11 +11211,94 @@ const vueAppConfig = {
     function openChannelCandidateImport(companyId, channelId, channelName) {
       if (!requireTalentWritePermission()) return;
       Object.assign(batchUpload, {
-        open: true, running: false, tasks: Array.from({ length: 0 }), hashes: {}, active: 0, gate: Promise.resolve(),
+        open: false, running: false, tasks: Array.from({ length: 0 }), hashes: {}, active: 0, gate: Promise.resolve(),
         sourceCompanyId: String(companyId || ''), sourceChannelId: String(channelId || ''), sourceChannelName: String(channelName || ''),
       });
+      Object.assign(candidateExcelImport, { open: true, fileName: '', rows: [], parsing: false, importing: false, error: '' });
       batchCategorySelectorOpen.value = false;
       talentIntakeDirectEntryOpen.value = false;
+    }
+    function closeCandidateExcelImport() {
+      Object.assign(candidateExcelImport, { open: false, fileName: '', rows: [], parsing: false, importing: false, error: '' });
+    }
+    function refreshCandidateExcelDuplicates(rows) {
+      const helper = window.WorkBuddyCandidateExcelImport;
+      candidateExcelImport.rows = helper.markDuplicateCandidateRows(rows, workbenchV2.candidates);
+    }
+    async function onCandidateExcelFile(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      candidateExcelImport.fileName = file.name;
+      candidateExcelImport.error = '';
+      candidateExcelImport.parsing = true;
+      try {
+        const XLSXLib = await ensureXlsxDependency();
+        const workbook = XLSXLib.read(await file.arrayBuffer(), { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const matrix = XLSXLib.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+        const helper = window.WorkBuddyCandidateExcelImport;
+        let rows = helper.normalizeCandidateExcelRows(matrix);
+        if (!rows.length) throw new Error('未识别到候选人表头，请确认 Excel 包含“姓名”列');
+        if (canConfigureAi) {
+          try {
+            const result = await callDeepSeekWithProgress({
+              task: 'candidate-excel-import', getApiKey: requireDeepSeekApiKey, temperature: 0.1,
+              timeout: 90000, schema: 'json', responseFormat: { type: 'json_object' },
+              messages: helper.buildCandidateExcelAiMessages({ rows, channelName: batchUpload.sourceChannelName }),
+            });
+            const aiRows = helper.normalizeCandidateExcelAiResult(result, rows);
+            if (aiRows.length) rows = aiRows;
+          } catch (error) {
+            showToast('AI 整理暂不可用，已使用 Excel 原始字段生成预览', 'error');
+          }
+        }
+        refreshCandidateExcelDuplicates(rows);
+      } catch (error) {
+        candidateExcelImport.rows = [];
+        candidateExcelImport.error = error?.message || '读取候选人 Excel 失败';
+      } finally {
+        candidateExcelImport.parsing = false;
+        if (event.target) event.target.value = '';
+      }
+    }
+    async function confirmCandidateExcelImport() {
+      if (!canWrite || candidateExcelImport.importing) return;
+      refreshCandidateExcelDuplicates(candidateExcelImport.rows);
+      const rows = candidateExcelImport.rows.filter(row => !row.duplicateType && row.status !== 'invalid' && String(row.name || '').trim());
+      if (!rows.length) { candidateExcelImport.error = '没有可入库的候选人，请修改记录或处理重复项'; return; }
+      candidateExcelImport.importing = true;
+      candidateExcelImport.error = '';
+      const created = [];
+      try {
+        rows.forEach(row => {
+          const candidate = WorkbenchV2.createTalent(workbenchV2, window.WorkBuddyCandidateExcelImport.buildCandidateFields(row, { channelName: batchUpload.sourceChannelName }), { allowDuplicate: false });
+          candidate.sourceChannelId = batchUpload.sourceChannelId;
+          candidate.sourceChannelName = batchUpload.sourceChannelName;
+          candidate.sourceCompanyId = batchUpload.sourceCompanyId;
+          candidate.sourceAttribution = '首次来源';
+          candidate.updatedAt = new Date().toISOString();
+          created.push(candidate);
+        });
+        if (!(await saveWorkbenchV2())) throw new Error('候选人已整理，但保存失败，请重试');
+        const repo = getTalentFunnelEventRepo();
+        if (repo) {
+          for (const candidate of created) {
+            await repo.appendEvent({
+              id: `funnel_evt_import_${candidate.id}_${batchUpload.sourceChannelId}`,
+              companyId: batchUpload.sourceCompanyId,
+              candidateId: candidate.id,
+              channelId: batchUpload.sourceChannelId,
+              stage: 'imported', result: 'success', occurredAt: new Date().toISOString(), isPilot: true,
+            });
+          }
+        }
+        closeCandidateExcelImport();
+        showToast(`已从 Excel 导入 ${created.length} 名候选人`);
+      } catch (error) {
+        candidateExcelImport.error = error?.message || '候选人批量入库失败';
+      } finally {
+        candidateExcelImport.importing = false;
+      }
     }
     function openTalentIntake() { batchCategorySelectorOpen.value = false; batchUpload.defaultCategoryIds = []; Object.assign(batchUpload, { sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '' }); return talentIntakeActions.openTalentIntake(); }
     function toggleBatchCategory(categoryId) {
@@ -24131,7 +24230,7 @@ ${clipped}`
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
-      batchUpload, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, openChannelCandidateImport, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
+      batchUpload, candidateExcelImport, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, openChannelCandidateImport, closeCandidateExcelImport, onCandidateExcelFile, confirmCandidateExcelImport, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, analyzeSelectedApplicationMatch, runBulkApplicationAiScoring, applicationMatchAnalysis, deletePipelineEvent,
       backToWorkbenchList, workbenchCompanyCount,
       operationHistory, recycleBin, historyPanel, undoLastOperation, restoreRecycleItem,
