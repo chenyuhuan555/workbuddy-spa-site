@@ -16,6 +16,9 @@ export function headerKey(value) {
     if (['联系方式类型', '联系方式类别', 'contacttype'].includes(normalized)) return 'contactType';
     if (['核验状态', '验证状态', '核验', 'verificationstatus'].includes(normalized)) return 'verificationStatus';
     if (['联系方式来源', '来源链接', '来源', 'source', 'sourcelink'].includes(normalized)) return 'sourceUrl';
+    if (['个人职业主页', '职业主页', '个人主页', 'linkedin', 'profileurl'].includes(normalized)) return 'personalProfileUrl';
+    if (['个人信息与背景', '个人背景', '背景', 'background', 'profile'].includes(normalized)) return 'background';
+    if (['一句话履历总结', '履历总结', '候选人总结', 'summary'].includes(normalized)) return 'summary';
     if (['核验备注', '备注', '说明', 'note', 'notes'].includes(normalized)) return 'note';
     return '';
   }
@@ -57,6 +60,9 @@ export function normalizeCandidateExcelRows(matrix) {
         contactType: text(raw.contactType),
         verificationStatus: text(raw.verificationStatus),
         sourceUrl: text(raw.sourceUrl),
+        personalProfileUrl: text(raw.personalProfileUrl),
+        background: text(raw.background),
+        summary: text(raw.summary),
         note: text(raw.note),
         duplicateType: '',
         status: text(raw.name) ? (contacts.emails.length || contacts.phones.length ? 'ready' : 'needs_review') : 'invalid',
@@ -87,10 +93,10 @@ export function markDuplicateCandidateRows(rows, existingCandidates = []) {
   }
 
 export function buildCandidateFields(row, { channelName = '倍罗' } = {}) {
-    const profileParts = [row.education && `学历：${row.education}`, row.contactType && `联系方式：${row.contactType}`, row.verificationStatus && `核验：${row.verificationStatus}`, row.note].filter(Boolean);
+    const profileParts = [row.summary, row.background, row.education && `学历：${row.education}`, row.contactType && `联系方式：${row.contactType}`, row.verificationStatus && `核验：${row.verificationStatus}`, row.personalProfileUrl && `个人职业主页：${row.personalProfileUrl}`, row.sourceUrl && `联系方式来源：${row.sourceUrl}`, row.note].filter(Boolean);
     return {
       name: text(row.name), phone: text(row.phone), email: text(row.email), currentCompany: text(row.currentCompany), currentTitle: text(row.currentTitle), city: text(row.city),
-      education: text(row.education), profileText: text(row.profileText) || profileParts.join('；'), source: text(channelName) || '倍罗', sourceChannelName: text(channelName) || '倍罗', sourceUrl: text(row.sourceUrl), matchScore: row.matchScore,
+      education: text(row.education), summary: text(row.summary), profileText: text(row.profileText) || profileParts.join('；'), source: text(channelName) || '倍罗', sourceChannelName: text(channelName) || '倍罗', sourceUrl: text(row.sourceUrl), personalProfileUrl: text(row.personalProfileUrl), matchScore: row.matchScore,
     };
   }
 

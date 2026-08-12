@@ -18,6 +18,21 @@ test('候选人 Excel 适配器跳过顶部空行并映射倍罗字段', () => {
   assert.equal(rows[0].status, 'ready');
 });
 
+test('候选人画像 Excel 额外字段会同步到人才详情', () => {
+  const rows = normalizeCandidateExcelRows([
+    ['姓名', '个人职业主页', '联系方式来源', '个人信息与背景', '一句话履历总结'],
+    ['Bing Zhu', 'https://www.linkedin.com/in/bing', 'https://paper.example/cv.pdf', '量子计算研究与金融科技经历', '量子计算方向候选人'],
+  ]);
+  const fields = buildCandidateFields(rows[0], { channelName: '倍罗' });
+  assert.equal(rows[0].personalProfileUrl, 'https://www.linkedin.com/in/bing');
+  assert.equal(rows[0].background, '量子计算研究与金融科技经历');
+  assert.equal(rows[0].summary, '量子计算方向候选人');
+  assert.equal(fields.summary, '量子计算方向候选人');
+  assert.equal(fields.personalProfileUrl, 'https://www.linkedin.com/in/bing');
+  assert.match(fields.profileText, /量子计算研究与金融科技经历/);
+  assert.match(fields.profileText, /个人职业主页：https:\/\/www\.linkedin\.com\/in\/bing/);
+});
+
 test('联系方式中的邮箱和电话会拆分', () => {
   assert.deepEqual(splitContacts('ccumeano@gmail.com / +44 7906 099539'), { emails: ['ccumeano@gmail.com'], phones: ['+447906099539'], raw: 'ccumeano@gmail.com / +44 7906 099539' });
 });

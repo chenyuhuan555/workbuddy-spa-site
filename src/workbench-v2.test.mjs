@@ -27,6 +27,19 @@ test('createCandidate 保留既有 id 且 status 默认 open（资产状态，�
   assert.ok(created.createdAt, '必须带 createdAt 时间戳');
 });
 
+test('批量软删除人才并同步隐藏关联岗位推进，保留历史数据', () => {
+  const bundle = {
+    candidates: [{ id: 'c1', name: '误传候选人' }, { id: 'c2', name: '保留候选人' }],
+    applications: [{ id: 'a1', candidateId: 'c1', deletedAt: '' }, { id: 'a2', candidateId: 'c2', deletedAt: '' }],
+  };
+  const result = WorkbenchV2.softDeleteTalents(bundle, ['c1']);
+  assert.deepEqual(result, { candidateIds: ['c1'], applicationIds: ['a1'] });
+  assert.ok(bundle.candidates[0].deletedAt);
+  assert.ok(bundle.applications[0].deletedAt);
+  assert.equal(bundle.candidates[1].deletedAt, undefined);
+  assert.equal(bundle.applications[1].deletedAt, '');
+});
+
 test('validateBundle 拒绝错误版本且补全 resumeVersions', () => {
   assert.throws(() => WorkbenchV2.validateBundle({ schemaVersion: 1, candidates: [] }), /数据版本/);
 
@@ -337,6 +350,15 @@ test('模板已暴露完整度/更新时间辅助函数并新增两列表头', (
   assert.match(INDEX_HTML, /candidateLastUpdated,/, '辅助函数已加入 setup 返回');
   assert.match(INDEX_HTML, /最近更新时间/, '人才库列表新增“最近更新时间”表头');
   assert.match(INDEX_HTML, /简历完整度/, '人才库列表新增“简历完整度”表头');
+});
+
+test('人才库支持当前页多选并批量软删除关联推进', () => {
+  assert.match(INDEX_HTML, /全选当前页候选人/);
+  assert.match(INDEX_HTML, /toggleCandidateSelection/);
+  assert.match(INDEX_HTML, /批量删除/);
+  assert.match(INDEX_HTML, /bulkDeleteSelectedCandidates/);
+  assert.match(INDEX_HTML, /WorkBenchV2\.softDeleteTalents|WorkbenchV2\.softDeleteTalents/);
+  assert.match(INDEX_HTML, /关联岗位推进会被隐藏/);
 });
 
 // ---------------------------------------------------------------------------

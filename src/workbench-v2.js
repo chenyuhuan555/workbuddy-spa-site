@@ -632,6 +632,27 @@
     return candidate;
   }
 
+  function softDeleteTalents(bundle, talentIds = []) {
+    const ids = new Set((Array.isArray(talentIds) ? talentIds : [talentIds]).map(id => String(id || '').trim()).filter(Boolean));
+    const deletedAt = nowIso();
+    const candidateIds = [];
+    (bundle.candidates || []).forEach(candidate => {
+      if (!candidate?.id || !ids.has(String(candidate.id)) || candidate.deletedAt) return;
+      candidate.deletedAt = deletedAt;
+      candidate.updatedAt = deletedAt;
+      candidateIds.push(candidate.id);
+    });
+    const candidateIdSet = new Set(candidateIds);
+    const applicationIds = [];
+    (bundle.applications || []).forEach(application => {
+      if (!application?.id || !candidateIdSet.has(application.candidateId) || application.deletedAt) return;
+      application.deletedAt = deletedAt;
+      application.updatedAt = deletedAt;
+      applicationIds.push(application.id);
+    });
+    return { candidateIds, applicationIds };
+  }
+
   function getTalentApplications(bundle, talentId) {
     return (bundle.applications || []).filter(item => item.candidateId === talentId);
   }
@@ -1147,6 +1168,7 @@
     getTalentById,
     createTalent,
     updateTalent,
+    softDeleteTalents,
     getTalentApplications,
     getTalentCategories,
     seedDefaultTalentCategories,
