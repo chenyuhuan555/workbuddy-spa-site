@@ -16276,11 +16276,14 @@ ${ocrText}`
     function candidateFingerprint(cand) {
       return CandidateReadPath.fingerprintCandidate(cand);
     }
+    function candidateSyncFingerprint(cand) {
+      return `${candidateFingerprint(cand)}__deleted:${String(cand?.deletedAt || '')}`;
+    }
     function collectCandidateRows() {
       const rows = [];
       (workbenchV2.candidates || []).forEach(candidate => {
         if (!candidate || !candidate.id) return;
-        rows.push({ id: candidate.id, candidate, fingerprint: candidateFingerprint(candidate) });
+        rows.push({ id: candidate.id, candidate, fingerprint: candidateSyncFingerprint(candidate) });
       });
       return rows;
     }
@@ -16302,7 +16305,7 @@ ${ocrText}`
         const repo = getCandidateRepo();
         const fingerprints = readCandidateFingerprints();
         const currentById = new Map(allRows.map(row => [String(row.id), row]));
-        const queuedRows = candidateOfflineQueue.listDue().map(item => currentById.get(String(item.id)) || ({ id: item.id, candidate: item.model, fingerprint: candidateFingerprint(item.model) }));
+        const queuedRows = candidateOfflineQueue.listDue().map(item => currentById.get(String(item.id)) || ({ id: item.id, candidate: item.model, fingerprint: candidateSyncFingerprint(item.model) }));
         const rows = [...new Map([...allRows.filter(row => forceAll || fingerprints[row.id] !== row.fingerprint), ...queuedRows].map(row => [String(row.id), row])).values()];
         let synced = 0;
         let failed = 0;

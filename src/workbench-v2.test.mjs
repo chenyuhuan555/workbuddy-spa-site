@@ -386,6 +386,12 @@ test('批量删除必须等待同步空闲并确认云端与候选人表均保�
   assert.match(INDEX_HTML, /async function waitForCloudSyncIdle\(timeoutMs = 30000\)/);
 });
 
+test('候选人同步指纹包含 deletedAt，删除标记会触发云端写入', () => {
+  assert.match(INDEX_HTML, /function candidateSyncFingerprint\(cand\)/);
+  assert.match(INDEX_HTML, /fingerprint: candidateSyncFingerprint\(candidate\)/);
+  assert.match(INDEX_HTML, /__deleted:\$\{String\(cand\?\.deletedAt \|\| ''\)\}/);
+});
+
 // ---------------------------------------------------------------------------
 // (5) 阶段 2：人才(Talent) × 岗位候选关系(Application) 对齐
 // ---------------------------------------------------------------------------
