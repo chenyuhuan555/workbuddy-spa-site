@@ -23,6 +23,58 @@ export function headerKey(value) {
     return '';
   }
 
+const AI_FIELD_ALIASES = {
+  name: 'name', candidate: 'name', candidateName: 'name',
+  phone: 'phone', mobile: 'phone', telephone: 'phone',
+  email: 'email', workEmail: 'email', publicEmail: 'email',
+  contact: 'contact', contactInfo: 'contact', publicContact: 'contact',
+  currentCompany: 'currentCompany', company: 'currentCompany', affiliation: 'currentCompany', organization: 'currentCompany', institution: 'currentCompany',
+  currentTitle: 'currentTitle', title: 'currentTitle', role: 'currentTitle', position: 'currentTitle',
+  city: 'city', location: 'city',
+  education: 'education', degree: 'education',
+  matchScore: 'matchScore', score: 'matchScore',
+  personalProfileUrl: 'personalProfileUrl', profileUrl: 'personalProfileUrl', linkedin: 'personalProfileUrl',
+  sourceUrl: 'sourceUrl', contactSource: 'sourceUrl', source: 'sourceUrl',
+  background: 'background', profile: 'background', bio: 'background',
+  summary: 'summary', resumeSummary: 'summary',
+  contactType: 'contactType', verificationStatus: 'verificationStatus', note: 'note', batch: 'batch',
+};
+
+function normalizeAiField(value) {
+  const raw = String(value || '').trim();
+  if (AI_FIELD_ALIASES[raw]) return AI_FIELD_ALIASES[raw];
+  const normalized = key(raw);
+  const match = Object.entries(AI_FIELD_ALIASES).find(([alias]) => key(alias) === normalized);
+  return match ? match[1] : '';
+}
+
+export function buildCandidateExcelAiMappingMessages({ headers = [], sampleRows = [] } = {}) {
+  const fields = Object.keys(AI_FIELD_ALIASES).filter((field, index, list) => list.indexOf(field) === index).join(', ');
+  return [
+    { role: 'system', content: `你是 Excel 候选人字段适配器。只根据表头和样例值判断字段含义，不要编造数据。严格输出 JSON：{"mapping":{"原始表头":"标准字段"},"confidence":{"原始表头":0.0}}。标准字段只能使用 name, phone, email, contact, currentCompany, currentTitle, city, education, matchScore, personalProfileUrl, sourceUrl, background, summary, contactType, verificationStatus, note, batch。无法判断的表头不要映射。可用标准字段：${fields}` },
+    { role: 'user', content: `请为以下 Excel 表头建立映射，并保留无法识别的列不映射。表头：${JSON.stringify(headers)}\n样例数据：${JSON.stringify(sampleRows)}` },
+  ];
+}
+
+export function normalizeCandidateExcelAiMapping(result, headers = []) {
+  const source = result && typeof result === 'object' ? result : {};
+  const rawMapping = source.mapping && typeof source.mapping === 'object' ? source.mapping : source;
+  const headerList = Array.isArray(headers) ? headers.map(text) : [];
+  const mapping = {};
+  Object.entries(rawMapping || {}).forEach(([header, field]) => {
+    const matchingHeader = headerList.find(item => item === text(header)) || text(header);
+    const canonical = normalizeAiField(field);
+    if (matchingHeader && canonical) mapping[matchingHeader] = canonical;
+  });
+  const confidence = {};
+  const rawConfidence = source.confidence && typeof source.confidence === 'object' ? source.confidence : {};
+  Object.entries(rawConfidence).forEach(([header, value]) => {
+    const number = Number(value);
+    if (Number.isFinite(number)) confidence[text(header)] = Math.max(0, Math.min(1, number));
+  });
+  return { mapping, confidence };
+}
+
   function parseScore(value) {
     const match = text(value).match(/-?\d+(?:\.\d+)?/);
     return match ? Number(match[0]) : null;
@@ -36,14 +88,20 @@ export function splitContacts(value) {
     return { emails: [...new Set(emails.map(normalizeEmail))], phones: [...new Set(phones)], raw };
   }
 
-export function normalizeCandidateExcelRows(matrix) {
+export function normalizeCandidateExcelRows(matrix, { headerMap = {} } = {}) {
     const source = Array.isArray(matrix) ? matrix : [];
-    const headerIndex = source.findIndex(row => Array.isArray(row) && row.some(cell => headerKey(cell) === 'name'));
+    const headerIndex = source.findIndex(row => Array.isArray(row) && row.some(cell => headerKey(cell) === 'name' || headerMap[text(cell)] === 'name' || headerMap[key(cell)] === 'name'));
     if (headerIndex < 0) return [];
-    const headers = source[headerIndex].map(headerKey);
+    const rawHeaders = source[headerIndex].map(text);
+    const headers = rawHeaders.map(header => headerMap[header] || headerMap[key(header)] || headerKey(header));
     return source.slice(headerIndex + 1).map((cells, index) => {
       const raw = {};
-      headers.forEach((field, column) => { if (field) raw[field] = text(cells?.[column]); });
+      const extraFields = {};
+      headers.forEach((field, column) => {
+        const value = text(cells?.[column]);
+        if (field) raw[field] = value;
+        else if (rawHeaders[column] && value) extraFields[rawHeaders[column]] = value;
+      });
       const contacts = splitContacts(raw.contact);
       return {
         rowNumber: headerIndex + index + 2,
@@ -63,18 +121,24 @@ export function normalizeCandidateExcelRows(matrix) {
         personalProfileUrl: text(raw.personalProfileUrl),
         background: text(raw.background),
         summary: text(raw.summary),
+        extraFields,
         note: text(raw.note),
         duplicateType: '',
         status: text(raw.name) ? (contacts.emails.length || contacts.phones.length ? 'ready' : 'needs_review') : 'invalid',
         error: text(raw.name) ? '' : '缺少姓名',
       };
     }).filter(row => row.name || row.contactRaw || row.currentCompany || row.currentTitle);
-  }
+}
+
+export function applyCandidateExcelAiMapping(matrix, mapping) {
+  return normalizeCandidateExcelRows(matrix, { headerMap: mapping?.mapping || {} });
+}
 
 export function markDuplicateCandidateRows(rows, existingCandidates = []) {
-    const existingEmails = new Set(existingCandidates.map(row => normalizeEmail(row?.email)).filter(Boolean));
-    const existingPhones = new Set(existingCandidates.map(row => normalizePhone(row?.phone)).filter(Boolean));
-    const existingNames = new Set(existingCandidates.map(row => `${text(row?.name).toLowerCase()}__${text(row?.currentCompany).toLowerCase()}`).filter(keyValue => !keyValue.startsWith('__')));
+    const activeCandidates = (Array.isArray(existingCandidates) ? existingCandidates : []).filter(row => !row?.deletedAt);
+    const existingEmails = new Set(activeCandidates.map(row => normalizeEmail(row?.email)).filter(Boolean));
+    const existingPhones = new Set(activeCandidates.map(row => normalizePhone(row?.phone)).filter(Boolean));
+    const existingNames = new Set(activeCandidates.map(row => `${text(row?.name).toLowerCase()}__${text(row?.currentCompany).toLowerCase()}`).filter(keyValue => !keyValue.startsWith('__')));
     const seenEmails = new Set();
     const seenPhones = new Set();
     const seenNames = new Set();
@@ -93,10 +157,12 @@ export function markDuplicateCandidateRows(rows, existingCandidates = []) {
   }
 
 export function buildCandidateFields(row, { channelName = '倍罗' } = {}) {
-    const profileParts = [row.summary, row.background, row.education && `学历：${row.education}`, row.contactType && `联系方式：${row.contactType}`, row.verificationStatus && `核验：${row.verificationStatus}`, row.personalProfileUrl && `个人职业主页：${row.personalProfileUrl}`, row.sourceUrl && `联系方式来源：${row.sourceUrl}`, row.note].filter(Boolean);
+    const extraFields = row.extraFields && typeof row.extraFields === 'object' ? row.extraFields : {};
+    const extraParts = Object.entries(extraFields).map(([label, value]) => `${label}：${value}`).filter(Boolean);
+    const profileParts = [row.summary, row.background, row.education && `学历：${row.education}`, row.contactType && `联系方式：${row.contactType}`, row.verificationStatus && `核验：${row.verificationStatus}`, row.personalProfileUrl && `个人职业主页：${row.personalProfileUrl}`, row.sourceUrl && `联系方式来源：${row.sourceUrl}`, row.note, ...extraParts].filter(Boolean);
     return {
       name: text(row.name), phone: text(row.phone), email: text(row.email), currentCompany: text(row.currentCompany), currentTitle: text(row.currentTitle), city: text(row.city),
-      education: text(row.education), summary: text(row.summary), profileText: text(row.profileText) || profileParts.join('；'), source: text(channelName) || '倍罗', sourceChannelName: text(channelName) || '倍罗', sourceUrl: text(row.sourceUrl), personalProfileUrl: text(row.personalProfileUrl), matchScore: row.matchScore,
+      education: text(row.education), summary: text(row.summary), profileText: text(row.profileText) || profileParts.join('；'), source: text(channelName) || '倍罗', sourceChannelName: text(channelName) || '倍罗', sourceUrl: text(row.sourceUrl), personalProfileUrl: text(row.personalProfileUrl), extraFields, matchScore: row.matchScore,
     };
   }
 
@@ -132,5 +198,5 @@ export function normalizeCandidateExcelAiResult(result, originalRows = []) {
 
 if (typeof window !== 'undefined') window.WorkBuddyCandidateExcelImport = {
   headerKey, splitContacts, normalizeCandidateExcelRows, markDuplicateCandidateRows,
-  buildCandidateFields, buildCandidateExcelAiMessages, normalizeCandidateExcelAiResult,
+  buildCandidateFields, buildCandidateExcelAiMessages, buildCandidateExcelAiMappingMessages, normalizeCandidateExcelAiMapping, applyCandidateExcelAiMapping, normalizeCandidateExcelAiResult,
 };

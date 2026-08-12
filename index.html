@@ -2975,6 +2975,13 @@
       opacity: 1 !important;
     }
 
+    .candidate-excel-file-picker {
+      min-height: 42px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #fff;
+    }
+
     .wb-v2-workspace .wb-v2-topbar {
       height: 112px !important;
       padding: 0 58px 0 44px;
@@ -5429,7 +5436,7 @@
       <section role="dialog" aria-modal="true" aria-labelledby="candidate-excel-import-title" class="candidate-excel-import-dialog w-full max-w-7xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5"><div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">候选人批量入库</p><h2 id="candidate-excel-import-title" class="mt-1 text-xl font-bold text-slate-900">Excel 导入候选人</h2><p class="mt-1 text-sm text-slate-500">当前来源：{{ batchUpload.sourceChannelName }} · 当前公司：{{ companyById.get(batchUpload.sourceCompanyId)?.name || '当前公司' }}。AI 会整理字段，确认后才会写入人才库。</p></div><button type="button" @click="closeCandidateExcelImport" aria-label="关闭 Excel 候选人导入" class="h-8 w-8 rounded-lg bg-slate-100 text-lg text-slate-500">×</button></div>
         <div class="candidate-excel-import-body space-y-4 px-6 py-5">
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-4"><div><label for="candidate-excel-file" class="text-sm font-semibold text-slate-700">上传候选人 Excel</label><p class="mt-1 text-xs text-slate-500">支持 .xlsx / .xls；每一行识别为一名候选人，可识别姓名、职位、公司、城市、学历、邮箱和电话。</p><p v-if="candidateExcelImport.fileName" class="mt-1 text-xs font-semibold text-emerald-700">已选择：{{ candidateExcelImport.fileName }}</p></div><input id="candidate-excel-file" type="file" accept=".xlsx,.xls" class="mt-2 block max-w-full text-sm sm:mt-0" @change="onCandidateExcelFile"></div>
+          <div class="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-5"><div class="min-w-0 flex-1"><label for="candidate-excel-file" class="text-sm font-semibold text-slate-700">上传候选人 Excel</label><p class="mt-1 text-xs text-slate-500">支持 .xlsx / .xls；每一行识别为一名候选人，可识别姓名、职位、公司、城市、学历、邮箱和电话。</p><p v-if="candidateExcelImport.fileName" class="mt-1 text-xs font-semibold text-emerald-700">已选择：{{ candidateExcelImport.fileName }}</p></div><input id="candidate-excel-file" type="file" accept=".xlsx,.xls" class="candidate-excel-file-picker mt-1 block w-full text-sm sm:mt-0 sm:min-w-[520px] sm:flex-[0_1_560px]" @change="onCandidateExcelFile"></div>
           <div v-if="candidateExcelImport.parsing" class="rounded-xl border border-emerald-100 bg-white px-4 py-3" role="status" aria-live="polite" aria-label="正在处理候选人 Excel"><div class="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-800"><span>{{ candidateExcelImport.progressLabel }}</span><span>{{ candidateExcelImport.progress }}%</span></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"><div class="h-full rounded-full bg-emerald-600 transition-all duration-300" :style="{ width: `${candidateExcelImport.progress}%` }"></div></div></div>
           <p v-if="candidateExcelImport.error" role="alert" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ candidateExcelImport.error }}</p>
           <div v-if="candidateExcelImport.rows.length" class="candidate-excel-import-table overflow-x-auto rounded-xl border border-slate-200"><table class="min-w-[1180px] w-full text-left text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-3 py-3">状态</th><th class="px-3 py-3">姓名 *</th><th class="px-3 py-3">当前职位</th><th class="px-3 py-3">当前公司</th><th class="px-3 py-3">城市</th><th class="px-3 py-3">邮箱</th><th class="px-3 py-3">电话</th><th class="px-3 py-3">学历</th><th class="px-3 py-3">匹配度</th><th class="px-3 py-3">来源备注</th></tr></thead><tbody><tr v-for="row in candidateExcelImport.rows" :key="row.rowNumber" class="border-t border-slate-100 align-top"><td class="whitespace-nowrap px-3 py-3"><span v-if="row.duplicateType === 'existing'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">已有候选人</span><span v-else-if="row.duplicateType === 'batch'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">本批次重复</span><span v-else-if="row.status === 'invalid'" class="rounded-full bg-rose-100 px-2 py-1 text-xs text-rose-700">缺少姓名</span><span v-else-if="row.status === 'needs_review'" class="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">待确认</span><span v-else class="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">待入库</span></td><td class="px-3 py-3"><input v-model.trim="row.name" aria-label="Excel 候选人姓名" class="w-36 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.currentTitle" aria-label="Excel 候选人职位" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.currentCompany" aria-label="Excel 候选人公司" class="w-48 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.city" aria-label="Excel 候选人城市" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.email" aria-label="Excel 候选人邮箱" class="w-48 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.phone" aria-label="Excel 候选人电话" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.education" aria-label="Excel 候选人学历" class="w-32 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model.number="row.matchScore" type="number" aria-label="Excel 候选人匹配度" class="w-20 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><p class="max-w-64 text-xs leading-5 text-slate-500">{{ row.verificationStatus }}{{ row.note ? ` · ${row.note}` : '' }}</p></td></tr></tbody></table></div>
@@ -11262,8 +11269,27 @@ const vueAppConfig = {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const matrix = XLSXLib.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
         const helper = window.WorkBuddyCandidateExcelImport;
+        const headerIndex = matrix.findIndex(row => Array.isArray(row) && row.filter(cell => String(cell ?? '').trim()).length >= 2);
+        const headers = headerIndex >= 0 ? matrix[headerIndex].map(cell => String(cell ?? '').trim()) : [];
+        const sampleRows = headerIndex >= 0 ? matrix.slice(headerIndex + 1, headerIndex + 7) : [];
         let rows = helper.normalizeCandidateExcelRows(matrix);
-        if (!rows.length) throw new Error('未识别到候选人表头，请确认 Excel 包含“姓名”列');
+        if (canConfigureAi && headers.length) {
+          candidateExcelImport.progress = 42;
+          candidateExcelImport.progressLabel = 'AI 正在分析本批次字段…';
+          try {
+            const mappingResult = await callDeepSeekWithProgress({
+              task: 'candidate-excel-field-mapping', getApiKey: requireDeepSeekApiKey, temperature: 0.1,
+              timeout: 90000, schema: 'json', responseFormat: { type: 'json_object' },
+              messages: helper.buildCandidateExcelAiMappingMessages({ headers, sampleRows }),
+            });
+            const mapping = helper.normalizeCandidateExcelAiMapping(mappingResult, headers);
+            const mappedRows = helper.applyCandidateExcelAiMapping(matrix, mapping);
+            if (mappedRows.length) rows = mappedRows;
+          } catch (error) {
+            showToast('AI 字段适配暂不可用，已尝试使用固定表头规则', 'error');
+          }
+        }
+        if (!rows.length) throw new Error('未识别到候选人表头，请确认 Excel 包含姓名信息，或开启 AI 字段适配后重试');
         candidateExcelImport.progress = 50;
         candidateExcelImport.progressLabel = `已识别 ${rows.length} 名候选人，正在生成预览…`;
         if (canConfigureAi) {
@@ -12436,7 +12462,10 @@ const vueAppConfig = {
     watch(
       () => workbenchV2.companies.map(company => company.id).filter(Boolean),
       companyIds => {
-        if (!companyIds.includes(homeFunnelCompanyId.value)) homeFunnelCompanyId.value = companyIds[0] || '';
+        if (!companyIds.includes(homeFunnelCompanyId.value)) {
+          const preferred = workbenchV2.companies.find(company => companyIds.includes(company.id) && String(company.name || '').trim() === '中科量枢');
+          homeFunnelCompanyId.value = preferred?.id || companyIds[0] || '';
+        }
       },
       { immediate: true },
     );
