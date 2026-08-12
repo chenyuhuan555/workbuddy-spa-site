@@ -210,6 +210,29 @@ test('账号栏在手动收起和自动窄栏时只保留居中的退出图标',
   assert.match(narrowScreenCss, /\.wb-v2-workspace\s+\.wb-v2-sidebar\s+\.wb-account-logout-icon\s*\{[^}]*\bdisplay\s*:\s*(?:block|inline-block|inline-flex)\s*(?:!important\s*)?;/s);
 });
 
+test('新版账号卡在侧栏收起后只显示头像', () => {
+  assertMatches(
+    INDEX_HTML,
+    /class="wb-account-card\s+[^\"]*"/,
+    '账号卡必须提供专用样式钩子',
+  );
+  assertMatches(
+    INDEX_HTML,
+    /class="wb-account-card-copy\s+[^\"]*"/,
+    '账号名称和角色必须由 .wb-account-card-copy 包裹',
+  );
+  assertMatches(
+    INDEX_HTML,
+    /class="wb-account-card-chevron\s+[^\"]*"/,
+    '账号卡展开箭头必须提供专用样式钩子',
+  );
+  assertMatches(
+    INDEX_HTML,
+    /\.wb-v2-workspace\s+\.wb-v2-sidebar\.is-collapsed\s+\.wb-account-card-copy\s*,\s*\.wb-v2-workspace\s+\.wb-v2-sidebar\.is-collapsed\s+\.wb-account-card-chevron\s*\{[^}]*\bdisplay\s*:\s*none\s*;/s,
+    '收起态必须隐藏账号文字和展开箭头',
+  );
+});
+
 test('认证完成后账号栏仍挂载到新版侧栏并切换为 flex 布局', () => {
   const dockingBody = functionBody('dockAccountBar');
 

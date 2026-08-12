@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { normalizeCandidateExcelRows, splitContacts, markDuplicateCandidateRows, buildCandidateFields, buildCandidateExcelAiMessages, normalizeCandidateExcelAiResult } from './candidate-excel-import.js';
+
+const INDEX_HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
 test('候选人 Excel 适配器跳过顶部空行并映射倍罗字段', () => {
   const rows = normalizeCandidateExcelRows([
@@ -47,4 +50,10 @@ test('候选人 Excel 适配器提供 AI 整理契约并保留原始字段回退
   assert.equal(normalized[0].email, 'a@example.com');
   assert.equal(normalized[0].profileText, '量子研究者');
   assert.equal(normalized[1].email, 'b@example.com');
+});
+
+test('Excel 候选人入库不因渠道漏斗事件失败而回滚候选人', () => {
+  assert.match(INDEX_HTML, /const funnelEventFailures = \[\];/);
+  assert.match(INDEX_HTML, /try \{[\s\S]*?await repo\.appendEvent\([\s\S]*?\} catch \(error\) \{[\s\S]*?funnelEventFailures\.push/s);
+  assert.match(INDEX_HTML, /已从 Excel 导入 \$\{created\.length\} 名候选人，但/);
 });
