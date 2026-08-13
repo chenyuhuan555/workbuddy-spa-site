@@ -256,3 +256,11 @@ test('candidate drawer manages initial focus, traps Tab, and restores its trigge
   assert.match(INDEX_HTML, /function trapCandidateDrawerFocus\(event\)[\s\S]*?event\.shiftKey[\s\S]*?event\.preventDefault\(\)[\s\S]*?\.focus\(\)/);
   assert.match(INDEX_HTML, /candidateDrawerTriggerElement\?\.isConnected[\s\S]*?candidateDrawerTriggerElement\.focus\(\)/);
 });
+
+test('candidate drawer uses a softer panel surface and lightweight top actions', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-candidate-drawer\s*\{[\s\S]*?border-radius:\s*18px 0 0 18px[\s\S]*?box-shadow:\s*-12px 0 32px/);
+  assert.match(INDEX_HTML, /class="wb-candidate-drawer-actions flex items-center justify-end gap-2"/);
+  assert.match(INDEX_HTML, /class="wb-candidate-drawer-open-full rounded-lg px-3 py-2"/);
+  assert.match(INDEX_HTML, /class="wb-candidate-drawer-close inline-flex h-9 w-9 items-center justify-center rounded-full border/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-candidate-tabs\s*\{[\s\S]*?margin-top:\s*24px[\s\S]*?border-bottom:\s*1px solid #edf1ef/);
+});
