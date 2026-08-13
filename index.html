@@ -3014,6 +3014,10 @@
       backdrop-filter: none !important;
     }
 
+    .wb-v2-workspace .wb-v2-topbar.wb-v2-topbar--talent-hidden {
+      display: none !important;
+    }
+
     .wb-v2-workspace .wb-v2-topbar h2 {
       font-size: 30px;
       letter-spacing: .02em;
@@ -3817,7 +3821,7 @@
     </nav>
 
     <section class="min-w-0 flex-1 flex flex-col">
-      <header class="wb-v2-topbar h-16 flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4">
+      <header class="wb-v2-topbar h-16 flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4" :class="{ 'wb-v2-topbar--talent-hidden': workbenchNav === 'candidates' }">
         <h2 class="text-lg font-bold text-slate-900">{{ workbenchNavItems.find(item => item.key === workbenchNav)?.label || '工作台' }}</h2>
         <div class="hidden lg:flex w-full items-center gap-2 justify-center relative">
           <div class="relative flex-1">
@@ -4459,8 +4463,8 @@
           </section>
           <div data-talent-library-list class="wb-talent-library-page space-y-3">
             <header data-talent-library-toolbar class="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h1 class="font-bold text-slate-900">人才库</h1>
+              <div class="flex items-baseline gap-3">
+                <h1 class="font-bold text-slate-900">人才库</h1><span class="text-sm font-medium text-slate-400">{{ talentLibrarySummary.total }} 人</span>
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="talent-library-search">人才库专属搜索</label>

@@ -75,6 +75,12 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*0 28px 28px/);
 });
 
+test('人才库隐藏重复的工作台顶部栏并在唯一标题旁显示人数', () => {
+  assert.match(INDEX_HTML, /class="wb-v2-topbar[^\"]*"[^>]*:class="\{\s*'wb-v2-topbar--talent-hidden': workbenchNav === 'candidates'\s*\}"/);
+  assert.match(INDEX_HTML, /\.wb-v2-topbar\.wb-v2-topbar--talent-hidden\s*\{\s*display:\s*none\s*!important;/);
+  assert.match(INDEX_HTML, /<h1[^>]*>人才库<\/h1>\s*<span[^>]*>\{\{ talentLibrarySummary\.total \}\} 人<\/span>/);
+});
+
 test('网页背景移除图片和渐变并使用纯白底色', () => {
   assert.match(INDEX_HTML, /html\s*\{\s*background:\s*#fff\s*!important;/);
   assert.match(INDEX_HTML, /body\s*\{\s*min-height:\s*100vh;\s*background:\s*#fff\s*!important;/);
