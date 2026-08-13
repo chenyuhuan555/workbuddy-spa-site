@@ -91,6 +91,17 @@ test('buildCandidateRow selects the latest active Application without collapsing
   assert.equal(row.status, candidateWithStatus.status);
 });
 
+test('applicationBusinessAt skips invalid fallback dates', () => {
+  const application = {
+    pipelineEvents: [{ occurredAt: 'invalid-event-date' }],
+    stageEnteredAt: 'invalid',
+    updatedAt: '2026-08-12T04:00:00.000Z',
+    createdAt: '2026-08-10T04:00:00.000Z',
+  };
+
+  assert.equal(Table.applicationBusinessAt(application), '2026-08-12T04:00:00.000Z');
+});
+
 test('candidateSearchText covers schools skills tags Base extraFields and resume text', () => {
   const text = Table.candidateSearchText(candidate).toLowerCase();
 

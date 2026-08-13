@@ -70,7 +70,8 @@
       .map(event => event?.occurredAt)
       .filter(value => parseTime(value) > Number.NEGATIVE_INFINITY)
       .sort((a, b) => parseTime(b) - parseTime(a))[0];
-    return eventAt || application.stageEnteredAt || application.updatedAt || application.createdAt || '';
+    return eventAt || [application.stageEnteredAt, application.updatedAt, application.createdAt]
+      .find(value => parseTime(value) > Number.NEGATIVE_INFINITY) || '';
   }
 
   function activeCandidateFlows({ candidateId, applications = [], positions = [], companies = [], stageLabel = value => value } = {}) {
