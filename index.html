@@ -3452,6 +3452,7 @@
       border: 1px solid #e2e5e8;
       border-radius: 12px;
       background: #fff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     }
 
     .wb-v2-workspace .wb-talent-table {
@@ -3478,8 +3479,8 @@
     }
 
     .wb-v2-workspace .wb-talent-table td {
-      height: 62px;
-      padding: 10px 14px;
+      height: 66px;
+      padding: 12px 14px;
       border-bottom: 1px solid #edf0f2;
       vertical-align: middle;
       color: #334155;
@@ -3490,13 +3491,22 @@
       background: #f8fafc;
     }
 
+    .wb-v2-workspace .wb-talent-table tbody tr:nth-child(even) {
+      background: #fcfdfe;
+    }
+
+    .wb-v2-workspace .wb-talent-table tbody tr:nth-child(even):hover {
+      background: #f8fafc;
+    }
+
     .wb-v2-workspace .wb-talent-table-name-cell {
       position: sticky;
       left: 0;
       z-index: 4;
       width: 150px;
       background: #fff;
-      box-shadow: 5px 0 8px -8px #94a3b8;
+      border-right: 1px solid #e2e8f0;
+      box-shadow: none;
     }
 
     .wb-v2-workspace .wb-talent-table th.wb-talent-table-name-cell {
@@ -3523,7 +3533,8 @@
       z-index: 4;
       width: 54px;
       background: #fff;
-      box-shadow: -5px 0 8px -8px #94a3b8;
+      border-left: 1px solid #e2e8f0;
+      box-shadow: none;
     }
 
     .wb-v2-workspace .wb-talent-table th.wb-talent-table-action-cell {
@@ -3541,15 +3552,19 @@
     }
 
     .wb-v2-workspace .wb-talent-library-page {
-      background: #fff;
+      background: #f7f8fa;
+      padding: 16px 0 24px;
     }
 
     .wb-v2-workspace [data-talent-library-toolbar] {
       align-items: center;
       gap: 10px;
       min-height: 62px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid #e2e5e8;
+      padding: 16px 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     }
 
     .wb-v2-workspace [data-talent-library-toolbar] button,
@@ -3559,6 +3574,20 @@
 
     .wb-v2-workspace [data-talent-library-filter-chips] {
       border-bottom: 1px solid #eef1f3;
+    }
+
+    .wb-v2-workspace .wb-talent-filter-toolbar {
+      margin: 16px 0 20px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+
+    .wb-v2-workspace .wb-talent-filter-toolbar [data-talent-library-filter-chips] {
+      border-bottom: 0;
+      padding-top: 0;
     }
 
     .wb-v2-workspace [data-talent-library-toolbar] h1 {
@@ -4540,6 +4569,7 @@
               </div>
             </header>
 
+            <div class="wb-talent-filter-toolbar">
             <div data-talent-library-filter-chips class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
               <span v-if="candidateFilters.query || candidateFilters.owner !== 'all' || talentLibraryFilters.intake.preset !== 'all' || talentLibraryFilters.stage !== 'all'" class="mr-1">当前筛选</span>
               <button v-if="talentLibraryFilters.intake.preset !== 'all'" type="button" @click="talentLibraryFilters.intake.preset = 'all'">入库时间：{{ talentLibraryFilters.intake.preset }} ×</button>
@@ -4580,6 +4610,7 @@
               <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">流程阶段
                 <select aria-label="按当前流程筛选人才" v-model="talentLibraryFilters.stage" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select>
               </label>
+            </div>
             </div>
             <section v-if="talentCloudSearch.running || talentCloudSearch.error || talentCloudSearch.query" aria-label="云端补充命中" class="rounded-xl border border-slate-200 bg-white px-3 py-2">
               <div class="flex flex-wrap items-center justify-between gap-2">

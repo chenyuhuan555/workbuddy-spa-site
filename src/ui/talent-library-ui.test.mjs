@@ -78,6 +78,12 @@ test('人才表格行悬停不使用绿色背景', () => {
   assert.doesNotMatch(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table tbody tr:hover\s*\{\s*background:\s*#f0fdf8/);
 });
 
+test('人才库采用浅灰页面底色和三层白色内容区域', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{\s*background:\s*#f7f8fa/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-toolbar\s*\{[\s\S]*?background:\s*#fff[\s\S]*?border-radius:\s*12px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table-shell\s*\{[\s\S]*?box-shadow:\s*0 2px 8px rgba\(15, 23, 42, 0\.04\)/);
+});
+
 test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 容器', () => {
   const workspace = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'[\s\S]*?<div data-talent-library-list/)?.[0] || '';
 
@@ -88,7 +94,7 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
 
 test('人才库表格保留横向滚动并使用纯白工作区背景', () => {
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table-shell\s*\{[\s\S]*?overflow-x:\s*auto/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{\s*background:\s*#fff/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{\s*background:\s*#f7f8fa/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table\s*\{[\s\S]*?min-width:\s*1900px/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table th\s*\{[\s\S]*?white-space:\s*nowrap/);
 });
