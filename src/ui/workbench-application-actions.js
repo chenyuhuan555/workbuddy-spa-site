@@ -7,6 +7,7 @@ export function createWorkbenchApplicationActions({
   stages = { DISCOVERED: 'discovered', CLOSED: 'closed' },
   stageActions = null,
   workbenchV2Api = {},
+  getWorkbenchBundle = () => state,
   requireWritePermission = () => true,
   now = () => new Date().toISOString(),
 }) {
@@ -46,7 +47,7 @@ export function createWorkbenchApplicationActions({
   async function createApplicationFromMatch(candidateId, positionId, match = {}) {
     if (!requireWritePermission()) return null;
     try {
-      const application = workbenchV2Api.createApplication(state, {
+      const application = workbenchV2Api.createApplication(getWorkbenchBundle(), {
         candidateId, positionId, matchScore: match.score ?? null, matchReason: match.reason || '',
         matchHighlights: match.highlights || [], matchGaps: match.gaps || [], matchRisks: match.risks || [],
       });

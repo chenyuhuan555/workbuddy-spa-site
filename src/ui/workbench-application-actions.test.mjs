@@ -110,3 +110,38 @@ test('阶段事件写入失败时，现有入口不继续保存成功状态', as
   await actions.changeWorkbenchApplicationStage(application, 'screening');
   assert.equal(saves, 0);
 });
+
+test('创建推荐使用完整工作区创建候选人与岗位推进', async () => {
+  const bundle = {
+    candidates: [{ id: 'cand-1', name: '候选人' }],
+    positions: [{ id: 'pos-1', companyId: 'co-1' }],
+    companies: [{ id: 'co-1', owner: '负责人' }],
+    applications: [],
+  };
+  let receivedBundle;
+  let saves = 0;
+  let toast = '';
+  const actions = createWorkbenchApplicationActions({
+    state: { applications: bundle.applications, route: {} },
+    findApplication: id => bundle.applications.find(item => item.id === id),
+    saveWorkbenchV2: async () => { saves += 1; return true; },
+    showToast: message => { toast = message; },
+    workbenchV2Api: {
+      createApplication: (targetBundle, input) => {
+        receivedBundle = targetBundle;
+        const application = { id: 'app-1', ...input };
+        targetBundle.applications.push(application);
+        return application;
+      },
+    },
+    getWorkbenchBundle: () => bundle,
+  });
+
+  const application = await actions.createApplicationFromMatch('cand-1', 'pos-1', { score: 88, reason: '匹配良好' });
+
+  assert.equal(application.id, 'app-1');
+  assert.equal(receivedBundle, bundle);
+  assert.equal(bundle.applications.length, 1);
+  assert.equal(saves, 1);
+  assert.equal(toast, '已创建推进记录');
+});

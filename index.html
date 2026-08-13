@@ -12574,6 +12574,7 @@ const vueAppConfig = {
       findApplication: id => workbenchV2.applications.find(item => item.id === id),
       showToast, saveWorkbenchV2, requireWritePermission: requireTalentWritePermission,
       stages: SK, stageActions: talentFunnelStageActions, workbenchV2Api: WorkbenchV2,
+      getWorkbenchBundle: () => workbenchV2,
     });
     function openCompanyCreate() { globalCreateMenu.value = false; return workbenchEntityActions.openCompanyCreate(); }
     async function createWorkbenchCompany(input = null) { return workbenchEntityActions.createWorkbenchCompany(input); }
