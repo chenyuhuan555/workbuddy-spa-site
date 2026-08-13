@@ -3143,6 +3143,20 @@
       gap: 24px;
     }
 
+    .wb-v2-workspace .wb-candidate-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 50;
+      width: min(760px, 82vw);
+      height: 100vh;
+      overflow-y: auto;
+      padding: 20px;
+      border-left: 1px solid #e2e8f0;
+      background: #f8fafc;
+      box-shadow: -18px 0 44px rgba(15, 23, 42, .18);
+    }
+
     .wb-v2-workspace .wb-v2-candidate-back {
       width: fit-content;
       color: #68746f;
@@ -3531,6 +3545,13 @@
       .wb-v2-workspace .wb-v2-position-tab { min-height: 40px; gap: 6px; padding: 9px 11px 12px; font-size: 13px; }
       .wb-v2-workspace .wb-v2-position-tab-icon { width: 15px; height: 15px; }
       .wb-v2-workspace .wb-v2-position-tab-separator { height: 16px; margin: 0 2px; }
+    }
+
+    @media (max-width: 760px) {
+      .wb-v2-workspace .wb-candidate-drawer {
+        width: 96vw;
+        padding: 14px;
+      }
     }
 
     @media (max-width: 1380px) {
@@ -4365,7 +4386,8 @@
           </div>
         </div>
 
-        <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
+        <div v-else-if="workbenchNav === 'candidates'" class="relative" @keydown.esc.window="closeCandidateDrawer(); talentLibraryColumnsOpen = false; candidateRowMenuId = ''; talentLibraryActionsOpen = false">
+        <div v-if="workbenchRoute.type === 'list' || candidateDetailMode === 'drawer'" class="max-w-7xl mx-auto space-y-4">
           <div v-if="canWrite && canConfigureAi" class="flex justify-end -mt-1"><button type="button" @click="openResumeAiBatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">批量重新处理</button></div>
           <section v-if="resumeAiBatch.open" class="bg-white border border-emerald-200 rounded-xl p-4 space-y-3" aria-label="简历 AI 批量处理">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><h2 class="font-bold text-slate-900">简历 AI 批量处理</h2><p class="text-xs text-slate-500 mt-1">默认只处理未完成或失败版本，不会覆盖已成功排版的版本。</p></div><button type="button" @click="resumeAiBatch.open = false" class="text-sm text-slate-500 hover:text-slate-700">关闭</button></div>
@@ -4374,7 +4396,7 @@
             <div v-if="resumeAiBatch.errors.length" class="rounded-lg bg-red-50 border border-red-100 p-3 text-xs text-red-700 space-y-1"><p v-for="item in resumeAiBatch.errors" :key="`${item.candidateId}:${item.versionId}`">{{ item.fileName || item.versionId }}：{{ item.message }}</p></div>
             <div class="flex flex-wrap gap-2"><button v-if="!resumeAiBatch.running && !resumeAiBatch.completed" type="button" @click="startResumeAiBatch" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">开始处理</button><button v-if="resumeAiBatch.running" type="button" @click="cancelResumeAiBatch" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold">取消处理</button><button v-if="!resumeAiBatch.running && resumeAiBatch.failed" type="button" @click="retryResumeAiBatch" class="px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold">重试失败项</button></div>
           </section>
-          <div data-talent-library-list class="space-y-3" @keydown.esc.window="talentLibraryColumnsOpen = false; candidateRowMenuId = ''; talentLibraryActionsOpen = false">
+          <div data-talent-library-list class="space-y-3">
             <header class="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h1 class="text-xl font-bold text-slate-900">人才库</h1>
@@ -4493,7 +4515,7 @@
                 <tr v-for="candidate in pagedWorkbenchCandidates.items" :key="candidate.id">
                   <td v-if="canWrite"><input type="checkbox" aria-label="选择候选人" :checked="selectedCandidateIds.includes(candidate.id)" @change="toggleCandidateSelection(candidate.id, $event.target.checked)"></td>
                   <td class="wb-talent-table-name-cell">
-                    <button type="button" @click="openCandidateDetail(candidate.id, 'overview')" class="font-semibold text-slate-900 hover:text-emerald-700 hover:underline">{{ candidate.name || '-' }}</button>
+                    <button type="button" @click="openCandidateDrawer(candidate.id)" class="font-semibold text-slate-900 hover:text-emerald-700 hover:underline">{{ candidate.name || '-' }}</button>
                   </td>
                   <td v-if="talentLibraryColumnSet.has('companyTitle')"><div class="wb-talent-cell-clamp"><span class="font-medium text-slate-800">{{ candidate.currentCompany || '-' }}</span><span class="block text-xs text-slate-500">{{ candidate.currentTitle || '-' }}</span></div></td>
                   <td v-if="talentLibraryColumnSet.has('age')">{{ candidate.age }}</td>
@@ -4512,7 +4534,7 @@
                         <span class="wb-talent-cell-clamp font-medium" :title="candidate.primaryFlow.companyName + ' · ' + candidate.primaryFlow.positionTitle">{{ candidate.primaryFlow.companyName }} · {{ candidate.primaryFlow.positionTitle }}</span>
                         <small class="block text-slate-500">{{ candidate.primaryFlow.stageLabel }}</small>
                       </button>
-                      <button v-if="candidate.extraFlowCount" type="button" @click="openCandidateDetail(candidate.id, 'applications')" class="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700">+{{ candidate.extraFlowCount }}</button>
+                      <button v-if="candidate.extraFlowCount" type="button" @click="openCandidateDrawer(candidate.id, 'applications')" class="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700">+{{ candidate.extraFlowCount }}</button>
                     </div>
                     <span v-else>-</span>
                   </td>
@@ -4525,9 +4547,9 @@
                     <div class="relative flex justify-center">
                       <button type="button" aria-label="候选人操作" aria-haspopup="menu" :aria-expanded="candidateRowMenuId === candidate.id" @click="candidateRowMenuId = candidateRowMenuId === candidate.id ? '' : candidate.id" class="h-8 w-8 rounded-lg text-lg font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">···</button>
                       <div v-if="candidateRowMenuId === candidate.id" role="menu" class="absolute right-0 top-full z-20 mt-1 w-32 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
-                        <button role="menuitem" type="button" @click="candidateRowMenuId = ''; openCandidateDetail(candidate.id, 'overview')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">查看详情</button>
+                        <button role="menuitem" type="button" @click="candidateRowMenuId = ''; openCandidateDrawer(candidate.id)" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">查看详情</button>
                         <button role="menuitem" type="button" @click="candidateRowMenuId = ''; openCandidateDetail(candidate.id, 'matching')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">匹配岗位</button>
-                        <button v-if="canWrite" role="menuitem" type="button" @click="candidateRowMenuId = ''; openCandidateDetail(candidate.id, 'overview')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">编辑</button>
+                        <button v-if="canWrite" role="menuitem" type="button" @click="candidateRowMenuId = ''; openCandidateDrawer(candidate.id, 'overview')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">编辑</button>
                       </div>
                     </div>
                   </td>
@@ -4547,8 +4569,13 @@
           <nav v-if="pagedWorkbenchCandidates.total" aria-label="人才列表分页" class="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600"><span>第 {{ pagedWorkbenchCandidates.start }}–{{ pagedWorkbenchCandidates.end }} 条，共 {{ pagedWorkbenchCandidates.total }} 条</span><div class="flex flex-wrap items-center gap-2"><button type="button" :disabled="pagedWorkbenchCandidates.page === 1" @click="candidatePage = 1" class="px-2 py-1 rounded border disabled:opacity-40">首页</button><button type="button" :disabled="pagedWorkbenchCandidates.page === 1" @click="candidatePage -= 1" class="px-2 py-1 rounded border disabled:opacity-40">上一页</button><span aria-live="polite">第 {{ pagedWorkbenchCandidates.page }} / {{ pagedWorkbenchCandidates.totalPages }}</span><button type="button" :disabled="pagedWorkbenchCandidates.page === pagedWorkbenchCandidates.totalPages" @click="candidatePage += 1" class="px-2 py-1 rounded border disabled:opacity-40">下一页</button><button type="button" :disabled="pagedWorkbenchCandidates.page === pagedWorkbenchCandidates.totalPages" @click="candidatePage = pagedWorkbenchCandidates.totalPages" class="px-2 py-1 rounded border disabled:opacity-40">末页</button></div></nav>
         </div>
 
-        <div v-else-if="workbenchNav === 'candidates' && workbenchRoute.type === 'candidate' && selectedCandidate" class="wb-v2-candidate-detail mx-auto space-y-4">
-          <button @click="backToWorkbenchList" class="wb-v2-candidate-back text-sm hover:text-emerald-700" type="button">← 返回人才库列表</button>
+        <div v-if="workbenchRoute.type === 'candidate' && selectedCandidate && candidateDetailMode === 'drawer'" class="fixed inset-0 z-40 bg-slate-950/30" @click.self="closeCandidateDrawer"></div>
+        <div v-if="workbenchRoute.type === 'candidate' && selectedCandidate" role="dialog" :aria-modal="candidateDetailMode === 'drawer' ? 'true' : undefined" aria-label="候选人详情" :class="['wb-v2-candidate-detail space-y-4', { 'wb-candidate-drawer': candidateDetailMode === 'drawer', 'mx-auto': candidateDetailMode === 'full' }]">
+          <button v-if="candidateDetailMode === 'full'" @click="backToWorkbenchList" class="wb-v2-candidate-back text-sm hover:text-emerald-700" type="button">← 返回人才库列表</button>
+          <div v-else class="flex items-center justify-end gap-2">
+            <button type="button" @click="openCandidateDetail(selectedCandidate.id, workbenchRoute.tab)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">打开完整页面</button>
+            <button type="button" @click="closeCandidateDrawer" aria-label="关闭候选人详情" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-xl text-slate-500 hover:bg-slate-50">×</button>
+          </div>
           <section class="wb-v2-candidate-hero">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
               <div class="wb-v2-candidate-identity flex-1">
@@ -4558,20 +4585,21 @@
                   <p class="mt-2 text-sm text-slate-500">{{ selectedCandidate.currentCompany || '公司待补充' }} · {{ selectedCandidate.currentTitle || '职位待补充' }} · {{ selectedCandidate.city || '城市待补充' }}</p>
                 </div>
               </div>
-              <button type="button" @click="workbenchRoute.tab = 'matching'" class="wb-v2-candidate-match px-5 py-3 text-sm font-semibold text-white self-start">匹配岗位</button>
+              <button v-if="candidateDetailMode === 'full'" type="button" @click="workbenchRoute.tab = 'matching'" class="wb-v2-candidate-match px-5 py-3 text-sm font-semibold text-white self-start">匹配岗位</button>
             </div>
             <nav aria-label="候选人详情页签" class="wb-v2-candidate-tabs text-sm">
-              <template v-for="(tab, index) in [{ id: 'overview', label: '候选人概览' }, { id: 'resume', label: '简历' }, { id: 'matching', label: '岗位匹配' }, { id: 'applications', label: '推进记录' }, { id: 'ai', label: 'AI分析' }, { id: 'activity', label: '备注与动态' }]" :key="tab.id">
+              <template v-for="(tab, index) in candidateDetailTabs" :key="tab.id">
                 <button type="button" :data-tab-icon="tab.id" @click="workbenchRoute.tab = tab.id" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': workbenchRoute.tab === tab.id }]">
                   <svg v-if="tab.id === 'overview'" data-tab-icon="overview" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3"></circle><path d="M5 20c.7-3.5 3.1-5 7-5s6.3 1.5 7 5"></path></svg>
                   <svg v-else-if="tab.id === 'resume'" data-tab-icon="resume" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h5M10 13h5M10 17h4"></path></svg>
                   <svg v-else-if="tab.id === 'matching'" data-tab-icon="matching" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="M9 6H5v4M15 18h4v-4M5 10l4-4m10 8-4 4"></path><path d="M8 16l8-8"></path></svg>
                   <svg v-else-if="tab.id === 'applications'" data-tab-icon="applications" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="M8 4h8v3h3v13H5V7h3z"></path><path d="M9 12h6M9 16h4"></path></svg>
+                  <svg v-else-if="tab.id === 'interviews'" data-tab-icon="interviews" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="M7 3v3M17 3v3M4 8h16v12H4z"></path><path d="m9 14 2 2 4-4"></path></svg>
                   <svg v-else-if="tab.id === 'ai'" data-tab-icon="ai" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"></path><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z"></path></svg>
                   <svg v-else data-tab-icon="activity" class="wb-v2-candidate-tab-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v12H9l-5 4z"></path><path d="M8 9h8M8 13h5"></path></svg>
                   <span>{{ tab.label }}</span>
                 </button>
-                <i v-if="index !== 5" aria-hidden="true" class="wb-v2-candidate-tab-separator"></i>
+                <i v-if="index !== candidateDetailTabs.length - 1" aria-hidden="true" class="wb-v2-candidate-tab-separator"></i>
               </template>
             </nav>
           </section>
@@ -4690,6 +4718,14 @@
             </div>
           </div>
           <div v-else-if="workbenchRoute.tab === 'applications'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="text-lg font-bold">推进记录</h2><div v-for="application in selectedCandidateApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 border border-slate-200 rounded-lg p-4 text-base flex justify-between items-center cursor-pointer hover:border-emerald-300 hover:bg-slate-50 transition"><span>{{ workbenchV2.companies.find(item => item.id === application.companyId)?.name }} · {{ workbenchV2.positions.find(item => item.id === application.positionId)?.title }}</span><span class="flex items-center gap-2"><b class="text-lg">{{ candidatePipelineLabel(application.stage) }}</b><span class="text-sm text-emerald-700">查看详情 →</span></span></div><p v-if="!selectedCandidateApplications.length" class="text-base text-slate-400 mt-4">暂无推进记录</p></div>
+          <div v-else-if="workbenchRoute.tab === 'interviews'" class="rounded-xl border border-slate-200 bg-white p-5">
+            <h2 class="text-lg font-bold">面试进度</h2>
+            <button v-for="application in selectedCandidateInterviewApplications" :key="application.id" type="button" @click="openApplicationDetail(application.id)" class="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 p-4 text-left transition hover:border-emerald-300 hover:bg-slate-50">
+              <span class="min-w-0"><b class="block truncate">{{ companyById.get(application.companyId)?.name || '公司已删除' }} · {{ positionById.get(application.positionId)?.title || '岗位已删除' }}</b><small class="mt-1 block text-slate-500">{{ candidatePipelineLabel(application.stage) }}</small></span>
+              <span class="shrink-0 text-sm font-semibold text-emerald-700">查看详情 →</span>
+            </button>
+            <p v-if="!selectedCandidateInterviewApplications.length" class="mt-4 text-sm text-slate-400">暂无面试进度</p>
+          </div>
           <div v-else-if="workbenchRoute.tab === 'matching'" class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
             <h2 class="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-800"><span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-2xl text-emerald-700" aria-hidden="true">▣</span>岗位匹配</h2>
             <div v-for="match in candidatePositionMatches" :key="match.positionId" class="candidate-match-card mt-5 grid grid-cols-[minmax(0,1fr)_130px_150px] items-center gap-5 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -4780,6 +4816,7 @@
             </div>
           </div>
           <div v-else class="bg-white border border-slate-200 rounded-xl p-10 text-center text-sm text-slate-400">顾问备注、联系记录和档案动态将在这里展示。</div>
+        </div>
         </div>
 
         <div v-else-if="workbenchNav === 'applications' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
@@ -11345,6 +11382,25 @@ const vueAppConfig = {
       promptAction: message => prompt(message),
     });
     const workbenchRoute = reactive({ type: 'list', id: '', parentId: '', tab: 'overview' });
+    const candidateDetailMode = ref('full');
+    const candidateDetailTabs = computed(() => candidateDetailMode.value === 'drawer'
+      ? [
+          { id: 'resume', label: '原始简历' },
+          { id: 'overview', label: '结构化信息' },
+          { id: 'applications', label: '推荐记录' },
+          { id: 'interviews', label: '面试进度' },
+          { id: 'activity', label: '跟进记录' },
+          { id: 'ai', label: 'AI分析' },
+        ]
+      : [
+          { id: 'overview', label: '候选人概览' },
+          { id: 'resume', label: '简历' },
+          { id: 'matching', label: '岗位匹配' },
+          { id: 'applications', label: '推进记录' },
+          { id: 'interviews', label: '面试进度' },
+          { id: 'ai', label: 'AI分析' },
+          { id: 'activity', label: '备注与动态' },
+        ]);
     const globalCreateMenu = ref(false);
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
     const companyPage = ref(1);
@@ -12227,6 +12283,7 @@ const vueAppConfig = {
       await persistTalentCategories('人才分类已更新');
     }
     const selectedCandidateApplications = computed(() => visibleApplications.value.filter(item => item.candidateId === selectedCandidate.value?.id));
+    const selectedCandidateInterviewApplications = computed(() => selectedCandidateApplications.value.filter(item => SG.INTERVIEW.includes(item.stage)));
     // 按候选人获取简历版本列表（resumeVersions 优先，否则用电子简历文本兜底构造一份）
     function getCandidateResumeVersions(candidate) { return window.WorkBuddyCandidateResumeVersions.getCandidateResumeVersions(candidate); }
     const selectedCandidateResumeVersions = computed(() => getCandidateResumeVersions(selectedCandidate.value));
@@ -12943,13 +13000,26 @@ const vueAppConfig = {
     }
     async function toggleWorkbenchPositionStatus() { return workbenchEntityActions.toggleWorkbenchPositionStatus(); }
     async function requestWorkbenchPositionDelete() { return workbenchEntityActions.requestWorkbenchPositionDelete(); }
-    function openCandidateDetail(id, tab = 'overview') {
+    function selectCandidateDetail(id, tab) {
       workbenchNav.value = 'candidates';
       candidateCategoriesExpanded.value = false;
       Object.assign(workbenchRoute, { type: 'candidate', id, parentId: '', tab });
       if (workbenchMode.value === 'v2') aiToolbox.resumeId = id;
       // Phase 1：跨设备场景文本可能不在内存，从 resume_texts 表补拉
       void ensureResumeTexts(activeCandidateResumeVersion.value);
+    }
+    function openCandidateDrawer(id, tab = 'resume') {
+      candidateDetailMode.value = 'drawer';
+      selectCandidateDetail(id, tab);
+    }
+    function openCandidateDetail(id, tab = 'overview') {
+      candidateDetailMode.value = 'full';
+      selectCandidateDetail(id, tab);
+    }
+    function closeCandidateDrawer() {
+      if (candidateDetailMode.value !== 'drawer') return;
+      candidateDetailMode.value = 'full';
+      Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
     }
     function openApplicationDetail(id) { return workbenchApplicationActions.openApplicationDetail(id); }
     async function saveApplicationDetail() { return workbenchApplicationActions.saveApplicationDetail(); }
@@ -24686,7 +24756,7 @@ ${clipped}`
     return {
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
-      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
+      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
       knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkSuggestions, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
@@ -24694,7 +24764,7 @@ ${clipped}`
       showLegacyMigrationTools,
       companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
-      candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateResumeVersions,
+      candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
       candidateResumeView, candidateResumeProcessMenuOpen, candidateResumeEdit, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
@@ -24706,7 +24776,7 @@ ${clipped}`
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressPeriod, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
-      openCandidateDetail, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
+      openCandidateDrawer, openCandidateDetail, closeCandidateDrawer, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
       batchUpload, candidateExcelImport, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, openChannelCandidateImport, closeCandidateExcelImport, onCandidateExcelFile, confirmCandidateExcelImport, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, analyzeSelectedApplicationMatch, runBulkApplicationAiScoring, applicationMatchAnalysis, deletePipelineEvent,

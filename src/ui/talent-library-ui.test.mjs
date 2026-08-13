@@ -56,7 +56,8 @@ test('renders custom column controls, selection, and accessible row actions', ()
   assert.match(INDEX_HTML, /@change="toggleCandidateSelection\(candidate\.id,\s*\$event\.target\.checked\)"/);
   assert.match(INDEX_HTML, /candidateRowMenuId\s*===\s*candidate\.id\s*\?\s*''\s*:\s*candidate\.id/);
   assert.match(INDEX_HTML, /aria-label="候选人操作"[\s\S]*?>\s*···\s*<\/button>/);
-  assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab\s*=\s*'overview'\)[\s\S]*?Object\.assign\(workbenchRoute,[\s\S]*?tab\s*\}\);/);
+  assert.match(INDEX_HTML, /function selectCandidateDetail\(id,\s*tab\)[\s\S]*?Object\.assign\(workbenchRoute,[\s\S]*?tab\s*\}\);/);
+  assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab\s*=\s*'overview'\)[\s\S]*?selectCandidateDetail\(id,\s*tab\);/);
 });
 
 test('keeps cloud search status results and paging reachable inside the compact list', () => {
@@ -82,6 +83,34 @@ test('keeps prior talent list operations in a compact closable actions menu', ()
   assert.match(INDEX_HTML, /return \{[\s\S]*?talentLibraryActionsOpen,/);
 });
 
-test('Escape dismisses talent list popovers together', () => {
-  assert.match(INDEX_HTML, /@keydown\.esc\.window="talentLibraryColumnsOpen = false; candidateRowMenuId = ''; talentLibraryActionsOpen = false"/);
+test('one candidate detail tree supports drawer and full-page modes', () => {
+  assert.match(INDEX_HTML, /const candidateDetailMode\s*=\s*ref\('full'\);/);
+  assert.match(INDEX_HTML, /function openCandidateDrawer\(id,\s*tab\s*=\s*'resume'\)\s*\{[\s\S]*?candidateDetailMode\.value\s*=\s*'drawer';[\s\S]*?selectCandidateDetail\(id,\s*tab\);[\s\S]*?\}/);
+  assert.match(INDEX_HTML, /:class="\[[^\]]*?'wb-candidate-drawer':\s*candidateDetailMode\s*===\s*'drawer'/);
+  assert.equal((INDEX_HTML.match(/aria-label="候选人详情页签"/g) || []).length, 1);
+});
+
+test('candidate drawer defaults to resume and keeps full-page matching available', () => {
+  const tabSets = INDEX_HTML.match(/const candidateDetailTabs\s*=\s*computed\(\(\)\s*=>\s*candidateDetailMode\.value\s*===\s*'drawer'\s*\?\s*\[([\s\S]*?)\]\s*:\s*\[([\s\S]*?)\]\);/);
+  assert.ok(tabSets, 'drawer and full-page tab sets should be defined together');
+  assert.equal((tabSets[1].match(/\{\s*id:/g) || []).length, 6);
+  assert.equal((tabSets[2].match(/\{\s*id:/g) || []).length, 7);
+  assert.match(tabSets[1], /resume[\s\S]*?原始简历[\s\S]*?overview[\s\S]*?结构化信息[\s\S]*?applications[\s\S]*?推荐记录[\s\S]*?interviews[\s\S]*?面试进度[\s\S]*?activity[\s\S]*?跟进记录[\s\S]*?ai[\s\S]*?AI分析/);
+  assert.match(tabSets[2], /overview[\s\S]*?候选人概览[\s\S]*?resume[\s\S]*?简历[\s\S]*?matching[\s\S]*?岗位匹配[\s\S]*?applications[\s\S]*?推进记录[\s\S]*?interviews[\s\S]*?面试进度[\s\S]*?ai[\s\S]*?AI分析[\s\S]*?activity[\s\S]*?备注与动态/);
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+  assert.match(listBlock, /@click="openCandidateDrawer\(candidate\.id\)"[\s\S]*?\{\{ candidate\.name \|\| '-' \}\}/);
+  assert.match(listBlock, /@click="openCandidateDrawer\(candidate\.id,\s*'applications'\)"/);
+  assert.match(INDEX_HTML, /@click="openCandidateDetail\(selectedCandidate\.id,\s*workbenchRoute\.tab\)"/);
+  assert.match(INDEX_HTML, /const selectedCandidateInterviewApplications\s*=\s*computed\(\(\)\s*=>\s*selectedCandidateApplications\.value\.filter\(item\s*=>\s*SG\.INTERVIEW\.includes\(item\.stage\)\)\);/);
+  assert.match(INDEX_HTML, /workbenchRoute\.tab\s*===\s*'interviews'[\s\S]*?selectedCandidateInterviewApplications[\s\S]*?openApplicationDetail\(application\.id\)/);
+});
+
+test('candidate drawer closes on Escape without replacing resume loading or file actions', () => {
+  const escapeHandler = INDEX_HTML.match(/@keydown\.esc\.window="([^"]*closeCandidateDrawer[^"]*)"/)?.[1] || '';
+  assert.ok(escapeHandler, 'candidate drawer close should be wired to window Escape');
+  assert.match(escapeHandler, /talentLibraryColumnsOpen = false/);
+  assert.match(escapeHandler, /candidateRowMenuId = ''/);
+  assert.match(escapeHandler, /talentLibraryActionsOpen = false/);
+  assert.match(INDEX_HTML, /void ensureResumeTexts\(activeCandidateResumeVersion\.value\);/);
+  assert.match(INDEX_HTML, /candidate-original-file-actions\.js/);
 });
