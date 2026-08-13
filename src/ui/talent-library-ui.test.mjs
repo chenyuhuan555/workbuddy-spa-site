@@ -75,6 +75,14 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*0 28px 28px/);
 });
 
+test('网页背景移除图片并保留浅绿色渐变', () => {
+  assert.match(INDEX_HTML, /html\s*\{\s*background:\s*linear-gradient\([\s\S]*?\)!important;/);
+  assert.match(INDEX_HTML, /body\s*\{\s*min-height:\s*100vh;\s*background:\s*linear-gradient\([\s\S]*?\)!important;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace\s*\{[\s\S]*?background:\s*linear-gradient\([\s\S]*?\)!important;/);
+  assert.doesNotMatch(INDEX_HTML, /linear-gradient\(90deg, rgba\(244,248,244,0\.32\), rgba\(244,248,244,0\.16\)\),\s*url\("\.\/src\/assets\/headhunter-bg\.png"\)/);
+  assert.doesNotMatch(INDEX_HTML, /background:\s*#f7f9f8\s+url\('\.\/src\/assets\/workbench-v2-bg\.png'\)/);
+});
+
 test('renders distinct education and candidate asset status filters in the compact filter bar', () => {
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
 
