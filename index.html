@@ -4401,7 +4401,6 @@
             <header class="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h1 class="text-xl font-bold text-slate-900">人才库</h1>
-                <p class="mt-1 text-sm text-slate-500">增强版人才工作表 · 快速浏览、比较和推进</p>
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <div class="relative">
@@ -5747,6 +5746,12 @@
                 <span v-if="aiConfig.apiKeyValid" class="text-xs font-semibold text-emerald-700">已验证</span>
                 <span v-else-if="aiConfig.apiKey" class="text-xs font-semibold text-amber-700">{{ aiConfig.saved ? '已保存' : '待保存' }}</span>
               </div>
+            </div>
+          </div>
+          <div data-settings-card="advisor" class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex items-center justify-between gap-4">
+              <div class="min-w-0"><p class="text-xs font-bold tracking-wider text-emerald-700">界面偏好</p><h2 class="text-lg font-bold text-slate-900 mt-1">顾问助手开关</h2><p class="text-sm text-slate-500 mt-1">开启后显示顾问助手悬浮入口和对话面板。该设置仅对当前账号生效，默认关闭。</p></div>
+              <label class="inline-flex items-center gap-2 shrink-0 cursor-pointer"><input v-model="advisorPanel.enabled" @change="setAdvisorEnabled(advisorPanel.enabled)" type="checkbox" class="sr-only peer"><span class="relative h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-emerald-600 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5"></span><span class="text-sm font-semibold text-slate-700">{{ advisorPanel.enabled ? '已开启' : '未开启' }}</span></label>
             </div>
           </div>
           <div v-if="canManageMembers" data-settings-card="backup" class="bg-white border border-slate-200 rounded-2xl p-6">
@@ -10535,7 +10540,7 @@
 
   <!-- ======== 猎头顾问助手 ======== -->
   <teleport to="body">
-    <div v-if="!advisorPanel.meetingArticle && !advisorPanel.hidden" class="fixed z-[90]" :style="advisorFloatingStyle">
+    <div v-if="advisorPanel.enabled && !advisorPanel.meetingArticle && !advisorPanel.hidden" class="fixed z-[90]" :style="advisorFloatingStyle">
       <button
         type="button"
         class="advisor-fab relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2.5 py-2 text-xs font-bold text-emerald-700 bg-white/95 border border-emerald-100 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition select-none"
@@ -10575,7 +10580,7 @@
 
   <teleport :to="advisorPanel.meetingArticle ? '#meeting-advisor-slot' : 'body'">
     <transition name="modal-fade">
-      <div v-if="advisorPanel.open" :class="advisorPanel.meetingArticle ? 'h-full min-h-0 pointer-events-auto' : 'fixed inset-0 z-[111] pointer-events-none'">
+      <div v-if="advisorPanel.open && (advisorPanel.enabled || advisorPanel.meetingArticle)" :class="advisorPanel.meetingArticle ? 'h-full min-h-0 pointer-events-auto' : 'fixed inset-0 z-[111] pointer-events-none'">
         <div v-if="!advisorPanel.meetingArticle" class="absolute inset-0 bg-slate-900/20 pointer-events-auto" @click="advisorPanel.open = false"></div>
         <aside :class="['advisor-panel max-w-full bg-white shadow-2xl border border-slate-200/60 pointer-events-auto flex flex-col overflow-hidden rounded-2xl', advisorPanel.meetingArticle ? 'h-full w-full' : 'absolute right-4 top-4 bottom-4 w-[420px]']"
           :style="advisorPanel.meetingArticle ? null : advisorPanelStyle">
@@ -19244,8 +19249,10 @@ ${ocrText}`
     const ADVISOR_FLOAT_KEY = STORAGE_KEY + '_recruiter_copilot_float';
     const ADVISOR_PANEL_WIDTH_KEY = STORAGE_KEY + '_recruiter_copilot_width';
     const ADVISOR_MASCOT_KEY = STORAGE_KEY + '_recruiter_copilot_mascot';
+    const ADVISOR_ENABLED_KEY = STORAGE_KEY + '_recruiter_copilot_enabled';
     const ADVISOR_DRAG_THRESHOLD = 4;
     const advisorPanel = reactive({
+      enabled: false,
       open: false,
       dragging: false,
       resizing: false,
@@ -19348,6 +19355,7 @@ ${ocrText}`
     });
 
     function loadAdvisorState() {
+      advisorPanel.enabled = localStorage.getItem(getAdvisorEnabledKey()) === 'true';
       let loadedConversations = [];
       try {
         loadedConversations = JSON.parse(localStorage.getItem(ADVISOR_CONVERSATIONS_KEY) || '[]');
@@ -19382,6 +19390,20 @@ ${ocrText}`
       advisorPanel.width = savedWidth >= 360 ? Math.min(savedWidth, widthMax) : 420;
       const savedMascot = String(localStorage.getItem(ADVISOR_MASCOT_KEY) || 'B').toUpperCase();
       advisorPanel.mascot = advisorMascotRoles.includes(savedMascot) ? savedMascot : 'B';
+    }
+
+    function getAdvisorEnabledKey() {
+      const accountId = currentUserProfile.value.id || currentUserProfile.value.username || (isGuestMode ? 'guest' : 'anonymous');
+      return `${ADVISOR_ENABLED_KEY}_${accountId}`;
+    }
+
+    function setAdvisorEnabled(enabled) {
+      advisorPanel.enabled = enabled === true;
+      localStorage.setItem(getAdvisorEnabledKey(), String(advisorPanel.enabled));
+      if (!advisorPanel.enabled) {
+        advisorPanel.open = false;
+        advisorPanel.mascotPickerOpen = false;
+      }
     }
 
     function saveAdvisorMessages() {
@@ -24950,7 +24972,7 @@ ${clipped}`
       renderResumeMarkdown, renderAdvisorMarkdown, renderAiToolboxMarkdown, renderInsightBlocks, renderAiNewsInsight,
       advisorPanel, advisorMessages, advisorMessagesScroller, advisorConversations, advisorLoading, advisorActions,
       advisorFloatingStyle, advisorPanelStyle, advisorPositionOptions, advisorContextTitle, advisorCurrentConversationTitle,
-      advisorMascotRoles, advisorMascotImage, setAdvisorMascot, saveAdvisorMascot, toggleAdvisorMascotPicker,
+      advisorMascotRoles, advisorMascotImage, setAdvisorMascot, saveAdvisorMascot, toggleAdvisorMascotPicker, setAdvisorEnabled,
       advisorConversationTitle, selectAdvisorConversation, startNewAdvisorConversation, clearAdvisorCurrentMessages,
       deleteAdvisorConversation, startRenameAdvisorConversation, saveAdvisorConversationTitle, cancelRenameAdvisorConversation,
       toggleAdvisorConversationList,
