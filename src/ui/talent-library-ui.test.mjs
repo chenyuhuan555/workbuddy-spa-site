@@ -46,7 +46,7 @@ test('renders one unified talent search and compact inline summary inside the li
 test('人才库视觉精简保留完整默认列并允许桌面横向滚动', () => {
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
 
-  assert.match(INDEX_HTML, /min-width:\s*1540px/);
+  assert.match(INDEX_HTML, /min-width:\s*1900px/);
   assert.match(INDEX_HTML, /\.wb-talent-table-shell\s*\{[\s\S]*?overflow:\s*auto/);
   for (const label of ['当前公司 \/ 当前岗位', '当前 Base', '期望 Base', '当前薪酬', '期望薪酬', '最近触达', '入库日期']) {
     assert.match(listBlock, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -78,6 +78,8 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
 test('人才库表格保留横向滚动并使用纯白工作区背景', () => {
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table-shell\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{\s*background:\s*#fff/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table\s*\{[\s\S]*?min-width:\s*1900px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table th\s*\{[\s\S]*?white-space:\s*nowrap/);
 });
 
 test('人才库隐藏重复的工作台顶部栏并在唯一标题旁显示人数', () => {
