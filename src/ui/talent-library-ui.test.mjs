@@ -84,6 +84,11 @@ test('人才库采用浅灰页面底色和三层白色内容区域', () => {
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table-shell\s*\{[\s\S]*?box-shadow:\s*0 2px 8px rgba\(15, 23, 42, 0\.04\)/);
 });
 
+test('人才库标题卡片上方不保留重复空白层', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)\s*\{\s*padding:\s*0 28px 28px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{[\s\S]*?padding:\s*0 0 24px/);
+});
+
 test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 容器', () => {
   const workspace = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'[\s\S]*?<div data-talent-library-list/)?.[0] || '';
 
