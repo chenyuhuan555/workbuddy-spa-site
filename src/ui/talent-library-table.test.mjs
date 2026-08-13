@@ -172,6 +172,13 @@ test('column preferences keep locked name and recover from corrupt storage', () 
   assert.deepEqual(Table.loadColumnKeys(storage), [...Table.DEFAULT_COLUMN_KEYS]);
 });
 
+test('默认列保留人才库完整 13 列并按工作流顺序排列', () => {
+  assert.deepEqual([...Table.DEFAULT_COLUMN_KEYS], [
+    'name', 'companyTitle', 'age', 'resumeSummary', 'currentBase', 'expectedBase',
+    'currentSalary', 'expectedSalary', 'motivation', 'flows', 'owner', 'touchedAt', 'intakeAt',
+  ]);
+});
+
 test('column preferences reject JSON values with the wrong shape but accept an empty array', () => {
   const values = new Map([[Table.COLUMN_STORAGE_KEY, '{}']]);
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };

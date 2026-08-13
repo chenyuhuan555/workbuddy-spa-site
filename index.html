@@ -3442,8 +3442,8 @@
 
     .wb-v2-workspace .wb-talent-table-shell {
       overflow: auto;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      border: 1px solid #e2e5e8;
+      border-radius: 8px;
       background: #fff;
     }
 
@@ -3459,23 +3459,23 @@
       position: sticky;
       top: 0;
       z-index: 5;
-      height: 40px;
-      padding: 0 10px;
-      border-bottom: 1px solid #e2e8f0;
-      background: #f8fafc;
-      color: #64748b;
-      font-size: 12px;
+      height: 44px;
+      padding: 0 14px;
+      border-bottom: 1px solid #e2e5e8;
+      background: #fafbfc;
+      color: #68727d;
+      font-size: 14px;
       font-weight: 600;
       text-align: left;
     }
 
     .wb-v2-workspace .wb-talent-table td {
-      height: 50px;
-      padding: 7px 10px;
-      border-bottom: 1px solid #e2e8f0;
+      height: 62px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #edf0f2;
       vertical-align: middle;
       color: #334155;
-      font-size: 13px;
+      font-size: 15px;
     }
 
     .wb-v2-workspace .wb-talent-table tbody tr:hover {
@@ -3486,18 +3486,18 @@
       position: sticky;
       left: 0;
       z-index: 4;
-      width: 120px;
+      width: 150px;
       background: #fff;
-      box-shadow: 5px 0 8px -8px #64748b;
+      box-shadow: 5px 0 8px -8px #94a3b8;
     }
 
     .wb-v2-workspace .wb-talent-table th.wb-talent-table-name-cell {
       z-index: 7;
-      background: #f8fafc;
+      background: #fafbfc;
     }
 
     .wb-v2-workspace .wb-talent-table tbody tr:hover .wb-talent-table-name-cell {
-      background: #f0fdf8;
+      background: #f7fbf9;
     }
 
     .wb-v2-workspace .wb-talent-cell-clamp {
@@ -3505,8 +3505,8 @@
       overflow: hidden;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
-      line-height: 18px;
-      max-height: 36px;
+      line-height: 20px;
+      max-height: 40px;
     }
 
     .wb-v2-workspace .wb-talent-table-action-cell {
@@ -3515,21 +3515,71 @@
       z-index: 4;
       width: 54px;
       background: #fff;
-      box-shadow: -5px 0 8px -8px #64748b;
+      box-shadow: -5px 0 8px -8px #94a3b8;
     }
 
     .wb-v2-workspace .wb-talent-table th.wb-talent-table-action-cell {
       z-index: 7;
-      background: #f8fafc;
+      background: #fafbfc;
     }
 
     .wb-v2-workspace .wb-talent-table tbody tr:hover .wb-talent-table-action-cell {
-      background: #f0fdf8;
+      background: #f7fbf9;
     }
 
     .wb-v2-workspace .wb-talent-filter-bar input,
     .wb-v2-workspace .wb-talent-filter-bar select {
       min-height: 34px;
+    }
+
+    .wb-v2-workspace .wb-talent-library-page {
+      background: #f5f6f7;
+    }
+
+    .wb-v2-workspace [data-talent-library-toolbar] {
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #e2e5e8;
+    }
+
+    .wb-v2-workspace [data-talent-library-toolbar] h1 {
+      font-size: 30px;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+    }
+
+    .wb-v2-workspace [data-talent-library-toolbar] input[type="search"] {
+      min-width: 280px;
+      width: min(34vw, 380px);
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid #cfd5dc;
+      border-radius: 7px;
+      background: #fff;
+      font-size: 15px;
+    }
+
+    .wb-v2-workspace [data-talent-library-filter-chips] {
+      min-height: 34px;
+      padding: 8px 0 2px;
+    }
+
+    .wb-v2-workspace [data-talent-library-filter-chips] button {
+      border: 1px solid #cfe8dd;
+      border-radius: 999px;
+      background: #edf8f3;
+      color: #116645;
+      font-size: 13px;
+      line-height: 1.2;
+      padding: 5px 9px;
+    }
+
+    .wb-v2-workspace .wb-talent-filter-bar {
+      gap: 8px;
+      padding: 0;
+      border: 0;
+      background: transparent;
     }
 
     @media (max-width: 1024px) {
@@ -4397,12 +4447,14 @@
             <div v-if="resumeAiBatch.errors.length" class="rounded-lg bg-red-50 border border-red-100 p-3 text-xs text-red-700 space-y-1"><p v-for="item in resumeAiBatch.errors" :key="`${item.candidateId}:${item.versionId}`">{{ item.fileName || item.versionId }}：{{ item.message }}</p></div>
             <div class="flex flex-wrap gap-2"><button v-if="!resumeAiBatch.running && !resumeAiBatch.completed" type="button" @click="startResumeAiBatch" class="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">开始处理</button><button v-if="resumeAiBatch.running" type="button" @click="cancelResumeAiBatch" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold">取消处理</button><button v-if="!resumeAiBatch.running && resumeAiBatch.failed" type="button" @click="retryResumeAiBatch" class="px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold">重试失败项</button></div>
           </section>
-          <div data-talent-library-list class="space-y-3">
-            <header class="flex flex-wrap items-start justify-between gap-3">
+          <div data-talent-library-list class="wb-talent-library-page space-y-3">
+            <header data-talent-library-toolbar class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 class="text-xl font-bold text-slate-900">人才库</h1>
+                <h1 class="font-bold text-slate-900">人才库</h1>
               </div>
               <div class="flex flex-wrap items-center gap-2">
+                <label class="sr-only" for="talent-library-search">人才库专属搜索</label>
+                <input id="talent-library-search" aria-label="人才库专属搜索" v-model="candidateFilters.query" @input="syncUnifiedTalentSearch" @keyup.enter="runUnifiedTalentSearch" type="search" placeholder="搜索姓名、公司、岗位、简历">
                 <div class="relative">
                   <button type="button" :aria-expanded="talentLibraryColumnsOpen" @click="talentLibraryColumnsOpen = !talentLibraryColumnsOpen" class="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">自定义列 <span aria-hidden="true">⌄</span></button>
                   <div v-if="talentLibraryColumnsOpen" class="absolute right-0 top-full z-30 mt-2 grid w-64 grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
@@ -4421,50 +4473,51 @@
                     <button v-if="canWrite && canConfigureAi" role="menuitem" type="button" @click="talentLibraryActionsOpen = false; runCandidateSmartOrganize()" :disabled="batchSmartOrganizing" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60">{{ batchSmartOrganizing ? 'AI填写中…' : 'AI填写信息' }}</button>
                   </div>
                 </div>
+                <button type="button" @click="talentLibraryMoreFiltersOpen = !talentLibraryMoreFiltersOpen" :aria-expanded="talentLibraryMoreFiltersOpen" class="inline-flex min-h-[34px] items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">更多筛选</button>
                 <button v-if="canWrite" type="button" @click="openTalentIntake" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增人才</button>
               </div>
             </header>
 
-            <div class="wb-talent-filter-bar flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
-              <label class="min-w-[260px] flex-[2_1_320px] text-xs font-medium text-slate-500">
-                搜索
-                <input aria-label="搜索姓名、公司、岗位、学校、技能、标签或 Base" v-model="candidateFilters.query" @input="syncUnifiedTalentSearch" @keyup.enter="runUnifiedTalentSearch" type="search" placeholder="姓名、公司、岗位、学校、技能、标签或 Base" class="mt-1 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
-              </label>
+            <div data-talent-library-filter-chips class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span class="mr-1">当前筛选</span>
+              <button v-if="talentLibraryFilters.intake.preset !== 'all'" type="button" @click="talentLibraryFilters.intake.preset = 'all'">入库时间：{{ talentLibraryFilters.intake.preset }} ×</button>
+              <button v-if="candidateFilters.owner !== 'all'" type="button" @click="candidateFilters.owner = 'all'">归属顾问：{{ candidateFilters.owner }} ×</button>
+              <button v-if="talentLibraryFilters.stage !== 'all'" type="button" @click="talentLibraryFilters.stage = 'all'">流程阶段：{{ candidatePipelineLabel(talentLibraryFilters.stage) }} ×</button>
+              <span v-if="candidateFilters.query" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">搜索：{{ candidateFilters.query }}</span>
+              <span class="ml-auto">当前结果 <b class="text-slate-800">{{ talentLibrarySummary.total }}</b> · 本周入库 <b class="text-slate-800">{{ talentLibrarySummary.weekIntake }}</b> · 本周已触达 <b class="text-slate-800">{{ talentLibrarySummary.weekTouched }}</b></span>
+            </div>
+
+            <div class="wb-talent-filter-bar flex flex-wrap items-end">
               <label class="text-xs font-medium text-slate-500">入库时间
                 <select v-model="talentLibraryFilters.intake.preset" aria-label="入库时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.intake.preset === 'custom'"><input v-model="talentLibraryFilters.intake.from" type="date" aria-label="入库开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.intake.to" type="date" aria-label="入库结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
-              <label class="text-xs font-medium text-slate-500">触达时间
+              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">触达时间
                 <select v-model="talentLibraryFilters.touch.preset" aria-label="触达时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.touch.preset === 'custom'"><input v-model="talentLibraryFilters.touch.from" type="date" aria-label="触达开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.touch.to" type="date" aria-label="触达结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
-              <label class="text-xs font-medium text-slate-500">推荐时间
+              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">推荐时间
                 <select v-model="talentLibraryFilters.recommendation.preset" aria-label="推荐时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.recommendation.preset === 'custom'"><input v-model="talentLibraryFilters.recommendation.from" type="date" aria-label="推荐开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.recommendation.to" type="date" aria-label="推荐结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
-              <label class="text-xs font-medium text-slate-500">岗位
+              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">岗位
                 <select v-model="talentLibraryFilters.positionId" aria-label="按岗位筛选人才" class="mt-1 w-full max-w-44 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部岗位</option><option v-for="position in workbenchV2.positions" :key="position.id" :value="position.id">{{ position.title }}</option></select>
               </label>
-              <label class="text-xs font-medium text-slate-500">Base
+              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">Base
                 <input v-model="talentLibraryFilters.base" aria-label="按当前或期望 Base 筛选" type="search" placeholder="城市 / 地区" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
-              <label class="text-xs font-medium text-slate-500">学历
+              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">学历
                 <input aria-label="按学历筛选人才" v-model="talentLibraryFilters.education" type="search" placeholder="学历" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
               <label class="text-xs font-medium text-slate-500">归属顾问
                 <select v-model="candidateFilters.owner" aria-label="按人才负责人筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
               </label>
-              <label class="text-xs font-medium text-slate-500">求职状态
+              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">求职状态
                 <select aria-label="按人才求职状态筛选" v-model="candidateFilters.status" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select>
               </label>
               <label class="text-xs font-medium text-slate-500">流程阶段
                 <select aria-label="按当前流程筛选人才" v-model="talentLibraryFilters.stage" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select>
               </label>
-              <div class="ml-auto flex min-h-[34px] flex-wrap items-center gap-x-3 gap-y-1 border-l border-slate-200 pl-3 text-xs text-slate-500" aria-live="polite">
-                <span>当前结果 <b class="text-slate-800">{{ talentLibrarySummary.total }}</b></span>
-                <span>本周入库 <b class="text-slate-800">{{ talentLibrarySummary.weekIntake }}</b></span>
-                <span>本周已触达 <b class="text-slate-800">{{ talentLibrarySummary.weekTouched }}</b></span>
-              </div>
             </div>
             <section v-if="talentCloudSearch.running || talentCloudSearch.error || talentCloudSearch.query" aria-label="云端补充命中" class="rounded-xl border border-slate-200 bg-white px-3 py-2">
               <div class="flex flex-wrap items-center justify-between gap-2">
@@ -11432,6 +11485,7 @@ const vueAppConfig = {
     const talentLibraryColumnKeys=ref(TalentLibrary.loadColumnKeys(window.localStorage));
     const talentLibraryColumnsOpen=ref(false);
     const talentLibraryActionsOpen = ref(false);
+    const talentLibraryMoreFiltersOpen = ref(false);
     const candidateRowMenuId=ref('');
     const selectedCandidateIds = ref([]);
     const candidatePage = ref(1);
@@ -24844,7 +24898,7 @@ ${clipped}`
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
       companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
-      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
+      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,

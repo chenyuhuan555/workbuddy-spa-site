@@ -43,6 +43,30 @@ test('renders one unified talent search and compact inline summary inside the li
   assert.doesNotMatch(listBlock, /云端全文搜索结果/);
 });
 
+test('人才库视觉精简保留完整默认列并允许桌面横向滚动', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.match(INDEX_HTML, /min-width:\s*1540px/);
+  assert.match(INDEX_HTML, /\.wb-talent-table-shell\s*\{[\s\S]*?overflow:\s*auto/);
+  for (const label of ['当前公司 \/ 当前岗位', '当前 Base', '期望 Base', '当前薪酬', '期望薪酬', '最近触达', '入库日期']) {
+    assert.match(listBlock, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table\s+td\s*\{[\s\S]*?font-size:\s*15px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table\s+td\s*\{[\s\S]*?height:\s*62px/);
+  assert.match(INDEX_HTML, /\.wb-talent-table-name-cell\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?left:\s*0/);
+});
+
+test('人才库工具栏和筛选区使用精简视觉结构', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.match(listBlock, /data-talent-library-toolbar/);
+  assert.match(listBlock, /data-talent-library-filter-chips/);
+  assert.match(listBlock, /更多筛选/);
+  assert.match(listBlock, /人才库专属搜索/);
+  assert.match(INDEX_HTML, /\.wb-talent-library-page\s*\{[\s\S]*?background:\s*#f5f6f7/);
+  assert.doesNotMatch(listBlock, /rounded-xl border border-slate-200 bg-white p-3/);
+});
+
 test('renders distinct education and candidate asset status filters in the compact filter bar', () => {
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
 
