@@ -87,6 +87,11 @@ test('合作公司指标卡与其他指标卡共享统一排版样式', () => {
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-metric-grid\s*> button\s*> div:first-child/);
 });
 
+test('合作公司指标卡保留现有导航入口且不引入示例业务数据', () => {
+  assert.match(INDEX_HTML, /aria-label="查看合作公司列表"[\s\S]*?workbenchDashboardMetrics\.companies/);
+  assert.doesNotMatch(INDEX_HTML, /合作公司[\s\S]*?(30万|2026-07-28|林晓)/);
+});
+
 test('人才库隐藏重复的工作台顶部栏并在唯一标题旁显示人数', () => {
   assert.match(INDEX_HTML, /class="wb-v2-topbar[^\"]*"[^>]*:class="\{\s*'wb-v2-topbar--talent-hidden': workbenchNav === 'candidates'\s*\}"/);
   assert.match(INDEX_HTML, /\.wb-v2-topbar\.wb-v2-topbar--talent-hidden\s*\{\s*display:\s*none\s*!important;/);
