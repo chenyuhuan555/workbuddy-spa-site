@@ -154,6 +154,15 @@ test('custom end date includes the whole selected day', () => {
   assert.deepEqual(Table.filterRows([row], { intake: { preset: 'custom', from: '2026-08-12', to: '2026-08-12' } }, new Date('2026-08-13T12:00:00+08:00')), [row]);
 });
 
+test('impossible custom dates are invalid instead of overflowing into another month', () => {
+  const filter = { preset: 'custom', from: '2026-02-31', to: '2026-02-31' };
+  const row = { intakeAt: '2026-03-03T02:00:00.000Z', flows: [], searchText: '' };
+
+  assert.deepEqual(Table.rangeForDateFilter(filter, new Date('2026-03-03T12:00:00+08:00')), ['invalid', 'invalid']);
+  assert.deepEqual(Table.filterRows([row], { intake: filter }, new Date('2026-03-03T12:00:00+08:00')), []);
+  assert.deepEqual(Table.rangeForDateFilter({ preset: 'custom', from: ' 2026-02-28', to: '2026-02-28' }), ['invalid', 'invalid']);
+});
+
 test('column preferences keep locked name and recover from corrupt storage', () => {
   const values = new Map();
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
@@ -161,6 +170,15 @@ test('column preferences keep locked name and recover from corrupt storage', () 
   assert.deepEqual(Table.loadColumnKeys(storage), ['name', 'age', 'flows']);
   values.set(Table.COLUMN_STORAGE_KEY, '{broken');
   assert.deepEqual(Table.loadColumnKeys(storage), [...Table.DEFAULT_COLUMN_KEYS]);
+});
+
+test('column preferences reject JSON values with the wrong shape but accept an empty array', () => {
+  const values = new Map([[Table.COLUMN_STORAGE_KEY, '{}']]);
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+
+  assert.deepEqual(Table.loadColumnKeys(storage), [...Table.DEFAULT_COLUMN_KEYS]);
+  values.set(Table.COLUMN_STORAGE_KEY, '[]');
+  assert.deepEqual(Table.loadColumnKeys(storage), ['name']);
 });
 
 test('summary counts filtered rows without inventing pending follow-up', () => {

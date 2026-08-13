@@ -107,6 +107,16 @@
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
 
+  function parseLocalDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? ''));
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+  }
+
   function rangeForDateFilter(filter = {}, now = new Date()) {
     const preset = text(filter.preset || 'all');
     if (!preset || preset === 'all') return null;
@@ -121,9 +131,9 @@
       return [new Date(today.getFullYear(), today.getMonth(), 1), new Date(today.getFullYear(), today.getMonth() + 1, 1)];
     }
     if (preset === 'custom' && filter.from && filter.to) {
-      const from = new Date(`${filter.from}T00:00:00`);
-      const to = new Date(`${filter.to}T00:00:00`);
-      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) return ['invalid', 'invalid'];
+      const from = parseLocalDate(filter.from);
+      const to = parseLocalDate(filter.to);
+      if (!from || !to || from > to) return ['invalid', 'invalid'];
       return [from, new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1)];
     }
     return ['invalid', 'invalid'];
@@ -164,7 +174,9 @@
   function loadColumnKeys(storage = globalThis.localStorage) {
     try {
       const raw = storage?.getItem(COLUMN_STORAGE_KEY);
-      return raw ? normalizedColumnKeys(JSON.parse(raw)) : [...DEFAULT_COLUMN_KEYS];
+      if (!raw) return [...DEFAULT_COLUMN_KEYS];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? normalizedColumnKeys(parsed) : [...DEFAULT_COLUMN_KEYS];
     } catch {
       return [...DEFAULT_COLUMN_KEYS];
     }
