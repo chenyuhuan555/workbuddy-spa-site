@@ -3487,7 +3487,7 @@
     }
 
     .wb-v2-workspace .wb-talent-table tbody tr:hover {
-      background: #f0fdf8;
+      background: #f8fafc;
     }
 
     .wb-v2-workspace .wb-talent-table-name-cell {
@@ -3505,7 +3505,7 @@
     }
 
     .wb-v2-workspace .wb-talent-table tbody tr:hover .wb-talent-table-name-cell {
-      background: #f7fbf9;
+      background: #f8fafc;
     }
 
     .wb-v2-workspace .wb-talent-cell-clamp {
@@ -3532,7 +3532,7 @@
     }
 
     .wb-v2-workspace .wb-talent-table tbody tr:hover .wb-talent-table-action-cell {
-      background: #f7fbf9;
+      background: #f8fafc;
     }
 
     .wb-v2-workspace .wb-talent-filter-bar input,
@@ -4517,7 +4517,7 @@
                 <label class="sr-only" for="talent-library-search">人才库专属搜索</label>
                 <input id="talent-library-search" aria-label="人才库专属搜索" v-model="candidateFilters.query" @input="syncUnifiedTalentSearch" @keyup.enter="runUnifiedTalentSearch" type="search" placeholder="搜索姓名、公司、岗位、简历">
                 <div class="relative">
-                  <button type="button" :aria-expanded="talentLibraryColumnsOpen" @click="talentLibraryColumnsOpen = !talentLibraryColumnsOpen" class="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">自定义列 <span aria-hidden="true">⌄</span></button>
+                  <button type="button" :aria-expanded="talentLibraryColumnsOpen" @click="talentLibraryColumnsOpen = !talentLibraryColumnsOpen" class="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">自定义列 <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></button>
                   <div v-if="talentLibraryColumnsOpen" class="absolute right-0 top-full z-30 mt-2 grid w-64 grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
                     <label v-for="column in TalentLibrary.COLUMN_DEFINITIONS" :key="column.key" class="flex min-h-8 items-center gap-2 rounded-lg px-2 text-xs text-slate-700 hover:bg-slate-50">
                       <input type="checkbox" :disabled="column.locked" :checked="talentLibraryColumnSet.has(column.key)" @change="setTalentLibraryColumn(column.key, $event.target.checked)">

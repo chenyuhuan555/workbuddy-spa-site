@@ -67,6 +67,17 @@ test('人才库工具栏和筛选区使用精简视觉结构', () => {
   assert.doesNotMatch(listBlock, /rounded-xl border border-slate-200 bg-white p-3/);
 });
 
+test('自定义列按钮使用 SVG 下箭头而不是文字 v', () => {
+  const button = INDEX_HTML.match(/自定义列[\s\S]*?<\/button>/)?.[0] || '';
+  assert.match(button, /<svg[\s\S]*?d="m6 9 6 6 6-6"/);
+  assert.doesNotMatch(button, />\s*[v⌄]\s*</);
+});
+
+test('人才表格行悬停不使用绿色背景', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table tbody tr:hover\s*\{\s*background:\s*#f8fafc/);
+  assert.doesNotMatch(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table tbody tr:hover\s*\{\s*background:\s*#f0fdf8/);
+});
+
 test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 容器', () => {
   const workspace = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'[\s\S]*?<div data-talent-library-list/)?.[0] || '';
 
