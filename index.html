@@ -3443,7 +3443,7 @@
       overflow-x: auto;
       overflow-y: hidden;
       border: 1px solid #e2e5e8;
-      border-radius: 8px;
+      border-radius: 12px;
       background: #fff;
     }
 
@@ -3539,8 +3539,18 @@
     .wb-v2-workspace [data-talent-library-toolbar] {
       align-items: center;
       gap: 10px;
+      min-height: 62px;
       padding-bottom: 14px;
       border-bottom: 1px solid #e2e5e8;
+    }
+
+    .wb-v2-workspace [data-talent-library-toolbar] button,
+    .wb-v2-workspace [data-talent-library-toolbar] input[type="search"] {
+      border-radius: 10px !important;
+    }
+
+    .wb-v2-workspace [data-talent-library-filter-chips] {
+      border-bottom: 1px solid #eef1f3;
     }
 
     .wb-v2-workspace [data-talent-library-toolbar] h1 {
