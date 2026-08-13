@@ -99,6 +99,8 @@ test('candidate drawer defaults to resume and keeps full-page matching available
   assert.match(tabSets[2], /overview[\s\S]*?候选人概览[\s\S]*?resume[\s\S]*?简历[\s\S]*?matching[\s\S]*?岗位匹配[\s\S]*?applications[\s\S]*?推进记录[\s\S]*?interviews[\s\S]*?面试进度[\s\S]*?ai[\s\S]*?AI分析[\s\S]*?activity[\s\S]*?备注与动态/);
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
   assert.match(listBlock, /@click="openCandidateDrawer\(candidate\.id\)"[\s\S]*?\{\{ candidate\.name \|\| '-' \}\}/);
+  assert.match(listBlock, /@click="candidateRowMenuId = ''; openCandidateDrawer\(candidate\.id,\s*'overview'\)"[^>]*>查看详情<\/button>/);
+  assert.match(listBlock, /@click="candidateRowMenuId = ''; openCandidateDrawer\(candidate\.id,\s*'overview'\)"[^>]*>编辑<\/button>/);
   assert.match(listBlock, /@click="openCandidateDrawer\(candidate\.id,\s*'applications'\)"/);
   assert.match(INDEX_HTML, /@click="openCandidateDetail\(selectedCandidate\.id,\s*workbenchRoute\.tab\)"/);
   assert.match(INDEX_HTML, /const selectedCandidateInterviewApplications\s*=\s*computed\(\(\)\s*=>\s*selectedCandidateApplications\.value\.filter\(item\s*=>\s*SG\.INTERVIEW\.includes\(item\.stage\)\)\);/);
