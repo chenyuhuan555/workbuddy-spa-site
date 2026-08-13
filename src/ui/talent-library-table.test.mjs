@@ -157,7 +157,7 @@ test('custom end date includes the whole selected day', () => {
 test('column preferences keep locked name and recover from corrupt storage', () => {
   const values = new Map();
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
-  assert.deepEqual(Table.saveColumnKeys(storage, ['flows', 'age']), ['name', 'age', 'flows']);
+  assert.deepEqual(Table.saveColumnKeys(storage, ['flows', 'notAColumn', 'age']), ['name', 'age', 'flows']);
   assert.deepEqual(Table.loadColumnKeys(storage), ['name', 'age', 'flows']);
   values.set(Table.COLUMN_STORAGE_KEY, '{broken');
   assert.deepEqual(Table.loadColumnKeys(storage), [...Table.DEFAULT_COLUMN_KEYS]);
