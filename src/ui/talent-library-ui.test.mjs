@@ -58,3 +58,30 @@ test('renders custom column controls, selection, and accessible row actions', ()
   assert.match(INDEX_HTML, /aria-label="候选人操作"[\s\S]*?>\s*···\s*<\/button>/);
   assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab\s*=\s*'overview'\)[\s\S]*?Object\.assign\(workbenchRoute,[\s\S]*?tab\s*\}\);/);
 });
+
+test('keeps cloud search status results and paging reachable inside the compact list', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.match(listBlock, /talentCloudSearch\.running/);
+  assert.match(listBlock, /talentCloudSearch\.error/);
+  assert.match(listBlock, /v-for="item in talentCloudSearch\.items"/);
+  assert.match(listBlock, /openCandidateDetail\(item\.candidate_id\)/);
+  assert.match(listBlock, /changeTalentCloudSearchPage\(talentCloudSearch\.page - 1\)[\s\S]*?changeTalentCloudSearchPage\(talentCloudSearch\.page \+ 1\)/);
+  assert.doesNotMatch(listBlock, /云端全文搜索结果/);
+});
+
+test('keeps prior talent list operations in a compact closable actions menu', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.match(listBlock, /更多操作/);
+  assert.match(listBlock, /talentLibraryActionsOpen = false; openTalentCategoryManager\(\)[\s\S]*?>分类管理</);
+  assert.match(listBlock, /talentLibraryActionsOpen = false; openTalentJobMatch\(\)[\s\S]*?>岗位匹配</);
+  assert.match(listBlock, /v-if="canConfigureAi"[\s\S]*?talentLibraryActionsOpen = false; openTalentCompanyResearch\(\)[\s\S]*?>目标公司挖掘</);
+  assert.match(listBlock, /v-if="canWrite && canConfigureAi"[\s\S]*?talentLibraryActionsOpen = false; runCandidateSmartOrganize\(\)[\s\S]*?AI填写信息/);
+  assert.match(INDEX_HTML, /const talentLibraryActionsOpen\s*=\s*ref\(false\);/);
+  assert.match(INDEX_HTML, /return \{[\s\S]*?talentLibraryActionsOpen,/);
+});
+
+test('Escape dismisses talent list popovers together', () => {
+  assert.match(INDEX_HTML, /@keydown\.esc\.window="talentLibraryColumnsOpen = false; candidateRowMenuId = ''; talentLibraryActionsOpen = false"/);
+});
