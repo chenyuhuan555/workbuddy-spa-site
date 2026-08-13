@@ -32,3 +32,29 @@ test('includes the adapter and Vue wiring tests in the package test script', () 
     /src\/ui\/list-performance\.test\.mjs src\/ui\/talent-library-table\.test\.mjs src\/ui\/talent-library-ui\.test\.mjs/,
   );
 });
+
+test('renders one unified talent search and compact inline summary inside the list boundary', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.ok(listBlock, 'talent library list boundary should exist');
+  assert.equal((listBlock.match(/v-model="candidateFilters\.query"/g) || []).length, 1);
+  assert.match(listBlock, /当前结果[\s\S]*?talentLibrarySummary\.total[\s\S]*?本周入库[\s\S]*?talentLibrarySummary\.weekIntake[\s\S]*?本周已触达[\s\S]*?talentLibrarySummary\.weekTouched/);
+  assert.doesNotMatch(listBlock, /人才总数[\s\S]*?当前推进中[\s\S]*?可看机会[\s\S]*?已入职/);
+  assert.doesNotMatch(listBlock, /云端全文搜索结果/);
+});
+
+test('renders the configurable dense talent table with sticky and clamped cells', () => {
+  assert.match(INDEX_HTML, /\.wb-talent-table-name-cell\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?left:\s*0;/);
+  assert.match(INDEX_HTML, /\.wb-talent-cell-clamp\s*\{[\s\S]*?-webkit-line-clamp:\s*2;/);
+  assert.match(INDEX_HTML, /v-if="talentLibraryColumnSet\.has\('expectedSalary'\)"[\s\S]*?candidate\.expectedSalary/);
+  assert.match(INDEX_HTML, /candidate\.primaryFlow/);
+  assert.match(INDEX_HTML, /candidate\.extraFlowCount/);
+});
+
+test('renders custom column controls, selection, and accessible row actions', () => {
+  assert.match(INDEX_HTML, /v-for="column in TalentLibrary\.COLUMN_DEFINITIONS"[\s\S]*?:disabled="column\.locked"[\s\S]*?:checked="talentLibraryColumnSet\.has\(column\.key\)"[\s\S]*?setTalentLibraryColumn\(column\.key,\s*\$event\.target\.checked\)/);
+  assert.match(INDEX_HTML, /@change="toggleCandidateSelection\(candidate\.id,\s*\$event\.target\.checked\)"/);
+  assert.match(INDEX_HTML, /candidateRowMenuId\s*===\s*candidate\.id\s*\?\s*''\s*:\s*candidate\.id/);
+  assert.match(INDEX_HTML, /aria-label="候选人操作"[\s\S]*?>\s*···\s*<\/button>/);
+  assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab\s*=\s*'overview'\)[\s\S]*?Object\.assign\(workbenchRoute,[\s\S]*?tab\s*\}\);/);
+});
