@@ -94,7 +94,7 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
 
   assert.match(workspace, /class="[^"]*wb-talent-library-workspace[^"]*w-full[^"]*max-w-none[^"]*"/);
   assert.doesNotMatch(workspace, /max-w-7xl\s+mx-auto/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*24px 28px 28px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*0 28px 28px/);
 });
 
 test('人才库表格保留横向滚动并使用纯白工作区背景', () => {
