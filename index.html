@@ -3074,13 +3074,15 @@
     }
 
     .wb-v2-workspace .wb-v2-metric-grid > div,
+    .wb-v2-workspace .wb-v2-metric-grid > button,
     .wb-v2-workspace .wb-v2-dashboard-grid > div {
       border: 1px solid rgba(231, 236, 233, .92) !important;
       background: rgba(255, 255, 255, .9) !important;
       box-shadow: 0 12px 30px rgba(41, 77, 58, .05);
     }
 
-    .wb-v2-workspace .wb-v2-metric-grid > div {
+    .wb-v2-workspace .wb-v2-metric-grid > div,
+    .wb-v2-workspace .wb-v2-metric-grid > button {
       min-height: 164px;
       padding: 28px 22px 24px;
       border-radius: 22px;
@@ -3092,7 +3094,8 @@
       align-items: center;
     }
 
-    .wb-v2-workspace .wb-v2-metric-grid > div > div:first-child {
+    .wb-v2-workspace .wb-v2-metric-grid > div > div:first-child,
+    .wb-v2-workspace .wb-v2-metric-grid > button > div:first-child {
       grid-row: 1 / 4;
       width: 58px;
       height: 58px;
@@ -3101,23 +3104,27 @@
       background: transparent;
     }
 
-    .wb-v2-workspace .wb-v2-metric-grid > div > div:first-child svg {
+    .wb-v2-workspace .wb-v2-metric-grid > div > div:first-child svg,
+    .wb-v2-workspace .wb-v2-metric-grid > button > div:first-child svg {
       width: 38px;
       height: 38px;
     }
 
-    .wb-v2-workspace .wb-v2-metric-grid > div > p:nth-child(2) {
+    .wb-v2-workspace .wb-v2-metric-grid > div > p:nth-child(2),
+    .wb-v2-workspace .wb-v2-metric-grid > button > p:nth-child(2) {
       font-size: 15px;
       color: #66716f;
     }
 
-    .wb-v2-workspace .wb-v2-metric-grid > div > p:nth-child(3) {
+    .wb-v2-workspace .wb-v2-metric-grid > div > p:nth-child(3),
+    .wb-v2-workspace .wb-v2-metric-grid > button > p:nth-child(3) {
       margin-top: 2px;
       font-size: 31px;
       line-height: 1;
     }
 
-    .wb-v2-workspace .wb-v2-metric-grid > div > p:nth-child(4) {
+    .wb-v2-workspace .wb-v2-metric-grid > div > p:nth-child(4),
+    .wb-v2-workspace .wb-v2-metric-grid > button > p:nth-child(4) {
       margin-top: 3px;
       font-size: 13px;
       color: #737d7a;
