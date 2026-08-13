@@ -3581,6 +3581,35 @@
       background: transparent;
     }
 
+    .wb-v2-workspace .wb-talent-primary-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid #e2e7eb;
+      border-radius: 10px;
+      background: #fff;
+      color: #273444;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .wb-v2-workspace .wb-talent-primary-filter select {
+      width: auto;
+      min-width: 72px;
+      min-height: 32px;
+      margin-top: 0;
+      padding: 0 20px 0 0;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      color: #273444 !important;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
     @media (max-width: 1024px) {
       .wb-v2-workspace .wb-v2-candidate-overview { grid-template-columns: 1fr; }
       .wb-v2-workspace .wb-v2-candidate-tabs { gap: 0; }
@@ -4477,8 +4506,8 @@
                     </label>
                   </div>
                 </div>
-                <div class="relative">
-                  <button type="button" aria-haspopup="menu" :aria-expanded="talentLibraryActionsOpen" @click="talentLibraryActionsOpen = !talentLibraryActionsOpen" class="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">更多操作 <span aria-hidden="true">⌄</span></button>
+                <div class="relative wb-talent-secondary-actions">
+                  <button type="button" aria-haspopup="menu" aria-label="更多操作" :aria-expanded="talentLibraryActionsOpen" @click="talentLibraryActionsOpen = !talentLibraryActionsOpen" class="inline-flex min-h-[38px] w-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-base font-semibold text-slate-700 hover:bg-slate-50">···</button>
                   <div v-if="talentLibraryActionsOpen" role="menu" class="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
                     <button v-if="canWrite && canConfigureAi" role="menuitem" type="button" @click="talentLibraryActionsOpen = false; openResumeAiBatch()" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">批量重新处理</button>
                     <button role="menuitem" type="button" @click="talentLibraryActionsOpen = false; openTalentCategoryManager()" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">分类管理</button>
@@ -4487,7 +4516,7 @@
                     <button v-if="canWrite && canConfigureAi" role="menuitem" type="button" @click="talentLibraryActionsOpen = false; runCandidateSmartOrganize()" :disabled="batchSmartOrganizing" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60">{{ batchSmartOrganizing ? 'AI填写中…' : 'AI填写信息' }}</button>
                   </div>
                 </div>
-                <button type="button" @click="talentLibraryMoreFiltersOpen = !talentLibraryMoreFiltersOpen" :aria-expanded="talentLibraryMoreFiltersOpen" class="inline-flex min-h-[34px] items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">更多筛选</button>
+                <button type="button" @click="talentLibraryMoreFiltersOpen = !talentLibraryMoreFiltersOpen" :aria-expanded="talentLibraryMoreFiltersOpen" class="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">⌕ 筛选</button>
                 <button v-if="canWrite" type="button" @click="openTalentIntake" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增人才</button>
               </div>
             </header>
@@ -4502,7 +4531,7 @@
             </div>
 
             <div class="wb-talent-filter-bar flex flex-wrap items-end">
-              <label class="text-xs font-medium text-slate-500">入库时间
+              <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">入库时间
                 <select v-model="talentLibraryFilters.intake.preset" aria-label="入库时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.intake.preset === 'custom'"><input v-model="talentLibraryFilters.intake.from" type="date" aria-label="入库开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.intake.to" type="date" aria-label="入库结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
@@ -4523,13 +4552,13 @@
               <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">学历
                 <input aria-label="按学历筛选人才" v-model="talentLibraryFilters.education" type="search" placeholder="学历" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
-              <label class="text-xs font-medium text-slate-500">归属顾问
+              <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">归属顾问
                 <select v-model="candidateFilters.owner" aria-label="按人才负责人筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
               </label>
               <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">求职状态
                 <select aria-label="按人才求职状态筛选" v-model="candidateFilters.status" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select>
               </label>
-              <label class="text-xs font-medium text-slate-500">流程阶段
+              <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">流程阶段
                 <select aria-label="按当前流程筛选人才" v-model="talentLibraryFilters.stage" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select>
               </label>
             </div>

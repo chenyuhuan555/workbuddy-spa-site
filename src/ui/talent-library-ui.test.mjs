@@ -61,7 +61,7 @@ test('人才库工具栏和筛选区使用精简视觉结构', () => {
 
   assert.match(listBlock, /data-talent-library-toolbar/);
   assert.match(listBlock, /data-talent-library-filter-chips/);
-  assert.match(listBlock, /更多筛选/);
+  assert.match(listBlock, /⌕ 筛选/);
   assert.match(listBlock, /人才库专属搜索/);
   assert.match(INDEX_HTML, /\.wb-talent-library-page\s*\{[\s\S]*?background:\s*#f5f6f7/);
   assert.doesNotMatch(listBlock, /rounded-xl border border-slate-200 bg-white p-3/);
@@ -135,7 +135,7 @@ test('keeps cloud search status results and paging reachable inside the compact 
 test('keeps prior talent list operations in a compact closable actions menu', () => {
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
 
-  assert.match(listBlock, /更多操作/);
+  assert.match(listBlock, /分类管理/);
   assert.match(listBlock, /talentLibraryActionsOpen = false; openTalentCategoryManager\(\)[\s\S]*?>分类管理</);
   assert.match(listBlock, /talentLibraryActionsOpen = false; openTalentJobMatch\(\)[\s\S]*?>岗位匹配</);
   assert.match(listBlock, /v-if="canConfigureAi"[\s\S]*?talentLibraryActionsOpen = false; openTalentCompanyResearch\(\)[\s\S]*?>目标公司挖掘</);
