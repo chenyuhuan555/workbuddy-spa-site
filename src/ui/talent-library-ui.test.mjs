@@ -67,6 +67,14 @@ test('人才库工具栏和筛选区使用精简视觉结构', () => {
   assert.doesNotMatch(listBlock, /rounded-xl border border-slate-200 bg-white p-3/);
 });
 
+test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 容器', () => {
+  const workspace = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'[\s\S]*?<div data-talent-library-list/)?.[0] || '';
+
+  assert.match(workspace, /class="[^"]*wb-talent-library-workspace[^"]*w-full[^"]*max-w-none[^"]*"/);
+  assert.doesNotMatch(workspace, /max-w-7xl\s+mx-auto/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*0 28px 28px/);
+});
+
 test('renders distinct education and candidate asset status filters in the compact filter bar', () => {
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
 
