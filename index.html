@@ -75,6 +75,7 @@
   <script src="./src/ui/talent-search-messages.js?v=20260803-talentsearchmessages1"></script>
   <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
   <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
+  <script src="./src/ui/talent-library-table.js?v=20260813-talenttable1"></script>
   <script src="./src/ui/ai-assessment-report.js?v=20260805-aiassessment1"></script>
   <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
@@ -10730,6 +10731,7 @@ const vueAppConfig = {
     /* ── 流水线阶段常量（来自 src/constants/pipeline-stages.js） ── */
     const { KEYS: SK, GROUPS: SG } = window.WorkBuddyStages;
     const { PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate } = window.WorkBuddyListPerformance;
+    const TalentLibrary = window.WorkBuddyTalentLibraryTable;
     const CandidateCoreEditor = window.WorkBuddyCandidateCoreEditor;
     const ResumeFormattedTextEditor = window.WorkBuddyResumeFormattedTextEditor;
     const ResumeAiProcessing = window.WorkBuddyResumeAiProcessing;
@@ -11096,6 +11098,15 @@ const vueAppConfig = {
     const positionSkillsExtracting = ref(false);
     const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, industrySucceeded: 0, industryFailed: 0, current: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
+    const talentLibraryFilters = reactive({
+      base: '', positionId: 'all', stage: 'all', education: 'all',
+      intake: { preset: 'all', from: '', to: '' },
+      touch: { preset: 'all', from: '', to: '' },
+      recommendation: { preset: 'all', from: '', to: '' },
+    });
+    const talentLibraryColumnKeys=ref(TalentLibrary.loadColumnKeys(window.localStorage));
+    const talentLibraryColumnsOpen=ref(false);
+    const candidateRowMenuId=ref('');
     const selectedCandidateIds = ref([]);
     const talentMoreMenuOpen = ref(false);
     const candidatePage = ref(1);
@@ -11602,12 +11613,33 @@ const vueAppConfig = {
     const interviewApplicationCountByCompanyId = computed(() => companyCountMaps.value.interviews);
     const talentCategories = computed(() => WorkbenchV2.getTalentCategories(workbenchV2));
     const talentCategoryPaths = computed(() => WorkbenchV2.getTalentCategoryPaths(workbenchV2));
-    const filteredWorkbenchCandidates = computed(() => sortByRecentUpdate(WorkbenchV2.filterCandidatesByCategory(
-      WorkbenchV2.filterCandidates(workbenchV2.candidates, candidateFilters),
+    const candidateSourceRows = computed(() => WorkbenchV2.filterCandidatesByCategory(
+      WorkbenchV2.filterCandidates(workbenchV2.candidates, { ...candidateFilters, query: '' }),
       talentCategories.value,
       candidateFilters.category
-    )));
+    ));
+    const talentLibraryRows = computed(() => TalentLibrary.buildRows({
+      candidates: candidateSourceRows.value,
+      applications: visibleApplications.value,
+      positions: workbenchV2.positions,
+      companies: workbenchV2.companies,
+      stageLabel: candidatePipelineLabel,
+    }));
+    const filteredWorkbenchCandidates = computed(() => sortByRecentUpdate(TalentLibrary.filterRows(talentLibraryRows.value, {
+      ...talentLibraryFilters,
+      query: candidateFilters.query,
+      owner: candidateFilters.owner,
+      status: candidateFilters.status,
+    })));
     const pagedWorkbenchCandidates = computed(() => paginate(filteredWorkbenchCandidates.value, candidatePage.value, PAGE_SIZE));
+    const talentLibraryColumns = computed(() => TalentLibrary.COLUMN_DEFINITIONS.filter(column => talentLibraryColumnKeys.value.includes(column.key)));
+    const talentLibraryColumnSet = computed(() => new Set(talentLibraryColumnKeys.value));
+    const talentLibrarySummary = computed(() => TalentLibrary.summarizeRows(filteredWorkbenchCandidates.value));
+    function setTalentLibraryColumn(key, checked) {
+      const next = new Set(talentLibraryColumnKeys.value);
+      if (checked) next.add(key); else next.delete(key);
+      talentLibraryColumnKeys.value = TalentLibrary.saveColumnKeys(window.localStorage, [...next]);
+    }
     const allVisibleCandidatesSelected = computed(() => pagedWorkbenchCandidates.value.items.length > 0 && pagedWorkbenchCandidates.value.items.every(candidate => selectedCandidateIds.value.includes(candidate.id)));
     function toggleCandidateSelection(candidateId, checked) {
       const id = String(candidateId || '').trim();
@@ -24429,6 +24461,7 @@ ${clipped}`
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
       companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
+      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
       candidateFilters, candidatePage, talentMoreMenuOpen, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, activeApplicationCountByCandidateId, activeCandidateCount, candidateSummaryCounts, candidateResumeCompleteness, candidateLastUpdated, selectedCandidateApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
