@@ -63,7 +63,7 @@ test('人才库工具栏和筛选区使用精简视觉结构', () => {
   assert.match(listBlock, /data-talent-library-filter-chips/);
   assert.match(listBlock, /⌕ 筛选/);
   assert.match(listBlock, /人才库专属搜索/);
-  assert.match(INDEX_HTML, /\.wb-talent-library-page\s*\{[\s\S]*?background:\s*#f5f6f7/);
+  assert.match(INDEX_HTML, /\.wb-talent-library-page\s*\{[\s\S]*?background:\s*#fff/);
   assert.doesNotMatch(listBlock, /rounded-xl border border-slate-200 bg-white p-3/);
 });
 
@@ -72,7 +72,12 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
 
   assert.match(workspace, /class="[^"]*wb-talent-library-workspace[^"]*w-full[^"]*max-w-none[^"]*"/);
   assert.doesNotMatch(workspace, /max-w-7xl\s+mx-auto/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*0 28px 28px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*24px 28px 28px/);
+});
+
+test('人才库表格保留横向滚动并使用纯白工作区背景', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table-shell\s*\{[\s\S]*?overflow-x:\s*auto/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{\s*background:\s*#fff/);
 });
 
 test('人才库隐藏重复的工作台顶部栏并在唯一标题旁显示人数', () => {
