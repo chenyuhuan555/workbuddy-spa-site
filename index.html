@@ -12963,10 +12963,12 @@ const vueAppConfig = {
       state: talentFunnelDashboard,
       analytics: window.WorkBuddyTalentFunnelAnalytics,
       getChannels: async () => {
+        if (isGuestMode) return Array.isArray(workbenchV2.talentSourceChannels) ? workbenchV2.talentSourceChannels : [];
         const repo = getTalentSourceChannelRepo();
         return repo ? repo.listActive() : [];
       },
       getEventsByCompany: async companyId => {
+        if (isGuestMode) return (workbenchV2.talentFunnelEvents || []).filter(event => event.companyId === companyId);
         const repo = getTalentFunnelEventRepo();
         return repo ? repo.listEventsByCompany(companyId) : [];
       },
@@ -12980,10 +12982,12 @@ const vueAppConfig = {
       state: homeFunnelDashboard,
       analytics: window.WorkBuddyTalentFunnelAnalytics,
       getChannels: async () => {
+        if (isGuestMode) return Array.isArray(workbenchV2.talentSourceChannels) ? workbenchV2.talentSourceChannels : [];
         const repo = getTalentSourceChannelRepo();
         return repo ? repo.listActive() : [];
       },
       getEventsByCompany: async companyId => {
+        if (isGuestMode) return (workbenchV2.talentFunnelEvents || []).filter(event => event.companyId === companyId);
         const repo = getTalentFunnelEventRepo();
         return repo ? repo.listEventsByCompany(companyId) : [];
       },

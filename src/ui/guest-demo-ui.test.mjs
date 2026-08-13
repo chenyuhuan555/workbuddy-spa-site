@@ -74,3 +74,8 @@ test('talent library uses one unified search input for local and cloud resume se
   assert.match(html, /runUnifiedTalentSearch\(\)[\s\S]*?runTalentCloudSearch\(\)/);
   assert.doesNotMatch(html, /aria-label="搜索简历原文和文件名"/);
 });
+
+test('guest home funnel reads fictional local channels and events without cloud repositories', () => {
+  assert.match(html, /if \(isGuestMode\) return Array\.isArray\(workbenchV2\.talentSourceChannels\)/);
+  assert.match(html, /if \(isGuestMode\) return \(workbenchV2\.talentFunnelEvents \|\| \[\]\)\.filter\(event => event\.companyId === companyId\)/);
+});

@@ -28,6 +28,18 @@
     const demoNumber = String(id).replace(/\D/g, '').slice(-4).padStart(4, '0');
     return {
       id, name, currentCompany, currentTitle, city, owner, skills, experienceYears,
+      age: profile.age || String(24 + experienceYears),
+      education: profile.education || '本科',
+      expectedBase: profile.expectedBase || city,
+      currentSalary: profile.currentSalary || `${experienceYears + 20}K/月`,
+      expectedSalary: profile.expectedSalary || `${experienceYears + 25}K/月`,
+      motivation: profile.motivation || `希望在${city}寻找更大的业务空间，承担更完整的结果。`,
+      availability: profile.availability || '30天内',
+      recommendationComment: profile.recommendationComment || `具备${skills.slice(0, 2).join('、')}经验，建议结合岗位重点推进。`,
+      remark: profile.remark || '虚构演示资料，信息已完成基础核验。',
+      sourceCompanyId: profile.sourceCompanyId || '',
+      sourceChannelId: profile.sourceChannelId || '',
+      sourceChannelName: profile.sourceChannelName || '',
       phone: `1380000${demoNumber}`,
       email: `${id}@example.invalid`, status: 'open', tags: ['演示人才'], directions: skills.slice(0, 2),
       summary: profile.summary || `${name}为完全虚构的演示候选人，用于展示人才画像、搜索与推进功能。`,
@@ -37,7 +49,7 @@
         formattedText: profile.formattedText || `【虚构演示简历】\n姓名：${name}\n当前职位：${currentTitle}\n核心技能：${skills.join('、')}`,
         formatStatus: 'done', originalFileStatus: 'missing',
       }],
-      demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE,
+      demo: true, createdAt: profile.intakeAt || SEED_DATE, updatedAt: profile.updatedAt || SEED_DATE,
     };
   }
 
@@ -62,6 +74,10 @@
       company('demo_co_2', '远航供应链', '物流科技', '上海', '演示顾问'),
       company('demo_co_3', '青云健康', '数字医疗', '北京', '演示顾问'),
       company('demo_co_4', '木棉消费', '新消费', '广州', '演示顾问', 'potential'),
+      company('demo_co_5', '瀚海金融', '金融科技', '杭州', '演示顾问'),
+      company('demo_co_6', '智造云联', '工业软件', '苏州', '演示顾问'),
+      company('demo_co_7', '澄明医疗', '数字医疗', '成都', '演示顾问'),
+      company('demo_co_8', '北辰科技', '数据基础设施', '武汉', '演示顾问'),
     ];
     const positions = [
       position('demo_pos_1', 'demo_co_1', 'AI 产品负责人', '深圳', '50-80K', '演示顾问', ['AI产品', '商业化', '团队管理']),
@@ -70,6 +86,10 @@
       position('demo_pos_4', 'demo_co_3', '医疗 SaaS 销售总监', '北京', '35-60K', '演示顾问', ['医疗SaaS', '销售管理', '渠道']),
       position('demo_pos_5', 'demo_co_4', '品牌增长负责人', '广州', '35-55K', '演示顾问', ['品牌策略', '增长', '内容营销']),
       position('demo_pos_6', 'demo_co_2', '物流运营负责人', '上海', '35-50K', '演示顾问', ['物流运营', '精益管理', '数据分析']),
+      position('demo_pos_7', 'demo_co_5', '企业服务产品总监', '杭州', '60-85K', '演示顾问', ['金融科技', '产品战略', '商业化']),
+      position('demo_pos_8', 'demo_co_6', '售前解决方案经理', '苏州', '40-60K', '演示顾问', ['工业软件', '售前咨询', '大客户']),
+      position('demo_pos_9', 'demo_co_7', '医疗运营负责人', '成都', '35-55K', '演示顾问', ['医疗运营', '用户增长', '团队管理']),
+      position('demo_pos_10', 'demo_co_8', '数据工程负责人', '武汉', '50-70K', '演示顾问', ['数据工程', '云平台', '团队管理']),
     ];
     const positionDescriptions = {
       demo_pos_1: '岗位背景：负责公司 AI 产品线从 0 到 1 的产品规划与商业化落地，服务企业客户和内部交付团队。\n\n核心职责：\n- 制定年度产品路线图，拆解模型能力、工作流和数据闭环。\n- 带领产品经理与设计、研发、交付团队推进版本上线。\n- 建立试点客户反馈机制，跟踪激活率、续费率和项目毛利。\n\n任职要求：\n- 8 年以上 B 端产品经验，至少有 2 年 AI / SaaS 产品经历。\n- 能讲清楚大模型应用边界、RAG、Agent 和企业数据治理。\n- 有从试点到规模化商业化的实战案例。\n\n加分项：有企业服务销售支持、海外产品或 0 到 1 团队搭建经验。',
@@ -78,6 +98,10 @@
       demo_pos_4: '岗位背景：负责医疗 SaaS 在北京及华北区域的销售增长，客户覆盖连锁医院、专科集团和区域医疗服务商。\n\n职责：搭建大客户销售方法论，管理 6-8 人销售团队；从线索、商机、商务谈判到回款全流程负责；联合市场和交付团队打造标杆案例。\n\n要求：医疗软件或医疗服务行业 8 年以上销售经验；有千万级合同和院端决策链经验；能把产品价值转化为客户经营结果。\n\n风险提示：需要适应较长决策周期和严格合规要求。',
       demo_pos_5: '岗位背景：为新消费品牌负责年度增长与品牌资产建设，兼顾内容、投放、渠道和用户运营。\n\n职责：制定品牌定位与年度 campaign；管理小红书、抖音和私域内容策略；与电商、供应链和门店团队协作，复盘 CAC、复购率和单客贡献。\n\n要求：6 年以上消费品牌或整合营销经验；有从 0 到 1 打造单品或品牌升级案例；能用数据驱动内容和预算分配。\n\n加分项：做过母婴、健康食品或生活方式品牌。',
       demo_pos_6: '岗位背景：负责上海区域仓配网络和重点客户履约运营，推动运营标准化和成本优化。\n\n职责：管理仓、干线、配送合作伙伴；建立时效、破损、客诉和人效看板；识别异常并推动流程、系统和供应商改进；支持大客户续约和新仓上线。\n\n要求：5 年以上物流运营经验，熟悉仓配一体、WMS/TMS 和数据分析；有跨区域项目管理与团队带教经验。\n\n核心指标：准时率、履约成本、库存准确率和客户满意度。',
+      demo_pos_7: '岗位背景：负责金融科技企业服务产品线的战略规划、商业化和客户价值交付。\n\n职责：制定年度路线图，平衡监管、客户需求和产品体验；带领产品与解决方案团队服务银行、消费金融和财富管理客户；建立定价、续费和客户成功机制。\n\n要求：10 年以上 B 端产品经验，熟悉金融机构决策链和 SaaS 商业化；能够用收入、留存和毛利指标复盘产品结果。\n\n加分项：有数据中台、风控或支付产品从 0 到 1 经验。',
+      demo_pos_8: '岗位背景：面向制造业客户负责工业软件售前方案与复杂项目推进，连接销售、产品和交付团队。\n\n职责：完成客户诊断、方案架构、价值测算和标书答辩；沉淀行业模板和成功案例；参与关键客户高层沟通并推动项目签约。\n\n要求：7 年以上工业软件、MES、ERP 或供应链 SaaS 售前经验；能独立完成大型项目方案和 ROI 论证；有团队带教能力。\n\n核心指标：方案转化率、项目毛利、交付风险和客户满意度。',
+      demo_pos_9: '岗位背景：负责数字医疗区域业务运营，推动患者服务、医生协作和增长项目从试点走向规模化。\n\n职责：搭建运营指标体系和区域团队，协同产品、销售与交付改善用户体验；复盘获客、活跃、复购和服务质量；建立合规运营流程和合作方管理机制。\n\n要求：6 年以上医疗服务或医疗 SaaS 运营经验；具备用户增长、团队管理和跨部门项目推进能力；能够适应业务快速迭代。\n\n风险提示：需要熟悉医疗合规和区域资源协同。',
+      demo_pos_10: '岗位背景：建设面向多业务线的数据平台与工程团队，为实时分析、推荐和企业应用提供稳定的数据基础设施。\n\n职责：规划数据湖仓、实时计算和数据质量体系；带领工程师提升任务稳定性、成本效率和数据服务能力；推动云原生迁移和治理标准落地。\n\n要求：8 年以上数据工程经验，熟悉 Spark、Flink、Kafka、数据仓库和云平台；有 5 人以上团队管理经验；能与产品和业务负责人共创指标体系。\n\n核心指标：数据时效、任务成功率、云资源成本和业务使用率。',
     };
     positions.forEach(item => { item.description = positionDescriptions[item.id] || item.description; });
     const candidates = [
@@ -89,6 +113,10 @@
       candidate('demo_cand_6', '江岚', '速达物流', '运营经理', '上海', '演示顾问', ['物流运营', '精益管理', '数据分析'], 8, { summary: '8 年仓配运营经验，熟悉仓、干线、配送协同和运营看板，擅长降低履约成本并提升大客户服务稳定性。', rawText: '江岚｜男｜上海｜8 年工作经验\n求职方向：物流运营负责人\n\n速达物流｜区域运营经理｜2020.05-至今\n- 管理 3 个仓和 18 条干线，服务年发货量 1,200 万单。\n- 推动波次、线路和供应商考核优化，履约成本下降 14%。\n- 建立时效与异常看板，准时率从 91% 提升至 97%。\n\n安行供应链｜仓配主管｜2016.07-2020.04\n- 负责仓内作业、库存准确率和现场班组管理。\n\n教育背景：上海海事大学｜物流管理。', formattedText: '## 江岚\n\n**物流运营经理｜上海｜8 年经验**\n\n管理 3 个仓、18 条干线，年发货量 1,200 万单；通过波次、线路和供应商考核优化，履约成本下降 14%，准时率达到 97%。\n\n熟悉仓配一体、WMS/TMS、异常管理和团队带教。' }),
       candidate('demo_cand_7', '唐宁', '启明数据', '数据产品经理', '杭州', '演示顾问', ['数据产品', 'BI', '项目管理'], 6),
       candidate('demo_cand_8', '顾遥', '原点咨询', '行业顾问', '北京', '演示顾问', ['行业研究', '客户沟通', '方案设计'], 7),
+      candidate('demo_cand_9', '沈砚', '瀚海金融', '企业服务产品总监', '杭州', '演示顾问', ['金融科技', '产品战略', '商业化'], 12, { age: '36', education: '硕士 · 浙江大学', expectedBase: '杭州 / 上海', currentSalary: '58K/月 + 年终', expectedSalary: '70K/月起', motivation: '希望进入金融科技增长期团队，负责从产品战略到收入结果。', availability: '2个月内', recommendationComment: '金融科技产品与商业化经验完整，适合负责复杂 B 端产品线。', remark: '重点核实团队规模和长期激励方案。', intakeAt: '2026-07-22T09:00:00.000Z', updatedAt: '2026-08-04T10:30:00.000Z' }),
+      candidate('demo_cand_10', '许衡', '智造云联', '售前解决方案经理', '苏州', '演示顾问', ['工业软件', '售前咨询', '大客户'], 9, { age: '33', education: '本科 · 东南大学', expectedBase: '苏州 / 上海', currentSalary: '42K/月', expectedSalary: '50-55K/月', motivation: '希望从单项目售前转向行业解决方案负责人，扩大客户与团队影响力。', availability: '45天内', recommendationComment: '工业软件售前和客户诊断能力突出，可承接复杂项目。', remark: '已有两家制造业客户流程，需确认竞业边界。', intakeAt: '2026-07-25T09:00:00.000Z', updatedAt: '2026-08-03T11:00:00.000Z' }),
+      candidate('demo_cand_11', '叶宁', '澄明医疗', '医疗运营负责人', '成都', '演示顾问', ['医疗运营', '用户增长', '团队管理'], 8, { age: '31', education: '本科 · 四川大学', expectedBase: '成都', currentSalary: '36K/月 + 奖金', expectedSalary: '45K/月', motivation: '看好数字医疗长期价值，希望负责区域业务从试点到规模化。', availability: '30天内', recommendationComment: '医疗业务运营经验扎实，具备从 0 到 1 搭建团队的经历。', remark: '关注业务合规和区域资源投入。', intakeAt: '2026-07-28T09:00:00.000Z', updatedAt: '2026-08-05T09:15:00.000Z' }),
+      candidate('demo_cand_12', '陆川', '北辰科技', '数据工程负责人', '武汉', '演示顾问', ['数据工程', '云平台', '团队管理'], 10, { age: '34', education: '硕士 · 华中科技大学', expectedBase: '武汉 / 深圳', currentSalary: '48K/月', expectedSalary: '60K/月', motivation: '希望带领数据平台团队服务更多业务线，参与云原生架构升级。', availability: '60天内', recommendationComment: '数据平台架构和团队管理兼备，适合建设期技术团队。', remark: '需进一步确认远程协作和搬迁安排。', intakeAt: '2026-07-30T09:00:00.000Z', updatedAt: '2026-08-05T14:30:00.000Z' }),
     ];
     const applications = [
       application('demo_app_1', 'demo_cand_1', 'demo_pos_1', 'demo_co_1', 'recommended', '演示顾问', 92),
@@ -99,6 +127,10 @@
       application('demo_app_6', 'demo_cand_6', 'demo_pos_6', 'demo_co_2', 'screening', '演示顾问', 88),
       application('demo_app_7', 'demo_cand_7', 'demo_pos_1', 'demo_co_1', 'discovered', '演示顾问', 78),
       application('demo_app_8', 'demo_cand_8', 'demo_pos_4', 'demo_co_3', 'to_recommend', '演示顾问', 82),
+      application('demo_app_9', 'demo_cand_9', 'demo_pos_7', 'demo_co_5', 'recommended', '演示顾问', 94),
+      application('demo_app_10', 'demo_cand_10', 'demo_pos_8', 'demo_co_6', 'contacted', '演示顾问', 87),
+      application('demo_app_11', 'demo_cand_11', 'demo_pos_9', 'demo_co_7', 'interviewing', '演示顾问', 90),
+      application('demo_app_12', 'demo_cand_12', 'demo_pos_10', 'demo_co_8', 'screening', '演示顾问', 89),
     ];
     const applicationDetails = {
       demo_app_1: {
@@ -160,18 +192,61 @@
           { id: 'event_demo_app_6_3', fromStage: 'contacted', toStage: 'screening', reasonNote: '完成首轮筛选，等待补充业绩证据。', occurredAt: '2026-07-27T08:45:00.000Z', actor: '演示顾问' },
         ],
       },
-      demo_app_7: { progressNote: '候选人处于被动看机会状态，已加入岗位人才池，暂不主动推荐。', communicationLog: '2026-08-01 已发送岗位摘要，候选人未明确回复，计划一周后再次触达。', pipelineEvents: [{ id: 'event_demo_app_7_1', fromStage: '', toStage: 'discovered', reasonNote: '加入 AI 产品岗位人才池。', occurredAt: '2026-08-01T03:00:00.000Z', actor: '演示顾问' }] },
-      demo_app_8: { progressNote: '候选人行业研究和方案能力较好，需进一步核实是否有直接客户拓展业绩。', communicationLog: '2026-07-31 完成首次沟通，候选人愿意了解医疗行业岗位。', pipelineEvents: [{ id: 'event_demo_app_8_1', fromStage: '', toStage: 'discovered', reasonNote: '从行业顾问人才池发现。', occurredAt: '2026-07-30T05:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_8_2', fromStage: 'discovered', toStage: 'to_recommend', reasonNote: '初步匹配岗位，但推荐前需补充客户拓展案例。', occurredAt: '2026-07-31T08:30:00.000Z', actor: '演示顾问' }] },
+      demo_app_7: { progressNote: '候选人处于被动看机会状态，已加入岗位人才池，暂不主动推荐。', communicationLog: '2026-08-01 已发送岗位摘要，候选人未明确回复，计划一周后再次触达。', pipelineEvents: [{ id: 'event_demo_app_7_1', fromStage: '', toStage: 'discovered', reasonNote: '加入 AI 产品岗位人才池。', occurredAt: '2026-08-01T03:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_7_2', fromStage: 'discovered', toStage: 'contacted', reasonNote: '发送岗位摘要并完成首次触达。', occurredAt: '2026-08-02T03:00:00.000Z', actor: '演示顾问' }] },
+      demo_app_8: { progressNote: '候选人行业研究和方案能力较好，需进一步核实是否有直接客户拓展业绩。', communicationLog: '2026-07-31 完成首次沟通，候选人愿意了解医疗行业岗位。', pipelineEvents: [{ id: 'event_demo_app_8_1', fromStage: '', toStage: 'discovered', reasonNote: '从行业顾问人才池发现。', occurredAt: '2026-07-30T05:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_8_2', fromStage: 'discovered', toStage: 'contacted', reasonNote: '完成首次沟通并确认行业方向。', occurredAt: '2026-07-31T06:30:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_8_3', fromStage: 'contacted', toStage: 'to_recommend', reasonNote: '初步匹配岗位，但推荐前需补充客户拓展案例。', occurredAt: '2026-07-31T08:30:00.000Z', actor: '演示顾问' }] },
+      demo_app_9: { progressNote: '客户认可其金融产品商业化经验，下一步由 CTO 和业务负责人联合面试。', communicationLog: '2026-07-24 完成首次沟通，候选人关注产品决策权和长期激励。\n2026-08-02 客户确认进入面试。', pipelineEvents: [{ id: 'event_demo_app_9_1', fromStage: '', toStage: 'discovered', reasonNote: '从金融科技产品人才地图发现。', occurredAt: '2026-07-22T03:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_9_2', fromStage: 'discovered', toStage: 'contacted', reasonNote: '完成岗位和业务阶段介绍。', occurredAt: '2026-07-24T06:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_9_3', fromStage: 'contacted', toStage: 'responded', reasonNote: '候选人回复并确认看机会。', occurredAt: '2026-07-25T08:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_9_4', fromStage: 'responded', toStage: 'recommended', reasonNote: '完成金融客户案例推荐报告。', occurredAt: '2026-08-02T08:30:00.000Z', actor: '演示顾问' }] },
+      demo_app_10: { progressNote: '候选人愿意了解平台型售前岗位，等待补充大型制造客户案例。', communicationLog: '2026-07-29 发送岗位说明和团队介绍，候选人已回复。', pipelineEvents: [{ id: 'event_demo_app_10_1', fromStage: '', toStage: 'discovered', reasonNote: '从工业软件售前人才池发现。', occurredAt: '2026-07-25T04:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_10_2', fromStage: 'discovered', toStage: 'contacted', reasonNote: '发送岗位业务范围和薪资区间。', occurredAt: '2026-07-29T07:00:00.000Z', actor: '演示顾问' }] },
+      demo_app_11: { progressNote: '客户认可区域运营和团队搭建经验，面试重点确认合规与增长方法论。', communicationLog: '2026-07-30 候选人确认对数字医疗方向有兴趣。\n2026-08-04 完成客户一面，等待业务负责人反馈。', pipelineEvents: [{ id: 'event_demo_app_11_1', fromStage: '', toStage: 'discovered', reasonNote: '从数字医疗运营人才池发现。', occurredAt: '2026-07-28T04:30:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_11_2', fromStage: 'discovered', toStage: 'contacted', reasonNote: '完成业务方向和岗位边界沟通。', occurredAt: '2026-07-30T06:30:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_11_3', fromStage: 'contacted', toStage: 'interviewing', reasonNote: '客户完成第一轮面试。', occurredAt: '2026-08-04T09:00:00.000Z', actor: '演示顾问' }] },
+      demo_app_12: { progressNote: '数据平台经验匹配，候选人处于在职状态，需进一步确认到岗时间。', communicationLog: '2026-07-31 完成首次沟通，候选人愿意了解武汉和深圳双基地机会。', pipelineEvents: [{ id: 'event_demo_app_12_1', fromStage: '', toStage: 'discovered', reasonNote: '从数据工程负责人候选池发现。', occurredAt: '2026-07-30T05:30:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_12_2', fromStage: 'discovered', toStage: 'contacted', reasonNote: '发送岗位架构和团队信息。', occurredAt: '2026-07-31T08:00:00.000Z', actor: '演示顾问' }, { id: 'event_demo_app_12_3', fromStage: 'contacted', toStage: 'screening', reasonNote: '完成技术栈与团队规模初筛。', occurredAt: '2026-08-04T07:30:00.000Z', actor: '演示顾问' }] },
     };
     applications.forEach(item => Object.assign(item, applicationDetails[item.id] || {}));
 
+    const talentSourceChannels = [
+      { id: 'demo_channel_referral', name: '人才推荐', status: 'active', demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
+      { id: 'demo_channel_community', name: '行业社群', status: 'active', demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
+      { id: 'demo_channel_map', name: '人才地图', status: 'active', demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
+      { id: 'demo_channel_inbound', name: '主动申请', status: 'active', demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
+    ];
+    const channelByCompanyId = {
+      demo_co_1: 'demo_channel_map', demo_co_2: 'demo_channel_referral', demo_co_3: 'demo_channel_community', demo_co_4: 'demo_channel_inbound',
+      demo_co_5: 'demo_channel_map', demo_co_6: 'demo_channel_referral', demo_co_7: 'demo_channel_community', demo_co_8: 'demo_channel_inbound',
+    };
+    const channelNameById = Object.fromEntries(talentSourceChannels.map(channel => [channel.id, channel.name]));
+    const sourceCompanyByCandidateId = {
+      demo_cand_1: 'demo_co_1', demo_cand_2: 'demo_co_1', demo_cand_3: 'demo_co_2', demo_cand_4: 'demo_co_3',
+      demo_cand_5: 'demo_co_4', demo_cand_6: 'demo_co_2', demo_cand_7: 'demo_co_1', demo_cand_8: 'demo_co_3',
+      demo_cand_9: 'demo_co_5', demo_cand_10: 'demo_co_6', demo_cand_11: 'demo_co_7', demo_cand_12: 'demo_co_8',
+    };
+    candidates.forEach(candidateItem => {
+      const sourceCompanyId = sourceCompanyByCandidateId[candidateItem.id] || '';
+      const sourceChannelId = channelByCompanyId[sourceCompanyId] || '';
+      candidateItem.sourceCompanyId = sourceCompanyId;
+      candidateItem.sourceChannelId = sourceChannelId;
+      candidateItem.sourceChannelName = channelNameById[sourceChannelId] || '';
+    });
+    const funnelStagesByApplication = {
+      demo_app_1: ['imported', 'contacted', 'matched', 'interviewed'], demo_app_2: ['imported', 'contacted', 'matched', 'interviewed'],
+      demo_app_3: ['imported', 'contacted', 'matched', 'interviewed', 'offered'], demo_app_4: ['imported', 'contacted', 'matched', 'interviewed', 'offered', 'hired'],
+      demo_app_5: ['imported', 'contacted'], demo_app_6: ['imported', 'contacted', 'matched'], demo_app_7: ['imported', 'contacted'], demo_app_8: ['imported', 'contacted', 'matched'],
+      demo_app_9: ['imported', 'contacted', 'matched'], demo_app_10: ['imported', 'contacted'], demo_app_11: ['imported', 'contacted', 'matched', 'interviewed'], demo_app_12: ['imported', 'contacted', 'matched'],
+    };
+    const talentFunnelEvents = applications.flatMap((applicationItem, index) => {
+      const channelId = channelByCompanyId[applicationItem.companyId] || talentSourceChannels[index % talentSourceChannels.length].id;
+      return (funnelStagesByApplication[applicationItem.id] || ['imported']).map((stage, stageIndex) => ({
+        id: `demo_funnel_${applicationItem.id}_${stage}`, applicationId: applicationItem.id, candidateId: applicationItem.candidateId,
+        positionId: applicationItem.positionId, companyId: applicationItem.companyId, channelId, stage, result: 'success', isPilot: true,
+        occurredAt: `2026-08-${String(Math.min(12, 1 + index + stageIndex)).padStart(2, '0')}T0${stageIndex}:00:00.000Z`, demo: true,
+      }));
+    });
+    talentFunnelEvents.push({ id: 'demo_funnel_failure_1', applicationId: 'demo_app_10', candidateId: 'demo_cand_10', positionId: 'demo_pos_8', companyId: 'demo_co_6', channelId: 'demo_channel_referral', stage: 'matched', result: 'failed', reasonCode: 'salary_mismatch', isPilot: true, occurredAt: '2026-08-10T09:30:00.000Z', demo: true });
+
     return {
-      meta: { mode: 'guest-demo', fictional: true, version: 1, seedVersion: 2, seededAt: SEED_DATE },
+      meta: { mode: 'guest-demo', fictional: true, version: 1, seedVersion: 3, seededAt: SEED_DATE },
       names: ['演示工作区'],
       jobs: [[]],
       workbenchV2: {
         schemaVersion: 2,
-        companies, positions, candidates, applications,
+        companies, positions, candidates, applications, talentSourceChannels, talentFunnelEvents,
         todos: [
           { id: 'demo_todo_1', title: '跟进星河科技面试反馈', type: 'followup', date: '2026-08-05', done: false, demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
           { id: 'demo_todo_2', title: '整理供应链岗位推荐报告', type: 'recommend', date: '2026-08-06', done: false, demo: true, createdAt: SEED_DATE, updatedAt: SEED_DATE },
@@ -237,7 +312,7 @@
   }
 
   function mergeRichSeedData(workspace) {
-    if (Number(workspace.meta?.seedVersion || 0) >= 2) return false;
+    if (Number(workspace.meta?.seedVersion || 0) >= 3) return false;
     const seed = createInitialWorkspace();
     const workbench = workspace.workbenchV2 || {};
     const seedWorkbench = seed.workbenchV2;
@@ -275,6 +350,21 @@
         changed = true;
       }
     });
+    ['companies', 'positions', 'candidates', 'applications', 'talentSourceChannels', 'talentFunnelEvents'].forEach(key => {
+      if (!Array.isArray(workbench[key])) workbench[key] = [];
+      const existingIds = new Set(workbench[key].map(item => item.id));
+      (seedWorkbench[key] || []).forEach(item => {
+        if (!existingIds.has(item.id)) { workbench[key].push(clone(item)); changed = true; }
+      });
+    });
+    const seedCandidatesById = new Map(seedWorkbench.candidates.map(item => [item.id, item]));
+    (workbench.candidates || []).forEach(item => {
+      const source = seedCandidatesById.get(item.id);
+      if (!source) return;
+      ['age', 'education', 'expectedBase', 'currentSalary', 'expectedSalary', 'motivation', 'availability', 'recommendationComment', 'remark', 'sourceCompanyId', 'sourceChannelId', 'sourceChannelName'].forEach(key => {
+        if (!String(item[key] ?? '').trim() && String(source[key] ?? '').trim()) { item[key] = source[key]; changed = true; }
+      });
+    });
     if (!Array.isArray(workbench.activities)) workbench.activities = [];
     const existingActivityIds = new Set(workbench.activities.map(item => item.id));
     seedWorkbench.activities.forEach(item => {
@@ -293,7 +383,7 @@
         changed = true;
       }
     });
-    workspace.meta.seedVersion = 2;
+    workspace.meta.seedVersion = 3;
     return changed;
   }
 
