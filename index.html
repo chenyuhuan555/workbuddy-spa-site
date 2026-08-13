@@ -135,6 +135,7 @@
     [v-cloak] { display: none; }
     @keyframes wb-spin { to { transform: rotate(360deg); } }
     body { font-family: 'PingFang SC', 'Inter', 'Microsoft YaHei', sans-serif; }
+    body.wb-candidate-drawer-open { overflow: hidden; }
     .card-hover { transition: transform 0.18s ease, box-shadow 0.18s ease; }
     .card-hover:hover { transform: translateY(-2px) scale(1.015); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
     .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
@@ -4387,7 +4388,7 @@
         </div>
 
         <div v-else-if="workbenchNav === 'candidates'" class="relative" @keydown.esc.window="closeCandidateDrawer(); talentLibraryColumnsOpen = false; candidateRowMenuId = ''; talentLibraryActionsOpen = false">
-        <div v-if="workbenchRoute.type === 'list' || candidateDetailMode === 'drawer'" class="max-w-7xl mx-auto space-y-4">
+        <div v-if="workbenchRoute.type === 'list' || candidateDetailMode === 'drawer'" :inert="candidateDrawerOpen" :aria-hidden="candidateDrawerOpen ? 'true' : undefined" class="max-w-7xl mx-auto space-y-4">
           <div v-if="canWrite && canConfigureAi" class="flex justify-end -mt-1"><button type="button" @click="openResumeAiBatch" class="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm font-semibold hover:bg-emerald-50">批量重新处理</button></div>
           <section v-if="resumeAiBatch.open" class="bg-white border border-emerald-200 rounded-xl p-4 space-y-3" aria-label="简历 AI 批量处理">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><h2 class="font-bold text-slate-900">简历 AI 批量处理</h2><p class="text-xs text-slate-500 mt-1">默认只处理未完成或失败版本，不会覆盖已成功排版的版本。</p></div><button type="button" @click="resumeAiBatch.open = false" class="text-sm text-slate-500 hover:text-slate-700">关闭</button></div>
@@ -4570,11 +4571,11 @@
         </div>
 
         <div v-if="workbenchRoute.type === 'candidate' && selectedCandidate && candidateDetailMode === 'drawer'" class="fixed inset-0 z-40 bg-slate-950/30" @click.self="closeCandidateDrawer"></div>
-        <div v-if="workbenchRoute.type === 'candidate' && selectedCandidate" role="dialog" :aria-modal="candidateDetailMode === 'drawer' ? 'true' : undefined" aria-label="候选人详情" :class="['wb-v2-candidate-detail space-y-4', { 'wb-candidate-drawer': candidateDetailMode === 'drawer', 'mx-auto': candidateDetailMode === 'full' }]">
+        <div v-if="workbenchRoute.type === 'candidate' && selectedCandidate" ref="candidateDrawerElement" :role="candidateDrawerOpen ? 'dialog' : undefined" :aria-modal="candidateDrawerOpen ? 'true' : undefined" aria-label="候选人详情" :tabindex="candidateDrawerOpen ? -1 : undefined" @keydown.tab="trapCandidateDrawerFocus" :class="['wb-v2-candidate-detail space-y-4', { 'wb-candidate-drawer': candidateDetailMode === 'drawer', 'mx-auto': candidateDetailMode === 'full' }]">
           <button v-if="candidateDetailMode === 'full'" @click="backToWorkbenchList" class="wb-v2-candidate-back text-sm hover:text-emerald-700" type="button">← 返回人才库列表</button>
           <div v-else class="flex items-center justify-end gap-2">
             <button type="button" @click="openCandidateDetail(selectedCandidate.id, workbenchRoute.tab)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">打开完整页面</button>
-            <button type="button" @click="closeCandidateDrawer" aria-label="关闭候选人详情" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-xl text-slate-500 hover:bg-slate-50">×</button>
+            <button ref="candidateDrawerCloseButton" type="button" @click="closeCandidateDrawer" aria-label="关闭候选人详情" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-xl text-slate-500 hover:bg-slate-50">×</button>
           </div>
           <section class="wb-v2-candidate-hero">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -11844,6 +11845,21 @@ const vueAppConfig = {
     const selectedCompany = computed(() => companyById.value.get(workbenchRoute.id) || null);
     const selectedPosition = computed(() => positionById.value.get(workbenchRoute.id) || null);
     const selectedCandidate = computed(() => candidateById.value.get(workbenchRoute.id) || null);
+    const candidateDrawerElement = ref(null);
+    const candidateDrawerCloseButton = ref(null);
+    const candidateDrawerOpen = computed(() => (
+      workbenchNav.value === 'candidates'
+      && workbenchRoute.type === 'candidate'
+      && Boolean(selectedCandidate.value)
+      && candidateDetailMode.value === 'drawer'
+    ));
+    let candidateDrawerTriggerElement = null;
+    watch(candidateDrawerOpen, isOpen => {
+      document.body.classList.toggle('wb-candidate-drawer-open', isOpen);
+    }, { immediate: true });
+    onBeforeUnmount(() => {
+      document.body.classList.remove('wb-candidate-drawer-open');
+    });
     const candidateCoreEdit = reactive({
       active: false,
       saving: false,
@@ -13008,18 +13024,55 @@ const vueAppConfig = {
       // Phase 1：跨设备场景文本可能不在内存，从 resume_texts 表补拉
       void ensureResumeTexts(activeCandidateResumeVersion.value);
     }
+    function focusCandidateDrawer() {
+      if (!candidateDrawerOpen.value) return;
+      candidateDrawerCloseButton.value?.focus();
+      if (document.activeElement !== candidateDrawerCloseButton.value) candidateDrawerElement.value?.focus();
+    }
+    function trapCandidateDrawerFocus(event) {
+      if (!candidateDrawerOpen.value) return;
+      const drawer = candidateDrawerElement.value;
+      if (!drawer) return;
+      const focusableElements = [...drawer.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+      if (!focusableElements.length) {
+        event.preventDefault();
+        drawer.focus();
+        return;
+      }
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !drawer.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !drawer.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
     function openCandidateDrawer(id, tab = 'resume') {
+      candidateDrawerTriggerElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       candidateDetailMode.value = 'drawer';
       selectCandidateDetail(id, tab);
+      nextTick(focusCandidateDrawer);
     }
     function openCandidateDetail(id, tab = 'overview') {
       candidateDetailMode.value = 'full';
       selectCandidateDetail(id, tab);
+      candidateDrawerTriggerElement = null;
     }
     function closeCandidateDrawer() {
-      if (candidateDetailMode.value !== 'drawer') return;
+      if (candidateDetailMode.value !== 'drawer') return false;
+      const hasActiveCandidateDraft = candidateCoreEdit.active || candidateResumeEdit.active;
+      if (hasActiveCandidateDraft && !confirm('候选人详情仍在编辑中，关闭将放弃未保存的修改。确定关闭吗？')) return false;
       candidateDetailMode.value = 'full';
       Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
+      nextTick(() => {
+        if (candidateDrawerTriggerElement?.isConnected) candidateDrawerTriggerElement.focus();
+        candidateDrawerTriggerElement = null;
+      });
+      return true;
     }
     function openApplicationDetail(id) { return workbenchApplicationActions.openApplicationDetail(id); }
     async function saveApplicationDetail() { return workbenchApplicationActions.saveApplicationDetail(); }
@@ -24756,7 +24809,7 @@ ${clipped}`
     return {
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
-      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
+      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, candidateDrawerOpen, candidateDrawerElement, candidateDrawerCloseButton, trapCandidateDrawerFocus, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
       knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkSuggestions, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,

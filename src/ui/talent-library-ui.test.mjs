@@ -116,3 +116,38 @@ test('candidate drawer closes on Escape without replacing resume loading or file
   assert.match(INDEX_HTML, /void ensureResumeTexts\(activeCandidateResumeVersion\.value\);/);
   assert.match(INDEX_HTML, /candidate-original-file-actions\.js/);
 });
+
+test('candidate drawer close guards active core and resume drafts before resetting the route', () => {
+  const closeStart = INDEX_HTML.indexOf('function closeCandidateDrawer()');
+  const closeEnd = INDEX_HTML.indexOf('function openApplicationDetail', closeStart);
+  const closeBlock = INDEX_HTML.slice(closeStart, closeEnd);
+  assert.match(closeBlock, /candidateCoreEdit\.active/);
+  assert.match(closeBlock, /candidateResumeEdit\.active/);
+  const confirmIndex = closeBlock.indexOf('confirm(');
+  const routeResetIndex = closeBlock.indexOf("Object.assign(workbenchRoute, { type: 'list'");
+  assert.ok(confirmIndex >= 0, 'closing with an active draft should ask for confirmation');
+  assert.ok(routeResetIndex > confirmIndex, 'confirmation must happen before the route reset');
+  assert.match(closeBlock, /if\s*\([^)]*!confirm\([\s\S]*?\)\)\s*return false;/);
+});
+
+test('candidate drawer isolates the background and only exposes modal semantics while open', () => {
+  const listWrapper = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'"[^>]*>/)?.[0] || '';
+  assert.match(listWrapper, /:inert="candidateDrawerOpen"/);
+  assert.match(listWrapper, /:aria-hidden="candidateDrawerOpen \? 'true' : undefined"/);
+  const detailWrapper = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'candidate' && selectedCandidate"[^>]*>/)?.[0] || '';
+  assert.match(detailWrapper, /:role="candidateDrawerOpen \? 'dialog' : undefined"/);
+  assert.match(detailWrapper, /:aria-modal="candidateDrawerOpen \? 'true' : undefined"/);
+  assert.match(INDEX_HTML, /watch\(candidateDrawerOpen,[\s\S]*?document\.body\.classList\.toggle\('wb-candidate-drawer-open',\s*isOpen\)/);
+  assert.match(INDEX_HTML, /onBeforeUnmount\(\(\)\s*=>\s*\{[\s\S]*?document\.body\.classList\.remove\('wb-candidate-drawer-open'\)/);
+  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*hidden;/);
+});
+
+test('candidate drawer manages initial focus, traps Tab, and restores its trigger', () => {
+  assert.match(INDEX_HTML, /ref="candidateDrawerElement"/);
+  assert.match(INDEX_HTML, /ref="candidateDrawerCloseButton"/);
+  assert.match(INDEX_HTML, /@keydown\.tab="trapCandidateDrawerFocus"/);
+  assert.match(INDEX_HTML, /function openCandidateDrawer\(id,\s*tab\s*=\s*'resume'\)[\s\S]*?candidateDrawerTriggerElement\s*=\s*document\.activeElement[\s\S]*?nextTick\(focusCandidateDrawer\)/);
+  assert.match(INDEX_HTML, /function focusCandidateDrawer\(\)[\s\S]*?candidateDrawerCloseButton\.value\?\.focus\(\)[\s\S]*?candidateDrawerElement\.value\?\.focus\(\)/);
+  assert.match(INDEX_HTML, /function trapCandidateDrawerFocus\(event\)[\s\S]*?event\.shiftKey[\s\S]*?event\.preventDefault\(\)[\s\S]*?\.focus\(\)/);
+  assert.match(INDEX_HTML, /candidateDrawerTriggerElement\?\.isConnected[\s\S]*?candidateDrawerTriggerElement\.focus\(\)/);
+});
