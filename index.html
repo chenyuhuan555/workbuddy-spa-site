@@ -3451,6 +3451,8 @@
       overflow-y: hidden;
       border: 1px solid #e2e5e8;
       border-radius: 12px;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
       background: #fff;
       box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     }
@@ -3718,7 +3720,7 @@
       .wb-v2-sidebar-toggle { transition: none; }
     }
     .wb-v2-workspace .wb-v2-main:has([data-talent-library-list]) {
-      padding: 0 28px 28px !important;
+      padding: 16px 28px 28px !important;
     }
 
     .wb-v2-workspace .wb-talent-library-workspace {
@@ -3729,7 +3731,7 @@
 
     @media (max-width: 820px) {
       .wb-v2-workspace .wb-v2-main:has([data-talent-library-list]) {
-        padding: 0 20px 24px !important;
+        padding: 12px 20px 24px !important;
       }
     }
     /* V2 uses the Vue account card in the sidebar footer; keep the auth bridge hidden. */

@@ -85,8 +85,13 @@ test('人才库采用浅灰页面底色和三层白色内容区域', () => {
 });
 
 test('人才库标题卡片上方不保留重复空白层', () => {
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)\s*\{\s*padding:\s*0 28px 28px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)\s*\{\s*padding:\s*16px 28px 28px/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{[\s\S]*?padding:\s*0 0 24px/);
+});
+
+test('人才库保留顶部间距并让表格底部保持圆角', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)\s*\{\s*padding:\s*16px 28px 28px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-table-shell\s*\{[\s\S]*?border-bottom-left-radius:\s*12px[\s\S]*?border-bottom-right-radius:\s*12px/);
 });
 
 test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 容器', () => {
@@ -94,7 +99,7 @@ test('人才库使用左侧导航后的全宽工作区而不是居中 max-width 
 
   assert.match(workspace, /class="[^"]*wb-talent-library-workspace[^"]*w-full[^"]*max-w-none[^"]*"/);
   assert.doesNotMatch(workspace, /max-w-7xl\s+mx-auto/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*0 28px 28px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)[\s\S]*?padding:\s*16px 28px 28px/);
 });
 
 test('人才库表格保留横向滚动并使用纯白工作区背景', () => {
