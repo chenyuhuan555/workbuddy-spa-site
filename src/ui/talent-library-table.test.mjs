@@ -117,3 +117,56 @@ test('missing optional fields render as dash instead of throwing', () => {
     assert.equal(row[key], '-');
   }
 });
+
+test('structured touch and recommendation dates come from pipelineEvents only', () => {
+  const application = {
+    candidateId: 'cand-1',
+    communicationLog: '2026-08-13 自由文本日期不得解析',
+    pipelineEvents: [
+      { toStage: 'contacted', occurredAt: '2026-08-10T02:00:00.000Z' },
+      { toStage: 'recommended', occurredAt: '2026-08-11T02:00:00.000Z' },
+      { toStage: 'interview_pending', occurredAt: '2026-08-12T02:00:00.000Z' },
+    ],
+  };
+  assert.equal(Table.applicationTouchedAt(application), '2026-08-10T02:00:00.000Z');
+  assert.equal(Table.applicationRecommendedAt(application), '2026-08-11T02:00:00.000Z');
+  assert.equal(Table.applicationTouchedAt({ communicationLog: '2026-08-13 电话沟通' }), '');
+});
+
+test('date filters combine intake touch recommendation owner Base and stage', () => {
+  const row = {
+    id: 'cand-1', searchText: '马悦驰 清华 机器人 广州', owner: '梓轩', status: 'open',
+    education: '清华博士', currentBase: '深圳', expectedBase: '广州',
+    intakeAt: '2026-08-10T02:00:00.000Z', touchedAt: '2026-08-12T02:00:00.000Z', recommendedAt: '2026-08-11T02:00:00.000Z',
+    flows: [{ stage: 'interview_pending', positionId: 'pos-1' }],
+  };
+  const now = new Date('2026-08-13T12:00:00+08:00');
+  const result = Table.filterRows([row], {
+    query: '清华', owner: '梓轩', base: '广州', stage: 'interview_pending',
+    intake: { preset: 'week' }, touch: { preset: 'week' }, recommendation: { preset: 'week' },
+  }, now);
+  assert.deepEqual(result, [row]);
+  assert.deepEqual(Table.filterRows([row], { intake: { preset: 'today' } }, now), []);
+});
+
+test('custom end date includes the whole selected day', () => {
+  const row = { intakeAt: '2026-08-12T15:59:59.999Z', flows: [], searchText: '' };
+  assert.deepEqual(Table.filterRows([row], { intake: { preset: 'custom', from: '2026-08-12', to: '2026-08-12' } }, new Date('2026-08-13T12:00:00+08:00')), [row]);
+});
+
+test('column preferences keep locked name and recover from corrupt storage', () => {
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  assert.deepEqual(Table.saveColumnKeys(storage, ['flows', 'age']), ['name', 'age', 'flows']);
+  assert.deepEqual(Table.loadColumnKeys(storage), ['name', 'age', 'flows']);
+  values.set(Table.COLUMN_STORAGE_KEY, '{broken');
+  assert.deepEqual(Table.loadColumnKeys(storage), [...Table.DEFAULT_COLUMN_KEYS]);
+});
+
+test('summary counts filtered rows without inventing pending follow-up', () => {
+  const rows = [
+    { intakeAt: '2026-08-10T02:00:00.000Z', touchedAt: '2026-08-12T02:00:00.000Z' },
+    { intakeAt: '2026-07-01T02:00:00.000Z', touchedAt: '-' },
+  ];
+  assert.deepEqual(Table.summarizeRows(rows, new Date('2026-08-13T12:00:00+08:00')), { total: 2, weekIntake: 1, weekTouched: 1 });
+});

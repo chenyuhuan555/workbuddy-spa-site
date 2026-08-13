@@ -31,6 +31,9 @@
     'currentSalary', 'expectedSalary', 'motivation', 'flows', 'owner', 'touchedAt', 'intakeAt',
   ]);
 
+  const COLUMN_STORAGE_KEY = 'wb_talent_library_columns_v1';
+  const TOUCH_STAGES = new Set(['contacted', 'responded']);
+
   const EXTRA_ALIASES = Object.freeze({
     age: ['年龄', 'age'],
     expectedBase: ['期望base地', '期望 Base', '期望base', '期望城市'],
@@ -74,6 +77,113 @@
       .find(value => parseTime(value) > Number.NEGATIVE_INFINITY) || '';
   }
 
+  function eventAt(application, predicate, pick = 'last') {
+    const values = (application?.pipelineEvents || [])
+      .filter(predicate)
+      .map(event => event?.occurredAt)
+      .filter(value => parseTime(value) > Number.NEGATIVE_INFINITY)
+      .sort((a, b) => parseTime(a) - parseTime(b));
+    return pick === 'first' ? values[0] || '' : values.at(-1) || '';
+  }
+
+  function applicationTouchedAt(application) {
+    return eventAt(application, event => event?.type === 'communication' || TOUCH_STAGES.has(event?.toStage));
+  }
+
+  function applicationRecommendedAt(application) {
+    return eventAt(application, event => event?.toStage === 'recommended', 'first');
+  }
+
+  function candidateEventDate(applications, candidateId, resolver, pick = 'last') {
+    const values = (applications || [])
+      .filter(application => application?.candidateId === candidateId && !application.deletedAt && application.status !== 'archived')
+      .map(resolver)
+      .filter(value => parseTime(value) > Number.NEGATIVE_INFINITY)
+      .sort((a, b) => parseTime(a) - parseTime(b));
+    return pick === 'first' ? values[0] || '' : values.at(-1) || '';
+  }
+
+  function startOfLocalDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function rangeForDateFilter(filter = {}, now = new Date()) {
+    const preset = text(filter.preset || 'all');
+    if (!preset || preset === 'all') return null;
+    const today = startOfLocalDay(now);
+    if (preset === 'today') return [today, new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)];
+    if (preset === 'week') {
+      const mondayOffset = (today.getDay() + 6) % 7;
+      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+      return [start, new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7)];
+    }
+    if (preset === 'month') {
+      return [new Date(today.getFullYear(), today.getMonth(), 1), new Date(today.getFullYear(), today.getMonth() + 1, 1)];
+    }
+    if (preset === 'custom' && filter.from && filter.to) {
+      const from = new Date(`${filter.from}T00:00:00`);
+      const to = new Date(`${filter.to}T00:00:00`);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) return ['invalid', 'invalid'];
+      return [from, new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1)];
+    }
+    return ['invalid', 'invalid'];
+  }
+
+  function matchesDateFilter(value, filter, now) {
+    const range = rangeForDateFilter(filter, now);
+    if (!range) return true;
+    const time = parseTime(value);
+    if (range[0] === 'invalid' || time === Number.NEGATIVE_INFINITY) return false;
+    return time >= range[0].getTime() && time < range[1].getTime();
+  }
+
+  function filterRows(rows = [], filters = {}, now = new Date()) {
+    const query = text(filters.query).toLowerCase();
+    return rows.filter(row => {
+      if (query && !text(row.searchText).toLowerCase().includes(query)) return false;
+      if (filters.owner && filters.owner !== 'all' && !text(row.owner).split(/[、,，/／|\n;；]+/).map(text).includes(text(filters.owner))) return false;
+      if (filters.status && filters.status !== 'all' && row.status !== filters.status) return false;
+      if (filters.base && filters.base !== 'all' && !`${text(row.currentBase)} ${text(row.expectedBase)}`.toLowerCase().includes(text(filters.base).toLowerCase())) return false;
+      if (filters.education && filters.education !== 'all' && !text(row.education).toLowerCase().includes(text(filters.education).toLowerCase())) return false;
+      if (filters.stage && filters.stage !== 'all' && !(row.flows || []).some(flow => flow.stage === filters.stage)) return false;
+      if (filters.positionId && filters.positionId !== 'all' && !(row.flows || []).some(flow => flow.positionId === filters.positionId)) return false;
+      if (!matchesDateFilter(row.intakeAt, filters.intake, now)) return false;
+      if (!matchesDateFilter(row.touchedAt, filters.touch, now)) return false;
+      if (!matchesDateFilter(row.recommendedAt, filters.recommendation, now)) return false;
+      return true;
+    });
+  }
+
+  function normalizedColumnKeys(keys) {
+    const allowed = new Set(COLUMN_DEFINITIONS.map(column => column.key));
+    const requested = new Set((Array.isArray(keys) ? keys : []).filter(key => allowed.has(key)));
+    requested.add('name');
+    return COLUMN_DEFINITIONS.map(column => column.key).filter(key => requested.has(key));
+  }
+
+  function loadColumnKeys(storage = globalThis.localStorage) {
+    try {
+      const raw = storage?.getItem(COLUMN_STORAGE_KEY);
+      return raw ? normalizedColumnKeys(JSON.parse(raw)) : [...DEFAULT_COLUMN_KEYS];
+    } catch {
+      return [...DEFAULT_COLUMN_KEYS];
+    }
+  }
+
+  function saveColumnKeys(storage = globalThis.localStorage, keys = DEFAULT_COLUMN_KEYS) {
+    const normalized = normalizedColumnKeys(keys);
+    try { storage?.setItem(COLUMN_STORAGE_KEY, JSON.stringify(normalized)); } catch {}
+    return normalized;
+  }
+
+  function summarizeRows(rows = [], now = new Date()) {
+    return {
+      total: rows.length,
+      weekIntake: rows.filter(row => matchesDateFilter(row.intakeAt, { preset: 'week' }, now)).length,
+      weekTouched: rows.filter(row => matchesDateFilter(row.touchedAt, { preset: 'week' }, now)).length,
+    };
+  }
+
   function activeCandidateFlows({ candidateId, applications = [], positions = [], companies = [], stageLabel = value => value } = {}) {
     const positionById = indexById(positions);
     const companyById = indexById(companies);
@@ -97,6 +207,8 @@
 
   function buildCandidateRow({ candidate = {}, applications = [], positions = [], companies = [], stageLabel } = {}) {
     const flows = activeCandidateFlows({ candidateId: candidate.id, applications, positions, companies, stageLabel });
+    const touchedAt = candidateEventDate(applications, candidate.id, applicationTouchedAt, 'last');
+    const recommendedAt = candidateEventDate(applications, candidate.id, applicationRecommendedAt, 'first');
     return {
       ...candidate,
       candidate,
@@ -113,6 +225,8 @@
       recommendationComment: display(candidate.recommendationComment || extraValue(candidate, 'recommendationComment')),
       remark: display(candidate.remark || extraValue(candidate, 'remark')),
       owner: display(candidate.owner),
+      touchedAt: display(touchedAt),
+      recommendedAt: display(recommendedAt),
       intakeAt: display(candidate.createdAt),
       updatedAt: display(candidate.updatedAt),
       flows,
@@ -129,11 +243,21 @@
   return Object.freeze({
     COLUMN_DEFINITIONS,
     DEFAULT_COLUMN_KEYS,
+    COLUMN_STORAGE_KEY,
     extraValue,
     candidateSearchText,
     applicationBusinessAt,
+    applicationTouchedAt,
+    applicationRecommendedAt,
     activeCandidateFlows,
     buildCandidateRow,
     buildRows,
+    rangeForDateFilter,
+    matchesDateFilter,
+    filterRows,
+    normalizedColumnKeys,
+    loadColumnKeys,
+    saveColumnKeys,
+    summarizeRows,
   });
 });
