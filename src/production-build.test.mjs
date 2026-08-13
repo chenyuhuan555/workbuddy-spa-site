@@ -141,7 +141,7 @@ test('全部前端展示统一隐藏人才、公司或岗位关联失效的推�
     /filterApplications\(visibleApplications\.value, applicationFilters\)/,
     /buildCompanyCountMaps\(visibleWorkbenchV2\.value,/,
     /buildDashboardMetrics\(visibleWorkbenchV2\.value,/,
-    /for \(const application of visibleApplications\.value\)/,
+    /TalentLibrary\.buildRows\(\{[\s\S]*?applications: visibleApplications\.value,/,
     /visibleApplications\.value\.forEach\(a =>/,
     /const allApps = visibleApplications\.value/,
     /visibleApplications\.value\.forEach\(app =>/,

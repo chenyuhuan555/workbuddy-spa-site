@@ -64,9 +64,13 @@ test('company dashboard header keeps a concise subtitle and two focused actions'
 });
 
 test('talent library uses one unified search input for local and cloud resume search', () => {
-  assert.match(html, /placeholder="搜索姓名、公司、技能、简历原文…"/);
-  assert.match(html, /@input="syncUnifiedTalentSearch"/);
-  assert.match(html, /@keyup\.enter="runUnifiedTalentSearch"/);
-  assert.match(html, /顶部搜索框也会检索已同步的简历原文/);
+  const unifiedSearchInputs = html.match(/<input[^>]*v-model="candidateFilters\.query"[^>]*>/g) || [];
+  assert.equal(unifiedSearchInputs.length, 1);
+  assert.match(unifiedSearchInputs[0], /aria-label="搜索姓名、公司、岗位、学校、技能、标签或 Base"/);
+  assert.match(unifiedSearchInputs[0], /placeholder="姓名、公司、岗位、学校、技能、标签或 Base"/);
+  assert.match(unifiedSearchInputs[0], /@input="syncUnifiedTalentSearch"/);
+  assert.match(unifiedSearchInputs[0], /@keyup\.enter="runUnifiedTalentSearch"/);
+  assert.match(html, /talentCloudSearch\.query = query/);
+  assert.match(html, /runUnifiedTalentSearch\(\)[\s\S]*?runTalentCloudSearch\(\)/);
   assert.doesNotMatch(html, /aria-label="搜索简历原文和文件名"/);
 });

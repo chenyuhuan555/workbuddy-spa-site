@@ -345,11 +345,10 @@ test('candidateLastUpdated 优先 updatedAt 并回退 createdAt', () => {
   );
 });
 
-test('模板已暴露完整度/更新时间辅助函数并新增两列表头', () => {
-  assert.match(INDEX_HTML, /candidateResumeCompleteness,/, '辅助函数已加入 setup 返回');
-  assert.match(INDEX_HTML, /candidateLastUpdated,/, '辅助函数已加入 setup 返回');
-  assert.match(INDEX_HTML, /最近更新时间/, '人才库列表新增“最近更新时间”表头');
-  assert.match(INDEX_HTML, /简历完整度/, '人才库列表新增“简历完整度”表头');
+test('人才密集表提供可配置的更新时间列并安全格式化候选人时间', () => {
+  assert.match(INDEX_HTML, /<th v-if="talentLibraryColumnSet\.has\('updatedAt'\)">更新时间<\/th>/);
+  assert.match(INDEX_HTML, /<td v-if="talentLibraryColumnSet\.has\('updatedAt'\)">\{\{ candidate\.updatedAt && candidate\.updatedAt !== '-' \? formatBeijingDateTime\(candidate\.updatedAt\) : '-' \}\}<\/td>/);
+  assert.doesNotMatch(INDEX_HTML, /<th[^>]*>简历完整度<\/th>/, '批准后的可配置列不再包含简历完整度');
 });
 
 test('人才库支持当前页多选并批量软删除关联推进', () => {
@@ -361,10 +360,10 @@ test('人才库支持当前页多选并批量软删除关联推进', () => {
   assert.match(INDEX_HTML, /关联岗位推进会被隐藏/);
 });
 
-test('人才总数只统计未删除候选人', () => {
-  assert.match(INDEX_HTML, /人才总数[\s\S]*?\{\{ activeCandidateCount \}\}/);
-  assert.match(INDEX_HTML, /const activeCandidateCount = computed\(\(\) => workbenchV2\.candidates\.filter\(candidate => !candidate\.deletedAt\)\.length\)/);
-  assert.match(INDEX_HTML, /for \(const candidate of workbenchV2\.candidates\) \{\s*if \(candidate\.deletedAt\) continue;/);
+test('人才库当前结果汇总来自筛选后的候选人行', () => {
+  assert.match(INDEX_HTML, /当前结果[\s\S]*?\{\{ talentLibrarySummary\.total \}\}/);
+  assert.match(INDEX_HTML, /const talentLibrarySummary = computed\(\(\) => TalentLibrary\.summarizeRows\(filteredWorkbenchCandidates\.value\)\);/);
+  assert.match(INDEX_HTML, /const candidateSourceRows = computed\(\(\) => WorkbenchV2\.filterCandidatesByCategory\(\s*WorkbenchV2\.filterCandidates\(workbenchV2\.candidates,/);
 });
 
 test('批量删除候选人后会立即安排云端推送，避免刷新恢复', () => {
