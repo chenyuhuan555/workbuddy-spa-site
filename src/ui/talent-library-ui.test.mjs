@@ -21,7 +21,7 @@ test('derives filtered talent rows from visible Applications without writing wor
 });
 
 test('defines talent filters and column preferences and exposes the talent library bindings', () => {
-  assert.match(INDEX_HTML, /const talentLibraryFilters = reactive\(\{[\s\S]*?base:\s*'',\s*positionId:\s*'all',\s*stage:\s*'all',\s*education:\s*'all',[\s\S]*?intake:\s*\{\s*preset:\s*'all',\s*from:\s*'',\s*to:\s*''\s*\},[\s\S]*?touch:\s*\{\s*preset:\s*'all',\s*from:\s*'',\s*to:\s*''\s*\},[\s\S]*?recommendation:\s*\{\s*preset:\s*'all',\s*from:\s*'',\s*to:\s*''\s*\},[\s\S]*?\}\);/);
+  assert.match(INDEX_HTML, /const talentLibraryFilters = reactive\(\{[\s\S]*?base:\s*'',\s*positionId:\s*'all',\s*stage:\s*'all',\s*education:\s*'',[\s\S]*?intake:\s*\{\s*preset:\s*'all',\s*from:\s*'',\s*to:\s*''\s*\},[\s\S]*?touch:\s*\{\s*preset:\s*'all',\s*from:\s*'',\s*to:\s*''\s*\},[\s\S]*?recommendation:\s*\{\s*preset:\s*'all',\s*from:\s*'',\s*to:\s*''\s*\},[\s\S]*?\}\);/);
   assert.match(INDEX_HTML, /const talentLibraryColumnKeys\s*=\s*ref\(TalentLibrary\.loadColumnKeys\(window\.localStorage\)\);/);
   assert.match(INDEX_HTML, /return \{[\s\S]*?TalentLibrary,[\s\S]*?talentLibraryFilters,\s*talentLibraryColumnKeys,\s*talentLibraryColumns,/);
 });
@@ -41,6 +41,21 @@ test('renders one unified talent search and compact inline summary inside the li
   assert.match(listBlock, /当前结果[\s\S]*?talentLibrarySummary\.total[\s\S]*?本周入库[\s\S]*?talentLibrarySummary\.weekIntake[\s\S]*?本周已触达[\s\S]*?talentLibrarySummary\.weekTouched/);
   assert.doesNotMatch(listBlock, /人才总数[\s\S]*?当前推进中[\s\S]*?可看机会[\s\S]*?已入职/);
   assert.doesNotMatch(listBlock, /云端全文搜索结果/);
+});
+
+test('renders distinct education and candidate asset status filters in the compact filter bar', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.match(listBlock, /<input[^>]*aria-label="按学历筛选人才"[^>]*v-model="talentLibraryFilters\.education"[^>]*placeholder="学历"/);
+  assert.match(listBlock, /<select[^>]*aria-label="按人才求职状态筛选"[^>]*v-model="candidateFilters\.status"[\s\S]*?<option value="all">全部求职状态<\/option>[\s\S]*?<option value="open">可看机会<\/option>[\s\S]*?<option value="passive">被动看机会<\/option>[\s\S]*?<option value="paused">暂不考虑<\/option>[\s\S]*?<option value="onboarded">已入职<\/option>[\s\S]*?<\/select>/);
+  assert.match(listBlock, /<select[^>]*aria-label="按当前流程筛选人才"[^>]*v-model="talentLibraryFilters\.stage"/);
+});
+
+test('renders one fallback when both current company and title are missing', () => {
+  const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
+
+  assert.match(listBlock, /v-if="!candidate\.currentCompany && !candidate\.currentTitle"[^>]*>公司 \/ 岗位待补充<\/span>/);
+  assert.match(listBlock, /v-else[\s\S]*?candidate\.currentCompany \|\| '-'[\s\S]*?candidate\.currentTitle \|\| '-'/);
 });
 
 test('renders the configurable dense talent table with sticky and clamped cells', () => {

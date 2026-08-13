@@ -4449,11 +4449,17 @@
               <label class="text-xs font-medium text-slate-500">Base
                 <input v-model="talentLibraryFilters.base" aria-label="按当前或期望 Base 筛选" type="search" placeholder="城市 / 地区" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
+              <label class="text-xs font-medium text-slate-500">学历
+                <input aria-label="按学历筛选人才" v-model="talentLibraryFilters.education" type="search" placeholder="学历" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
+              </label>
               <label class="text-xs font-medium text-slate-500">归属顾问
                 <select v-model="candidateFilters.owner" aria-label="按人才负责人筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
               </label>
+              <label class="text-xs font-medium text-slate-500">求职状态
+                <select aria-label="按人才求职状态筛选" v-model="candidateFilters.status" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select>
+              </label>
               <label class="text-xs font-medium text-slate-500">流程阶段
-                <select v-model="talentLibraryFilters.stage" aria-label="按流程阶段筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select>
+                <select aria-label="按当前流程筛选人才" v-model="talentLibraryFilters.stage" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select>
               </label>
               <div class="ml-auto flex min-h-[34px] flex-wrap items-center gap-x-3 gap-y-1 border-l border-slate-200 pl-3 text-xs text-slate-500" aria-live="polite">
                 <span>当前结果 <b class="text-slate-800">{{ talentLibrarySummary.total }}</b></span>
@@ -4518,7 +4524,7 @@
                   <td class="wb-talent-table-name-cell">
                     <button type="button" @click="openCandidateDrawer(candidate.id)" class="font-semibold text-slate-900 hover:text-emerald-700 hover:underline">{{ candidate.name || '-' }}</button>
                   </td>
-                  <td v-if="talentLibraryColumnSet.has('companyTitle')"><div class="wb-talent-cell-clamp"><span class="font-medium text-slate-800">{{ candidate.currentCompany || '-' }}</span><span class="block text-xs text-slate-500">{{ candidate.currentTitle || '-' }}</span></div></td>
+                  <td v-if="talentLibraryColumnSet.has('companyTitle')"><div class="wb-talent-cell-clamp"><span v-if="!candidate.currentCompany && !candidate.currentTitle" class="text-slate-500">公司 / 岗位待补充</span><template v-else><span class="font-medium text-slate-800">{{ candidate.currentCompany || '-' }}</span><span class="block text-xs text-slate-500">{{ candidate.currentTitle || '-' }}</span></template></div></td>
                   <td v-if="talentLibraryColumnSet.has('age')">{{ candidate.age }}</td>
                   <td v-if="talentLibraryColumnSet.has('education')"><div class="wb-talent-cell-clamp" :title="candidate.education">{{ candidate.education }}</div></td>
                   <td v-if="talentLibraryColumnSet.has('resumeSummary')"><div class="wb-talent-cell-clamp" :title="candidate.resumeSummary">{{ candidate.resumeSummary }}</div></td>
@@ -11413,7 +11419,7 @@ const vueAppConfig = {
     const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, industrySucceeded: 0, industryFailed: 0, current: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const talentLibraryFilters = reactive({
-      base: '', positionId: 'all', stage: 'all', education: 'all',
+      base: '', positionId: 'all', stage: 'all', education: '',
       intake: { preset: 'all', from: '', to: '' },
       touch: { preset: 'all', from: '', to: '' },
       recommendation: { preset: 'all', from: '', to: '' },
