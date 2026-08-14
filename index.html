@@ -3196,6 +3196,7 @@
     }
 
     .wb-v2-workspace .wb-home-dashboard { padding-bottom: 32px; }
+    .wb-v2-workspace .wb-ai-app-stats { display: none !important; }
     .wb-v2-workspace .wb-home-section { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 24px; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
     .wb-v2-workspace .wb-home-activity-section { border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; background: transparent; padding: 20px 0; box-shadow: none; }
     .wb-v2-workspace .wb-home-activity-section h2 { font-size: 24px; line-height: 1.25; }
@@ -4069,9 +4070,9 @@
     </nav>
 
     <section class="min-w-0 flex-1 flex flex-col">
-      <header class="wb-v2-topbar h-16 flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4" :class="{ 'wb-v2-topbar--talent-hidden': workbenchNav === 'candidates' }">
+      <header v-if="workbenchNav !== 'aiApps'" class="wb-v2-topbar h-16 flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4" :class="{ 'wb-v2-topbar--talent-hidden': workbenchNav === 'candidates' }">
         <h2 class="text-lg font-bold text-slate-900">{{ workbenchNavItems.find(item => item.key === workbenchNav)?.label || '工作台' }}</h2>
-        <div class="hidden lg:flex w-full items-center gap-2 justify-center relative">
+        <div v-if="workbenchNav !== 'aiApps'" class="hidden lg:flex w-full items-center gap-2 justify-center relative">
           <div class="relative flex-1">
             <input v-model="globalSearchQuery" @keyup.enter="runWorkbenchGlobalSearch" type="search" aria-label="全局搜索" placeholder="搜索公司、职位、人才…" class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-sm placeholder:text-slate-400">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -4106,7 +4107,7 @@
           </div>
           <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
           <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : isGuestMode ? '已保存到本浏览器' : '已保存' }}</span>
-          <div class="relative">
+          <div v-if="workbenchNav !== 'aiApps'" class="relative">
             <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="wb-v2-create-button px-4 py-2 rounded-xl text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="background:#226647!important;color:#fff!important;border:1px solid #1b563b!important;box-shadow:0 8px 18px rgba(39,118,83,.18)!important;min-width:98px">＋ 新建</button>
             <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
               <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50" type="button">新建公司</button>
@@ -5281,15 +5282,16 @@
           </div>
         </div>
 
-        <div v-else-if="workbenchNav === 'aiApps' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-5">
-          <div class="flex justify-end">
-            <button v-if="canManageMembers" @click="openAiAppCreate()" type="button" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+        <div v-else-if="workbenchNav === 'aiApps' && workbenchRoute.type === 'list'" class="max-w-none mx-auto space-y-6">
+          <header class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
+            <div><h1 class="text-3xl font-bold tracking-tight text-slate-900">AI应用中心</h1><p class="mt-2 text-base text-slate-500">集中管理团队 AI 应用入口、建设进度与产品沉淀</p></div>
+            <button v-if="canManageMembers" @click="openAiAppCreate()" type="button" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
               新增应用
             </button>
-          </div>
+          </header>
           <!-- 统计卡片 -->
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="wb-ai-app-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center text-center shadow-sm">
               <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
@@ -5322,7 +5324,7 @@
 
           <!-- 应用卡片列表 -->
           <div v-if="aiApplicationsSorted.length" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            <div v-for="app in aiApplicationsSorted" :key="app.id" @click="openAiApplication(app)" @keyup.enter="openAiApplication(app)" tabindex="0" role="link" :aria-label="'打开应用：' + app.name" class="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-200 transition p-5 flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-200">
+            <div v-for="app in aiApplicationsSorted" :key="app.id" @click="openAiApplication(app)" @keyup.enter="openAiApplication(app)" tabindex="0" role="link" :aria-label="'打开应用：' + app.name" class="bg-white border border-slate-200 rounded-xl shadow-none hover:shadow-sm hover:border-emerald-200 transition p-6 flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-200">
               <div class="flex items-start gap-3">
                 <span class="w-11 h-11 flex-shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl" aria-hidden="true">{{ aiApplicationIcon(app) }}</span>
                 <div class="min-w-0 flex-1">
