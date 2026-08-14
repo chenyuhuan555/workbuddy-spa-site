@@ -272,6 +272,7 @@ test('候选人简历将操作与内容视图分成两层', () => {
   assert.ok(resumeBlock, 'resume content block should exist');
   assert.match(resumeBlock, /class="resume-toolbar[^\"]*px-4 py-0/);
   assert.match(resumeBlock, /class="resume-toolbar-actions[^\"]*"/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.resume-toolbar-actions\s*\{[^}]*margin-left:\s*auto/);
   assert.match(resumeBlock, /编辑简历/);
   assert.doesNotMatch(resumeBlock, /<h2[^>]*>简历<\/h2>/);
   assert.match(resumeBlock, /class="[^\"]*h-8[^\"]*rounded-md[^\"]*border-emerald-700[^\"]*bg-transparent/);

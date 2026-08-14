@@ -12,6 +12,7 @@ test('简历页提供文本重试、原件重提取和原件恢复动作', () =>
   assert.match(INDEX_HTML, /从原始文件重新提取并处理/);
   assert.doesNotMatch(INDEX_HTML, /同步原始文件/);
   assert.match(INDEX_HTML, /上传原始简历/);
+  assert.match(INDEX_HTML, /上传原始简历[\s\S]*?原件缺失/);
   assert.match(INDEX_HTML, /originalFileStatus/);
   assert.match(INDEX_HTML, /cloudFilePath/);
 });

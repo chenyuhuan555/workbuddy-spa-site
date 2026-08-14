@@ -3218,6 +3218,7 @@
     .wb-v2-workspace .wb-candidate-drawer .wb-v2-candidate-hero::after { opacity: .55; }
     .wb-v2-workspace .wb-candidate-drawer .resume-toolbar,
     .wb-v2-workspace .wb-candidate-drawer .resume-toolbar + div { border-radius: 0; box-shadow: none; }
+    .wb-v2-workspace .resume-toolbar-actions { margin-left: auto; }
 
     .wb-v2-workspace .wb-candidate-drawer-actions {
       min-height: 38px;
@@ -4957,8 +4958,7 @@
               <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 disabled:opacity-50">
                 <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
               </select>
-              <span v-if="['missing','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" class="text-sm text-amber-600">原件缺失</span>
-              <label v-if="canWrite" class="cursor-pointer text-sm font-semibold text-blue-700 hover:text-blue-800"><span>上传原始简历</span><input aria-label="上传原始简历" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
+              <label v-if="canWrite" class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50" :aria-label="['missing','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus) ? '上传原始简历，原件缺失' : '上传原始简历'"><span>上传原始简历</span><span v-if="['missing','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" class="font-normal text-amber-600">· 原件缺失</span><input aria-label="上传原始简历" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
             </div>
             <div v-if="candidateResumeView.mode === 'text'" class="mt-4">
               <section v-if="candidateResumeEdit.active" class="rounded-xl border border-teal-200 bg-teal-50/40 p-4">
