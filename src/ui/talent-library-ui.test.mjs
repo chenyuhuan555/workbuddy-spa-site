@@ -275,10 +275,11 @@ test('候选人简历将操作与内容视图分成两层', () => {
   assert.match(resumeBlock, /编辑简历/);
   assert.match(resumeBlock, /class="[^\"]*h-8[^\"]*rounded-md[^\"]*border-emerald-700[^\"]*bg-transparent/);
   assert.match(resumeBlock, /重新处理[\s\S]*?<svg[\s\S]*?d="m6 9 6 6 6-6"/);
-  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-5[^\"]*border-b/);
+  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-5/);
   assert.doesNotMatch(resumeBlock, /电子简历[\s\S]*?<span aria-hidden="true">/);
-  assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
-  assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
+  assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?电子简历/);
+  assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?原始文件/);
+  assert.doesNotMatch(resumeBlock, /candidateResumeView\.mode === '[^']+'[\s\S]*?border-b-2/);
   assert.doesNotMatch(resumeBlock, /inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm/);
 });
 

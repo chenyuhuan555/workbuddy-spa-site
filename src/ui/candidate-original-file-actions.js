@@ -23,7 +23,7 @@ export function createCandidateOriginalFileActions({
     const version = activeVersion?.value ?? activeVersion;
     if (!candidate || !version) return;
     try { await loadRecord(version); await enqueueSync(candidate.id, version.id); showToast('原始文件已同步，可在其他设备查看'); }
-    catch (error) { if (error?.code === 'ORIGINAL_NOT_FOUND') { markMissing(version); await saveBackground(); } showToast(error.message || '原始文件同步失败，请重试', 'error'); }
+    catch (error) { if (error?.code === 'ORIGINAL_NOT_FOUND') { markMissing(version); await saveBackground(); } showToast(error.message || '原件缺失', 'error'); }
   }
   async function replace(event) {
     if (!requireWritePermission()) return;

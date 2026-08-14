@@ -10,8 +10,8 @@ const ORIGINAL_FILE_ACTIONS = readFileSync(new URL('./candidate-original-file-ac
 test('简历页提供文本重试、原件重提取和原件恢复动作', () => {
   assert.match(INDEX_HTML, /使用现有文本重新处理/);
   assert.match(INDEX_HTML, /从原始文件重新提取并处理/);
-  assert.match(INDEX_HTML, /同步原始文件/);
-  assert.match(INDEX_HTML, /重新上传原件/);
+  assert.doesNotMatch(INDEX_HTML, /同步原始文件/);
+  assert.match(INDEX_HTML, /上传原始简历/);
   assert.match(INDEX_HTML, /originalFileStatus/);
   assert.match(INDEX_HTML, /cloudFilePath/);
 });
@@ -59,7 +59,8 @@ test('新增简历动作保持按钮类型、页签语义和文件输入可访�
   assert.match(INDEX_HTML, />编辑简历<\/button>/);
   assert.match(INDEX_HTML, /重新处理 <svg[\s\S]*?d="m6 9 6 6 6-6"/);
   assert.match(INDEX_HTML, /candidateResumeProcessMenuOpen/);
-  assert.match(INDEX_HTML, /candidateResumeView\.mode === 'text'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
+  assert.match(INDEX_HTML, /candidateResumeView\.mode === 'text'[\s\S]*?电子简历/);
+  assert.doesNotMatch(INDEX_HTML, /candidateResumeView\.mode === 'text'[\s\S]*?border-b-2/);
   assert.match(INDEX_HTML, /version\.formatStatus === 'processing'/);
-  assert.match(INDEX_HTML, /<input[^>]+aria-label="重新上传当前简历原件"[^>]+type="file"/);
+  assert.match(INDEX_HTML, /<input[^>]+aria-label="上传原始简历"[^>]+type="file"/);
 });

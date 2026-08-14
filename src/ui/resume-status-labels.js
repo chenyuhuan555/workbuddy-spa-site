@@ -16,7 +16,7 @@
     if (version.originalFileStatus === 'synced') return '原件已同步，可跨设备查看';
     if (version.originalFileStatus === 'sync-failed') return '原件缺失';
     if (version.originalFileStatus === 'missing') return '原件缺失';
-    return '原件仅在已缓存设备可用';
+    return '';
   }
 
   return Object.freeze({ resumeAiStageLabel, resumeOriginalStatusLabel });

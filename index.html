@@ -4900,9 +4900,9 @@
                 </div>
                 </div>
               </div>
-              <div class="candidate-resume-view-tabs mt-5 flex items-center gap-6 border-b border-slate-200" role="tablist" aria-label="简历内容视图">
-                <button type="button" role="tab" :aria-selected="candidateResumeView.mode === 'text'" @click="switchCandidateResumeMode('text')" :class="['border-b-2 px-0 pb-3 text-sm font-medium transition', candidateResumeView.mode === 'text' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700']">电子简历</button>
-                <button v-if="hasCandidateResumeOriginal" type="button" role="tab" :aria-selected="candidateResumeView.mode === 'original'" @click="switchCandidateResumeMode('original')" :class="['border-b-2 px-0 pb-3 text-sm font-medium transition', candidateResumeView.mode === 'original' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700']">原始文件</button>
+              <div class="candidate-resume-view-tabs mt-5 flex items-center gap-6" role="tablist" aria-label="简历内容视图">
+                <button type="button" role="tab" :aria-selected="candidateResumeView.mode === 'text'" @click="switchCandidateResumeMode('text')" :class="['px-0 py-1 text-sm transition', candidateResumeView.mode === 'text' ? 'font-medium text-emerald-700' : 'text-slate-500 hover:text-slate-700']">电子简历</button>
+                <button v-if="hasCandidateResumeOriginal" type="button" role="tab" :aria-selected="candidateResumeView.mode === 'original'" @click="switchCandidateResumeMode('original')" :class="['px-0 py-1 text-sm transition', candidateResumeView.mode === 'original' ? 'font-medium text-emerald-700' : 'text-slate-500 hover:text-slate-700']">原始文件</button>
               </div>
             </div>
             <div class="border-t border-slate-200 bg-white px-6 pt-4 pb-6">
@@ -4910,9 +4910,8 @@
               <select aria-label="选择候选人简历版本" v-if="selectedCandidateResumeVersions.length > 1" :value="activeCandidateResumeVersion?.id" @change="switchCandidateResumeVersion($event.target.value)" :disabled="candidateResumeEdit.active" class="ml-auto rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 disabled:opacity-50">
                 <option v-for="v in selectedCandidateResumeVersions" :key="v.id" :value="v.id">{{ v.fileName || '文本简历' }}</option>
               </select>
-              <span class="text-sm text-slate-500">{{ resumeOriginalStatusLabel(activeCandidateResumeVersion) }}</span>
-              <button v-if="canWrite && ['local-only','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" type="button" @click="retryCandidateResumeFileSync" :disabled="activeCandidateResumeVersion.originalFileStatus === 'syncing'" class="font-semibold text-emerald-700 hover:text-emerald-800">同步原始文件</button>
-              <label v-if="canWrite" class="text-sm font-semibold text-blue-700 hover:text-blue-800 cursor-pointer"><span>{{ activeCandidateResumeVersion.originalFileStatus === 'missing' ? '重新上传原件' : '上传原始简历' }}</span><input aria-label="重新上传当前简历原件" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
+              <span v-if="['missing','sync-failed'].includes(activeCandidateResumeVersion.originalFileStatus)" class="text-sm text-amber-600">原件缺失</span>
+              <label v-if="canWrite" class="cursor-pointer text-sm font-semibold text-blue-700 hover:text-blue-800"><span>上传原始简历</span><input aria-label="上传原始简历" type="file" accept=".pdf,.doc,.docx,.txt,image/*" class="sr-only" @change="replaceCandidateResumeOriginal"></label>
             </div>
             <div v-if="candidateResumeView.mode === 'text'" class="mt-4">
               <section v-if="candidateResumeEdit.active" class="rounded-xl border border-teal-200 bg-teal-50/40 p-4">
@@ -13897,7 +13896,7 @@ const vueAppConfig = {
       } catch (e) {
         if (e?.code === 'ORIGINAL_NOT_FOUND') {
           window.WorkBuddyResumeOriginalGuards.markOriginalMissing(version);
-          candidateResumeView.error = '当前设备和云端均没有原始文件，可重新上传原件';
+          candidateResumeView.error = '原件缺失';
           await saveResumeBackgroundState();
         } else {
           candidateResumeView.error = ResumeFileSync.sanitizeFileError(e).message;
@@ -23068,7 +23067,7 @@ ${String(resumeText || '').slice(0, 9000)}`
         }
       }
       const rawUrl = resumeIds.map(resumeId => resumeUrlMap[resumeId]).find(Boolean);
-      if (!rawUrl) throw new Error('原简历未同步，请在旧版重新同步或重新上传');
+      if (!rawUrl) throw new Error('原件缺失');
       const r = await fetchWithTimeout(rawUrl, { headers: rawFileHeaders() }, FETCH_TIMEOUT, '加载简历文件');
       if (!r.ok) throw new Error('简历加载失败');
       resume.data = parseResumeFileData(await r.text(), resume);
