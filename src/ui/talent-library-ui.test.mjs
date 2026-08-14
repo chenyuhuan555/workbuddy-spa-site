@@ -395,6 +395,7 @@ test('人才详情推荐记录和面试进度展示候选人的全部推进关�
 
 test('人才详情跟进记录复用 followups 和 pipelineEvents 并按时间倒序', () => {
   assert.match(INDEX_HTML, /selectedCandidateFollowupItems/);
+  assert.match(INDEX_HTML, /candidateCategoriesExpanded, selectedCandidateFollowupItems/);
   assert.match(INDEX_HTML, /followups/);
   assert.match(INDEX_HTML, /pipelineEvents/);
   assert.match(INDEX_HTML, /sort\(\(a, b\) =>[\s\S]*?Date\.parse/);
