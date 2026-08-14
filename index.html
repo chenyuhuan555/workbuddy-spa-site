@@ -3997,9 +3997,8 @@
       <div class="wb-v2-sidebar-navigation flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         <button v-for="item in workbenchNavItems" :key="item.key" type="button" :aria-label="item.label" :title="workbenchSidebarCollapsed ? item.label : ''"
           @click="selectWorkbenchNav(item.key)"
-          :class="['w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all flex items-center gap-3',
-            workbenchNav === item.key ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50',
-            item.key === 'ai' ? 'justify-center' : '']">
+          :class="['w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all flex items-center justify-start gap-3',
+            workbenchNav === item.key ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50']">
           <!-- 图标 -->
           <span v-if="item.key === 'dashboard'" class="w-5 h-5 flex-shrink-0 flex items-center justify-center">
             <svg v-if="workbenchNav !== 'dashboard'" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1"/></svg>
