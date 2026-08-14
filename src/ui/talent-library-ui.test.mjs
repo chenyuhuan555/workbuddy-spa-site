@@ -245,6 +245,7 @@ test('candidate drawer keeps the talent list visible as a non-modal context pane
   assert.match(INDEX_HTML, /watch\(candidateDrawerOpen,[\s\S]*?document\.body\.classList\.toggle\('wb-candidate-drawer-open',\s*isOpen\)/);
   assert.match(INDEX_HTML, /onBeforeUnmount\(\(\)\s*=>\s*\{[\s\S]*?document\.body\.classList\.remove\('wb-candidate-drawer-open'\)/);
   assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*visible;/);
+  assert.doesNotMatch(INDEX_HTML, /fixed inset-0 z-40 bg-slate-950\/30/);
 });
 
 test('candidate drawer manages initial focus, traps Tab, and restores its trigger', () => {
@@ -258,7 +259,7 @@ test('candidate drawer manages initial focus, traps Tab, and restores its trigge
 });
 
 test('candidate drawer uses a softer panel surface and lightweight top actions', () => {
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-candidate-drawer\s*\{[\s\S]*?border-radius:\s*18px 0 0 18px[\s\S]*?box-shadow:\s*-12px 0 32px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-candidate-drawer\s*\{[\s\S]*?top:\s*16px[\s\S]*?right:\s*16px[\s\S]*?border-radius:\s*16px[\s\S]*?box-shadow:\s*0 8px 24px/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-actions flex items-center justify-end gap-2"/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-open-full rounded-lg px-3 py-2"/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-close inline-flex h-9 w-9 items-center justify-center rounded-full border/);
@@ -266,14 +267,15 @@ test('candidate drawer uses a softer panel surface and lightweight top actions',
 });
 
 test('候选人简历将操作与内容视图分成两层', () => {
-  const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="rounded-xl border border-slate-200 bg-white p-5">/)?.[0] || '';
+  const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="border-t border-slate-200 bg-white px-6 pt-4 pb-6">/)?.[0] || '';
   assert.ok(resumeBlock, 'resume content block should exist');
-  assert.match(resumeBlock, /class="resume-toolbar[^\"]*rounded-xl/);
+  assert.match(resumeBlock, /class="resume-toolbar[^\"]*px-6 py-0/);
   assert.match(resumeBlock, /class="resume-toolbar-actions[^\"]*"/);
   assert.match(resumeBlock, /编辑简历/);
-  assert.match(resumeBlock, /class="[^\"]*h-10[^\"]*rounded-lg[^\"]*bg-emerald-700/);
+  assert.match(resumeBlock, /class="[^\"]*h-8[^\"]*rounded-md[^\"]*border-emerald-700[^\"]*bg-transparent/);
   assert.match(resumeBlock, /重新处理[\s\S]*?<svg[\s\S]*?d="m6 9 6 6 6-6"/);
-  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*border-b/);
+  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-5[^\"]*border-b/);
+  assert.doesNotMatch(resumeBlock, /电子简历[\s\S]*?<span aria-hidden="true">/);
   assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
   assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
   assert.doesNotMatch(resumeBlock, /inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm/);
