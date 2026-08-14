@@ -3651,39 +3651,45 @@
     }
 
     .wb-v2-workspace .wb-talent-filter-bar {
-      gap: 8px;
+      align-items: flex-start;
+      gap: 12px;
       padding: 0;
       border: 0;
       background: transparent;
     }
 
-    .wb-v2-workspace .wb-talent-primary-filter {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 42px;
-      padding: 0 12px;
-      border: 1px solid #e2e7eb;
-      border-radius: 10px;
-      background: #fff;
-      color: #273444;
-      font-size: 14px;
+    .wb-v2-workspace .wb-talent-filter-field {
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      gap: 4px;
+      min-height: 64px;
+      min-width: 150px;
+      color: #64748b;
+      font-size: 12px;
       font-weight: 600;
     }
 
-    .wb-v2-workspace .wb-talent-primary-filter select {
-      width: auto;
-      min-width: 72px;
-      min-height: 32px;
+    .wb-v2-workspace .wb-talent-filter-field input,
+    .wb-v2-workspace .wb-talent-filter-field select {
+      width: 100%;
+      min-width: 0;
+      min-height: 36px;
       margin-top: 0;
-      padding: 0 20px 0 0;
-      border: 0 !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      box-shadow: none !important;
+      padding: 0 12px;
+      border: 1px solid #e2e7eb !important;
+      border-radius: 9px !important;
+      background: #fff !important;
       color: #273444 !important;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
+      box-shadow: none !important;
+    }
+
+    .wb-v2-workspace .wb-talent-filter-field.wb-talent-primary-filter {
+      min-width: 195px;
     }
 
     @media (max-width: 1024px) {
@@ -4615,27 +4621,27 @@
                 <select v-model="talentLibraryFilters.intake.preset" aria-label="入库时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.intake.preset === 'custom'"><input v-model="talentLibraryFilters.intake.from" type="date" aria-label="入库开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.intake.to" type="date" aria-label="入库结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
-              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">触达时间
+              <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">触达时间
                 <select v-model="talentLibraryFilters.touch.preset" aria-label="触达时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.touch.preset === 'custom'"><input v-model="talentLibraryFilters.touch.from" type="date" aria-label="触达开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.touch.to" type="date" aria-label="触达结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
-              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">推荐时间
+              <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">推荐时间
                 <select v-model="talentLibraryFilters.recommendation.preset" aria-label="推荐时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
               </label>
               <template v-if="talentLibraryFilters.recommendation.preset === 'custom'"><input v-model="talentLibraryFilters.recommendation.from" type="date" aria-label="推荐开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="talentLibraryFilters.recommendation.to" type="date" aria-label="推荐结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
-              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">岗位
+              <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">岗位
                 <select v-model="talentLibraryFilters.positionId" aria-label="按岗位筛选人才" class="mt-1 w-full max-w-44 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部岗位</option><option v-for="position in workbenchV2.positions" :key="position.id" :value="position.id">{{ position.title }}</option></select>
               </label>
-              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">Base
+              <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">Base
                 <input v-model="talentLibraryFilters.base" aria-label="按当前或期望 Base 筛选" type="search" placeholder="城市 / 地区" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
-              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">学历
+              <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">学历
                 <input aria-label="按学历筛选人才" v-model="talentLibraryFilters.education" type="search" placeholder="学历" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
               <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">归属顾问
                 <select v-model="candidateFilters.owner" aria-label="按人才负责人筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
               </label>
-              <label v-if="talentLibraryMoreFiltersOpen" class="text-xs font-medium text-slate-500">求职状态
+              <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">求职状态
                 <select aria-label="按人才求职状态筛选" v-model="candidateFilters.status" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select>
               </label>
               <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">流程阶段
@@ -5298,7 +5304,7 @@
         <section id="v2-kb-section" class="kb-section">
           <div class="wb-knowledge-card bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div class="wb-toolbox-header px-6 py-4 bg-white border-b border-slate-100 flex items-center gap-2">
-              <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
               </svg>
@@ -5460,30 +5466,30 @@
 
         <!-- ======== AI资讯 · Builders Digest ======== -->
         <section id="v2-ai-news-section">
-          <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
-            <div class="px-6 py-4 bg-gradient-to-r from-teal-600 to-emerald-600 flex items-center gap-2">
-              <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="wb-knowledge-card bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="wb-knowledge-section-header flex items-center gap-2 border-b border-slate-100 bg-white px-6 py-4">
+              <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a8 8 0 01-11.314 0m11.314-6.856a8 8 0 00-11.314 0M12 6v.01M12 18v.01M4.93 4.93l.01.01M19.07 19.07l.01.01M4.93 19.07l.01-.01M19.07 4.93l.01-.01"/>
               </svg>
-              <h2 class="text-white font-bold text-lg">AI资讯 · Builders Digest</h2>
-              <span v-if="aiNewsLastUpdated" class="text-white/70 text-xs ml-2">上次更新：{{ aiNewsLastUpdated }}</span>
+              <h2 class="text-slate-900 font-bold text-lg">AI资讯 · Builders Digest</h2>
+              <span v-if="aiNewsLastUpdated" class="text-slate-400 text-xs ml-2">上次更新：{{ aiNewsLastUpdated }}</span>
               <div class="ml-auto flex items-center gap-2">
                 <button @click="generateAiNewsSummary" :disabled="aiNewsLoading || aiNewsTranslating || aiNewsSummarizing || aiNewsWorkflowLoading || !aiNewsItems.length" type="button"
-                  class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition disabled:opacity-60">
+                  class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60">
                   <svg class="w-4 h-4" :class="{'animate-spin': aiNewsSummarizing}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l.5 3.2a2 2 0 001.7 1.7l3.2.5-3.2.5a2 2 0 00-1.7 1.7L12 14l-.5-3.2a2 2 0 00-1.7-1.7l-3.2-.5 3.2-.5a2 2 0 001.7-1.7L12 3zM18 14l.35 2.1a2 2 0 001.55 1.55L22 18l-2.1.35a2 2 0 00-1.55 1.55L18 22l-.35-2.1a2 2 0 00-1.55-1.55L14 18l2.1-.35a2 2 0 001.55-1.55L18 14z"/>
                   </svg>
                   {{ aiNewsSummarizing ? '生成中...' : '生成今日AI摘要' }}
                 </button>
                 <button @click="generateAiRecruitingWorkflowInsight" :disabled="aiNewsLoading || aiNewsTranslating || aiNewsSummarizing || aiNewsWorkflowLoading || !aiNewsItems.length" type="button"
-                  class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition disabled:opacity-60">
+                  class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60">
                   <svg class="w-4 h-4" :class="{'animate-spin': aiNewsWorkflowLoading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                   </svg>
                   {{ aiNewsWorkflowLoading ? '生成中...' : '猎头工作流启发' }}
                 </button>
                 <button @click="refreshAiNews" :disabled="aiNewsLoading || aiNewsTranslating || aiNewsSummarizing || aiNewsWorkflowLoading" type="button"
-                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white hover:bg-emerald-50 text-emerald-600 text-sm font-bold transition disabled:opacity-60 shadow-sm">
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60">
                   <svg class="w-4 h-4" :class="{'animate-spin': aiNewsLoading || aiNewsTranslating}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                   </svg>
@@ -5619,23 +5625,23 @@
 
         <!-- ======== 📡 全网动态 · 活水雷达 ======== -->
         <section id="v2-radar-section">
-          <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
-            <div class="px-6 py-4 bg-gradient-to-r from-teal-600 to-emerald-600 flex items-center gap-2">
-              <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="wb-knowledge-card bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="wb-knowledge-section-header flex items-center gap-2 border-b border-slate-100 bg-white px-6 py-4">
+              <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
-              <h2 class="text-white font-bold text-lg">全网动态 · 活水雷达</h2>
-              <span v-if="radarLastUpdated" class="text-white/70 text-xs ml-2">上次更新：{{ radarLastUpdated }}</span>
+              <h2 class="text-slate-900 font-bold text-lg">全网动态 · 活水雷达</h2>
+              <span v-if="radarLastUpdated" class="text-slate-400 text-xs ml-2">上次更新：{{ radarLastUpdated }}</span>
               <div class="ml-auto flex items-center gap-2">
                 <button @click="refreshRadar" :disabled="radarLoading" type="button"
-                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white hover:bg-emerald-50 text-emerald-600 text-sm font-bold transition disabled:opacity-60 shadow-sm">
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60">
                   <svg class="w-4 h-4" :class="{'animate-spin': radarLoading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                   </svg>
                   {{ radarLoading ? '分析中...' : '刷新分析' }}
                 </button>
                 <button @click="radarSettingsOpen = !radarSettingsOpen" type="button"
-                  class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition"
+                  class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                   :title="radarSettingsOpen ? '关闭设置' : '自动抓取设置'">
                   ⚙️ 设置
                 </button>
@@ -6001,7 +6007,7 @@
 
           <section class="rounded-xl border border-slate-200 bg-slate-50/70">
             <button type="button" @click="batchCategorySelectorOpen = !batchCategorySelectorOpen" class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700">
-              <span>上传后归类人才 <span v-if="batchUpload.defaultCategoryIds.length" class="ml-1 text-xs font-normal text-emerald-700">已选 {{ batchUpload.defaultCategoryIds.length }} 类</span></span><span class="text-slate-400">{{ batchCategorySelectorOpen ? '收起' : '展开选择' }}⌄</span>
+              <span>上传后归类人才 <span v-if="batchUpload.defaultCategoryIds.length" class="ml-1 text-xs font-normal text-emerald-700">已选 {{ batchUpload.defaultCategoryIds.length }} 类</span></span><span class="inline-flex items-center gap-1.5 text-slate-400"><span>{{ batchCategorySelectorOpen ? '收起' : '展开选择' }}</span><svg aria-hidden="true" class="h-4 w-4 transition-transform" :class="batchCategorySelectorOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></span>
             </button>
             <div v-if="batchCategorySelectorOpen" class="border-t border-slate-200 px-4 py-3">
               <p class="mb-3 text-xs text-slate-500">拖拽或批量上传的简历会默认归入所选人才分类；不选择则保持未分类。</p>

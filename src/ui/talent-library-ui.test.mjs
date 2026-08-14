@@ -316,3 +316,30 @@ test('AI工具箱和知识库复用推进中心的轻量工作区表面', () => 
   assert.match(INDEX_HTML, /class="wb-knowledge-tabs flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1"/);
   assert.match(INDEX_HTML, /class="wb-knowledge-card bg-white rounded-xl border border-slate-200 overflow-hidden"/);
 });
+
+test('知识库标题区不使用大面积渐变铺色', () => {
+  const knowledgeBlock = INDEX_HTML.match(/<!-- ======== 📚 团队知识库[\s\S]*?<\/template>/)?.[0] || '';
+  assert.ok(knowledgeBlock, 'knowledge page block should exist');
+  assert.match(knowledgeBlock, /class="wb-knowledge-section-header flex items-center gap-2 border-b border-slate-100 bg-white px-6 py-4"/);
+  assert.match(knowledgeBlock, /<h2 class="text-slate-900 font-bold text-lg">AI资讯 · Builders Digest<\/h2>/);
+  assert.match(knowledgeBlock, /<h2 class="text-slate-900 font-bold text-lg">全网动态 · 活水雷达<\/h2>/);
+  assert.doesNotMatch(knowledgeBlock, /bg-gradient-to-r from-teal-600 to-emerald-600/);
+  assert.doesNotMatch(knowledgeBlock, /text-white font-bold text-lg">(?:AI资讯 · Builders Digest|全网动态 · 活水雷达)/);
+});
+
+test('人才上传归类展开控件使用 SVG 下箭头', () => {
+  const uploadCategoryRow = INDEX_HTML.match(/上传后归类人才[\s\S]*?<\/button>/)?.[0] || '';
+  assert.match(uploadCategoryRow, /展开选择/);
+  assert.match(uploadCategoryRow, /<svg[^>]*class="h-4 w-4 transition-transform"/);
+  assert.match(uploadCategoryRow, /d="m6 9 6 6 6-6"/);
+  assert.doesNotMatch(uploadCategoryRow, /展开选择[^<]*⌄/);
+});
+
+test('人才库筛选字段使用统一的纵向标签和控件尺寸', () => {
+  const filterBar = INDEX_HTML.match(/<div class="wb-talent-filter-bar[\s\S]*?<\/div>\s*<\/div>\s*<section v-if="talentCloudSearch/)?.[0] || '';
+  assert.ok(filterBar, 'talent filter bar should exist');
+  assert.match(filterBar, /class="wb-talent-filter-field text-xs font-medium text-slate-500">触达时间/);
+  assert.match(filterBar, /class="wb-talent-filter-field text-xs font-medium text-slate-500">学历/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field\s*\{[\s\S]*?flex-direction:\s*column[\s\S]*?min-height:\s*64px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field input,[\s\S]*?\.wb-v2-workspace \.wb-talent-filter-field select\s*\{[\s\S]*?min-height:\s*36px/);
+});
