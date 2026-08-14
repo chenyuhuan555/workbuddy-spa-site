@@ -233,6 +233,19 @@ test('新版账号卡在侧栏收起后只显示头像', () => {
   );
 });
 
+test('侧栏底部账号区域使用轻量分隔和透明样式', () => {
+  assert.match(INDEX_HTML, /class="wb-account-shell relative"/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace\s+\.wb-account-shell\s*\{[^}]*border-top:\s*1px solid/s);
+  assert.match(INDEX_HTML, /class="wb-account-card\s+w-full"/);
+  assert.doesNotMatch(INDEX_HTML, /wb-account-card w-full rounded-2xl border/);
+  assert.match(INDEX_HTML, /class="wb-account-avatar[^\"]*h-10 w-10/);
+  assert.match(INDEX_HTML, /class="mt-0\.5 block text-xs font-normal text-slate-500"\>\{\{ accountRoleLabel \}\}/);
+});
+
+test('侧栏将核心导航与拓展导航分组', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace\s+\.wb-v2-sidebar-navigation\s*>\s*button:nth-of-type\(5\)\s*\{[^}]*border-top:\s*1px solid/s);
+});
+
 test('认证完成后账号栏仍挂载到新版侧栏并切换为 flex 布局', () => {
   const dockingBody = functionBody('dockAccountBar');
 
