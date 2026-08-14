@@ -244,7 +244,7 @@ test('candidate drawer keeps the talent list visible as a non-modal context pane
   assert.doesNotMatch(detailWrapper, /:aria-modal="candidateDrawerOpen \? 'true'/);
   assert.match(INDEX_HTML, /watch\(candidateDrawerOpen,[\s\S]*?document\.body\.classList\.toggle\('wb-candidate-drawer-open',\s*isOpen\)/);
   assert.match(INDEX_HTML, /onBeforeUnmount\(\(\)\s*=>\s*\{[\s\S]*?document\.body\.classList\.remove\('wb-candidate-drawer-open'\)/);
-  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*visible;/);
+  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*hidden;/);
   assert.doesNotMatch(INDEX_HTML, /fixed inset-0 z-40 bg-slate-950\/30/);
 });
 
@@ -259,9 +259,10 @@ test('candidate drawer manages initial focus, traps Tab, and restores its trigge
 });
 
 test('candidate drawer uses a softer panel surface and lightweight top actions', () => {
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-candidate-drawer\s*\{[\s\S]*?top:\s*16px[\s\S]*?right:\s*16px[\s\S]*?border-radius:\s*16px[\s\S]*?box-shadow:\s*0 8px 24px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-candidate-drawer\s*\{[\s\S]*?top:\s*50%[\s\S]*?left:\s*50%[\s\S]*?border-radius:\s*24px[\s\S]*?box-shadow:\s*0 24px 70px/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-actions flex items-center justify-end gap-2"/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-open-full rounded-lg px-3 py-2"/);
+  assert.match(INDEX_HTML, /class="wb-candidate-drawer-more rounded-lg px-2 py-2/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-close inline-flex h-9 w-9 items-center justify-center rounded-full border/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-candidate-tabs\s*\{[\s\S]*?margin-top:\s*24px[\s\S]*?border-bottom:\s*1px solid #edf1ef/);
 });
@@ -305,7 +306,7 @@ test('候选人详情作为非模态并排面板保留人才列表可见可操�
   assert.match(detailWrapper, /:class="\[[^\]]*'wb-candidate-drawer': candidateDetailMode === 'drawer'/);
   assert.doesNotMatch(detailWrapper, /:role="candidateDrawerOpen \? 'dialog'/);
   assert.doesNotMatch(detailWrapper, /:aria-modal="candidateDrawerOpen \? 'true'/);
-  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*visible;/);
+  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*hidden;/);
 });
 
 test('AI工具箱和知识库复用推进中心的轻量工作区表面', () => {
