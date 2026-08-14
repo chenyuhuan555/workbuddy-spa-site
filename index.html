@@ -3195,9 +3195,10 @@
       font-size: 20px;
     }
 
-    .wb-v2-workspace .wb-home-dashboard { padding-bottom: 32px; }
+    .wb-v2-workspace .wb-home-dashboard { padding-top: 32px; padding-bottom: 32px; }
     .wb-v2-workspace .wb-ai-app-stats { display: none !important; }
     .wb-v2-workspace .wb-home-section { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 24px; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
+    .wb-v2-workspace .wb-home-funnel-section { min-height: auto; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; background: transparent; padding: 0 0 34px; box-shadow: none; }
     .wb-v2-workspace .wb-home-activity-section { border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; background: transparent; padding: 20px 0; box-shadow: none; }
     .wb-v2-workspace .wb-home-activity-section h2 { font-size: 24px; line-height: 1.25; }
     .wb-v2-workspace .wb-home-todo-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 6px; color: #64748b; font-size: 14px; }
@@ -3205,17 +3206,17 @@
     .wb-v2-workspace .wb-home-todo-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #f1f5f9; margin-top: 16px; padding-top: 18px; color: #64748b; font-size: 15px; }
     .wb-v2-workspace .wb-home-review-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin-top: 16px; color: #64748b; font-size: 15px; }
     .wb-v2-workspace .wb-home-review-stats strong { margin-left: 4px; color: #0f172a; font-size: 26px; line-height: 1; }
-    .wb-v2-workspace .wb-home-note { border-top: 1px solid #e2e8f0; padding-top: 12px; }
-    .wb-v2-workspace .wb-home-note textarea { display: block; width: 100%; min-height: 66px; margin-top: 6px; resize: vertical; border: 0; background: transparent; padding: 0; color: #64748b; font-size: 15px; line-height: 1.55; outline: none; }
+    .wb-v2-workspace .wb-home-note { display: grid; grid-template-columns: 32px 150px minmax(0, 1fr) 18px; align-items: center; gap: 16px; border-top: 0; border-bottom: 1px solid #e2e8f0; padding: 18px 0; }
+    .wb-v2-workspace .wb-home-note textarea { display: block; width: 100%; min-height: 36px; resize: vertical; border: 0; background: transparent; padding: 0; color: #344054; font-size: 16px; line-height: 1.55; outline: none; }
     .wb-v2-workspace .wb-home-note textarea:focus { color: #334155; }
-    .wb-v2-workspace .wb-home-funnel { min-height: min(620px, calc(100vh - 150px)); }
+    .wb-v2-workspace .wb-home-funnel { min-height: auto; }
     .wb-v2-workspace .wb-home-control { min-height: 38px; border: 1px solid #dbe3e8; border-radius: 8px; background: #fff; padding: 0 12px; font-size: 13px; color: #334155; }
     .wb-v2-workspace .wb-home-primary, .wb-v2-workspace .wb-home-secondary { min-height: 38px; border-radius: 8px; padding: 0 14px; font-size: 15px; font-weight: 600; }
     .wb-v2-workspace .wb-home-primary { background: #24734f; color: #fff; }
     .wb-v2-workspace .wb-home-primary:hover { background: #1d6042; }
     .wb-v2-workspace .wb-home-secondary { border: 1px solid #dbe3e8; color: #475569; background: #fff; }
     .wb-v2-workspace .wb-home-secondary:hover { background: #f8fafc; }
-    .wb-v2-workspace .wb-home-funnel-flow, .wb-v2-workspace .wb-home-source-list { border: 1px solid #eef2f3; border-radius: 10px; padding: 16px; }
+    .wb-v2-workspace .wb-home-funnel-flow, .wb-v2-workspace .wb-home-source-list { border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; padding: 0; }
     .wb-v2-workspace .wb-home-funnel { font-size: 16px; }
     .wb-v2-workspace .wb-home-funnel h2 { font-size: 30px; }
     .wb-v2-workspace .wb-home-funnel .wb-home-control { font-size: 15px; }
@@ -3224,17 +3225,39 @@
     .wb-v2-workspace .wb-home-stage-button { display: flex; flex: 1; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f4; padding: 14px 10px; text-align: left; }
     .wb-v2-workspace .wb-home-stage-button:hover { background: #f8fafc; }
     .wb-v2-workspace .wb-home-stage-button strong { font-size: 28px; color: #0f172a; }
-    .wb-v2-workspace .wb-home-stage-rate { width: 58px; color: #94a3b8; font-size: 14px; }
+    .wb-v2-workspace .wb-home-stage-rate { width: 58px; flex: 0 0 58px; color: #94a3b8; font-size: 14px; white-space: nowrap; }
     .wb-v2-workspace .wb-home-todo-table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px; }
     .wb-v2-workspace .wb-home-todo-table th { background: #f8fafc; padding: 11px 12px; text-align: left; color: #64748b; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .wb-v2-workspace .wb-home-todo-table td { border-top: 1px solid #f1f5f9; padding: 15px 12px; color: #475569; }
     .wb-v2-workspace .wb-home-todo-table tbody tr { cursor: pointer; }
     .wb-v2-workspace .wb-home-todo-table tbody tr:hover { background: #f8fafc; }
+    .wb-v2-workspace .wb-home-todo-list { border-top: 1px solid #e2e8f0; }
+    .wb-v2-workspace .wb-home-todo-row { display: grid; width: 100%; grid-template-columns: 190px minmax(0, 1fr) 180px; gap: 24px; align-items: center; border: 0; border-bottom: 1px solid #e2e8f0; background: transparent; padding: 22px 0; text-align: left; }
+    .wb-v2-workspace .wb-home-todo-row:hover { background: #fbfdfc; }
+    .wb-v2-workspace .wb-home-todo-row-person, .wb-v2-workspace .wb-home-todo-row-task { font-size: 18px; }
+    .wb-v2-workspace .wb-home-todo-row-task small { display: block; margin-top: 3px; color: #94a3b8; font-size: 13px; }
+    .wb-v2-workspace .wb-home-todo-due { display: grid; grid-template-columns: 22px auto; align-items: center; justify-content: end; gap: 10px; color: #16834b; white-space: nowrap; }
+    .wb-v2-workspace .wb-home-todo-due.is-overdue { color: #ef4444; }
+    .wb-v2-workspace .wb-home-todo-due svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .wb-v2-workspace .wb-home-todo-tabs { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 18px; border-bottom: 1px solid #e2e8f0; }
+    .wb-v2-workspace .wb-home-todo-tab { border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 0 0 12px; color: #475569; font-size: 16px; }
+    .wb-v2-workspace .wb-home-todo-tab.is-active { border-bottom-color: #16834b; color: #16834b; }
     .wb-v2-workspace .wb-home-link { color: #24734f; font-size: 13px; font-weight: 600; }
     .wb-v2-workspace .wb-home-review-item { display: flex; min-height: 82px; flex-direction: column; justify-content: space-between; border: 1px solid #eef2f3; border-radius: 10px; padding: 14px; }
     .wb-v2-workspace .wb-home-review-item span { font-size: 13px; color: #64748b; }
     .wb-v2-workspace .wb-home-review-item strong { font-size: 24px; color: #0f172a; }
-    .wb-v2-workspace .wb-home-note h3 { font-size: 13px; font-weight: 700; color: #334155; }
+    .wb-v2-workspace .wb-home-note h3 { font-size: 17px; font-weight: 500; color: #253247; }
+    .wb-v2-workspace .wb-home-note-icon { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 50%; background: #f1f5f3; color: #16834b; }
+    .wb-v2-workspace .wb-home-note-icon svg, .wb-v2-workspace .wb-home-note-arrow svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .wb-v2-workspace .wb-home-note-arrow { color: #94a3b8; }
+    @media (max-width: 760px) {
+      .wb-v2-workspace .wb-home-dashboard { padding-top: 20px; }
+      .wb-v2-workspace .wb-home-todo-row { grid-template-columns: 1fr; gap: 5px; }
+      .wb-v2-workspace .wb-home-todo-due { justify-content: start; }
+      .wb-v2-workspace .wb-home-note { grid-template-columns: 32px 1fr 18px; }
+      .wb-v2-workspace .wb-home-note h3 { grid-column: 2; }
+      .wb-v2-workspace .wb-home-note textarea { grid-column: 2 / -1; }
+    }
     .wb-v2-workspace .wb-home-alert { margin-top: 16px; border-radius: 8px; background: #fff1f2; padding: 10px 12px; font-size: 13px; color: #be123c; }
     .wb-v2-workspace .wb-home-empty { margin-top: 24px; border: 1px dashed #cbd5e1; padding: 30px; text-align: center; font-size: 13px; color: #64748b; }
     .wb-v2-workspace .wb-home-dashboard > .wb-v2-metric-grid,
@@ -4149,7 +4172,7 @@
         </div>
         <!-- ========== Dashboard 首页（截图设计）========== -->
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard wb-home-dashboard mx-auto w-full max-w-none space-y-6">
-          <section aria-labelledby="home-talent-funnel-title" class="wb-home-section wb-home-funnel">
+          <section aria-labelledby="home-talent-funnel-title" class="wb-home-section wb-home-funnel wb-home-funnel-section">
             <header class="flex flex-wrap items-end justify-between gap-4">
               <div><p class="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2></div>
               <div class="flex flex-wrap items-center gap-2">
@@ -4164,14 +4187,14 @@
             <p v-if="homeFunnelDashboard.error" role="alert" class="wb-home-alert">{{ homeFunnelDashboard.error }}</p>
             <p v-else-if="homeFunnelDashboard.loading" class="wb-home-empty">正在加载渠道漏斗…</p>
             <div v-else class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,.8fr)]">
-              <div class="wb-home-funnel-flow"><div v-for="(stage, index) in homeFunnelStageSummary" :key="stage.label" class="wb-home-stage-row"><button type="button" class="wb-home-stage-button" @click="openHomeFunnelCandidates(stage)"><span class="text-base font-medium text-slate-600">{{ stage.label }}</span><strong>{{ stage.count }}</strong></button><span v-if="index < homeFunnelStageSummary.length - 1" class="wb-home-stage-rate">↓ {{ homeFunnelStageSummary[index + 1].conversion === null ? '—' : `${homeFunnelStageSummary[index + 1].conversion}%` }}</span></div></div>
+              <div class="wb-home-funnel-flow"><div v-for="(stage, index) in homeFunnelStageSummary" :key="stage.label" class="wb-home-stage-row"><button type="button" class="wb-home-stage-button" @click="openHomeFunnelCandidates(stage)"><span class="text-base font-medium text-slate-600">{{ stage.label }}</span><strong>{{ stage.count }}</strong></button><span v-if="index < homeFunnelStageSummary.length - 1" class="wb-home-stage-rate">↓ {{ homeFunnelStageSummary[index + 1].conversion === null ? '—' : `${homeFunnelStageSummary[index + 1].conversion}%` }}</span><span v-else class="wb-home-stage-rate" aria-hidden="true"></span></div></div>
               <div class="wb-home-source-list"><div class="flex items-center justify-between"><h3 class="text-lg font-semibold text-slate-900">渠道来源</h3><span class="text-sm text-slate-400">点击查看新增人才</span></div><div class="mt-3 divide-y divide-slate-100"><div v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" class="flex items-center justify-between gap-3 py-3"><button type="button" @click="openHomeFunnelChannelDetails(channel)" class="min-w-0 flex-1 text-left hover:text-emerald-700"><span class="truncate text-base font-medium text-slate-700">{{ channel.channelName }}</span><span class="block text-sm text-slate-400">新增 · 触达 {{ channel.stages[1]?.count || 0 }} · 推荐 {{ channel.stages[2]?.count || 0 }}</span></button><div class="flex shrink-0 items-center gap-3"><strong class="text-lg text-slate-900">{{ channel.stages[0]?.count || 0 }}</strong><button type="button" @click="openHomeFunnelChannelImport(channel)" class="text-sm font-semibold text-emerald-700">导入</button></div></div><p v-if="!homeFunnelDashboard.model.channels.length" class="py-8 text-center text-base text-slate-400">暂无渠道数据</p></div></div>
             </div>
           </section>
 
-          <section aria-labelledby="home-todo-title" class="wb-home-section wb-home-activity-section"><div class="flex flex-wrap items-start justify-between gap-3"><div><h2 id="home-todo-title" class="font-bold text-slate-900">今日待办</h2><div class="wb-home-todo-summary"><span>待跟进 <strong>{{ homeTodoSummary.pending }}</strong></span><span>今日面试 <strong>{{ homeTodoSummary.interviews }}</strong></span><span>待推荐 <strong>{{ homeTodoSummary.recommendations }}</strong></span><span :class="homeTodoSummary.overdue ? 'text-rose-600' : ''">已逾期 <strong :class="homeTodoSummary.overdue ? 'text-rose-600' : ''">{{ homeTodoSummary.overdue }}</strong></span></div></div><button type="button" @click="openTodoListView()" class="wb-home-link">查看全部待办 →</button></div><div v-if="dashboardTodos.length" class="mt-4 overflow-x-auto"><table class="wb-home-todo-table"><thead><tr><th>候选人</th><th>公司 / 岗位</th><th>当前阶段</th><th>下一步动作</th><th>截止时间</th><th>归属顾问</th><th></th></tr></thead><tbody><tr v-for="todo in dashboardTodos.slice(0, 8)" :key="todo.id" @click="openTodoDetail(todo)"><td class="font-semibold text-slate-900">{{ todo.linkLabel || todo.title }}</td><td>{{ todo.subtitle || '—' }}</td><td>{{ todo.type || '跟进' }}</td><td>{{ todo.title }}</td><td :class="todo.date !== '—' && todo.date < homeTodoSummary.today ? 'text-rose-600' : ''">{{ todo.date }}</td><td>{{ accountDisplayName }}</td><td class="text-right text-slate-400">···</td></tr></tbody></table></div><div v-else class="wb-home-todo-empty"><span>今天暂无待办<br><small>可以从候选人或推进记录中添加</small></span><button type="button" @click="openTodoForm()" class="wb-home-link">＋ 新增待办</button></div></section>
+          <section aria-labelledby="home-todo-title" class="wb-home-section wb-home-activity-section"><div class="flex flex-wrap items-start justify-between gap-3"><div><h2 id="home-todo-title" class="font-bold text-slate-900">今日待办 <span class="ml-2 text-emerald-700">{{ dashboardTodos.length }}</span></h2><div class="wb-home-todo-tabs"><span class="wb-home-todo-tab is-active">全部</span><span class="wb-home-todo-tab">待跟进&nbsp; {{ homeTodoSummary.pending }}</span><span class="wb-home-todo-tab">今日面试&nbsp; {{ homeTodoSummary.interviews }}</span><span class="wb-home-todo-tab">待推荐&nbsp; {{ homeTodoSummary.recommendations }}</span><span class="wb-home-todo-tab text-rose-600">已逾期&nbsp; {{ homeTodoSummary.overdue }}</span></div></div><button type="button" @click="openTodoListView()" class="wb-home-link">查看全部 <svg aria-hidden="true" viewBox="0 0 24 24" class="ml-1 inline h-4 w-4 align-[-2px]" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-6-6 6 6-6 6"/></svg></button></div><div v-if="dashboardTodos.length" class="wb-home-todo-list"><button v-for="todo in dashboardTodos.slice(0, 8)" :key="todo.id" type="button" class="wb-home-todo-row" @click="openTodoDetail(todo)"><span class="wb-home-todo-row-person font-semibold text-slate-900">{{ todo.linkLabel || todo.title }}</span><span class="wb-home-todo-row-task text-slate-900">{{ todo.subtitle || '—' }}<small>{{ todo.type || '跟进' }} · {{ todo.title }} · {{ accountDisplayName }}</small></span><span class="wb-home-todo-due" :class="todo.date !== '—' && todo.date < homeTodoSummary.today ? 'is-overdue' : ''"><svg v-if="todo.date !== '—' && todo.date < homeTodoSummary.today" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><svg v-else aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg><span>{{ todo.date }}</span></span></button></div><div v-else class="wb-home-todo-empty"><span>今天暂无待办<br><small>可以从候选人或推进记录中添加</small></span><button type="button" @click="openTodoForm()" class="wb-home-link">＋ 新增待办</button></div></section>
 
-          <section aria-labelledby="home-review-title" class="wb-home-section wb-home-activity-section"><div><h2 id="home-review-title" class="font-bold text-slate-900">今日复盘</h2></div><div class="wb-home-review-stats"><span>新增人才 <strong>{{ homeFunnelReview.added }}</strong></span><span>触达 <strong>{{ homeFunnelReview.touched }}</strong></span><span>推荐 <strong>{{ homeFunnelReview.recommended }}</strong></span><span>面试 <strong>{{ homeFunnelReview.interviewed }}</strong></span><span>完成待办 <strong>{{ homeFunnelReview.completedTodos }}</strong></span></div><div class="mt-5 grid gap-5 md:grid-cols-2"><label class="wb-home-note"><h3>今日问题</h3><textarea v-model="homeReviewNotes.issue" aria-label="今日问题" placeholder="记录今天需要关注的问题"></textarea></label><label class="wb-home-note"><h3>明日重点</h3><textarea v-model="homeReviewNotes.tomorrow" aria-label="明日重点" placeholder="记录明天优先处理的事项"></textarea></label></div></section>
+          <section aria-labelledby="home-review-title" class="wb-home-section wb-home-activity-section"><div><h2 id="home-review-title" class="font-bold text-slate-900">今日复盘</h2></div><div class="wb-home-review-stats"><span>新增人才 <strong>{{ homeFunnelReview.added }}</strong></span><span>触达 <strong>{{ homeFunnelReview.touched }}</strong></span><span>推荐 <strong>{{ homeFunnelReview.recommended }}</strong></span><span>面试 <strong>{{ homeFunnelReview.interviewed }}</strong></span><span>完成待办 <strong>{{ homeFunnelReview.completedTodos }}</strong></span></div><div class="mt-3"><label class="wb-home-note"><span class="wb-home-note-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg></span><h3>今日问题</h3><textarea v-model="homeReviewNotes.issue" aria-label="今日问题" placeholder="记录今天需要关注的问题"></textarea><span class="wb-home-note-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg></span></label><label class="wb-home-note"><span class="wb-home-note-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3"/></svg></span><h3>明日重点</h3><textarea v-model="homeReviewNotes.tomorrow" aria-label="明日重点" placeholder="记录明天优先处理的事项"></textarea><span class="wb-home-note-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg></span></label></div></section>
 
           <div v-if="channelDetailDialog.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" @click.self="closeChannelDetails">
             <section role="dialog" aria-modal="true" aria-labelledby="channel-detail-title" class="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
