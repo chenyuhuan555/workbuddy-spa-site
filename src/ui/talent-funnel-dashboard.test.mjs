@@ -55,6 +55,26 @@ test('公司编辑支持修改名称，顾问助手头像编辑菜单支持隐�
   assert.match(INDEX_HTML, /!advisorPanel\.meetingArticle && !advisorPanel\.hidden/);
 });
 
+test('工作台首页按渠道漏斗、今日待办、今日复盘分层', () => {
+  const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
+  assert.ok(dashboard, 'dashboard template should exist');
+  assert.ok(dashboard.indexOf('id="home-talent-funnel-title"') < dashboard.indexOf('id="home-todo-title"'));
+  assert.ok(dashboard.indexOf('id="home-todo-title"') < dashboard.indexOf('id="home-review-title"'));
+  assert.match(dashboard, /homeFunnelTimeRange/);
+  assert.match(dashboard, /homeFunnelStageSummary/);
+  assert.match(dashboard, /openTalentIntake/);
+  assert.match(dashboard, /openHomeFunnelChannelImport\(channel\)/);
+  assert.match(dashboard, /dashboardTodos\.slice\(0, 8\)/);
+  assert.match(dashboard, /homeFunnelReview\.added/);
+});
+
+test('工作台首页不再展示旧的 KPI 卡片和业务进展大卡片', () => {
+  const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
+  assert.match(dashboard, /wb-home-section/);
+  assert.match(INDEX_HTML, /\.wb-home-dashboard > \.wb-v2-metric-grid[\s\S]*?display:\s*none/);
+  assert.match(INDEX_HTML, /\.wb-home-dashboard > \.wb-v2-dashboard-grid[\s\S]*?display:\s*none/);
+});
+
 function analyticsFor(companyId, inputEvents = events) {
   return buildTalentFunnelAnalytics({
     events: inputEvents,
