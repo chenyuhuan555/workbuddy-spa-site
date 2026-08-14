@@ -37,5 +37,5 @@
 
 - [x] Run targeted homepage/UI tests and confirm all pass.
 - [x] Run `npm test` and `npm run build` serially.
-- [ ] Review `git diff --check`, commit only source and generated CSS, and leave user-owned task files untouched.
+- [x] Review `git diff --check`, commit only source and generated CSS, and leave user-owned task files untouched.
 - [ ] Push the branch and `main`, wait for GitHub Actions success, and verify the Pages URL returns HTTP 200.
