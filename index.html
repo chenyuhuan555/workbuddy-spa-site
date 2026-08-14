@@ -3473,6 +3473,7 @@
     }
 
     .wb-v2-workspace .wb-talent-table-shell {
+      margin-top: 18px;
       overflow-x: auto;
       overflow-y: hidden;
       border: 1px solid #e2e5e8;
@@ -3495,8 +3496,8 @@
       position: sticky;
       top: 0;
       z-index: 5;
-      height: 44px;
-      padding: 0 14px;
+      height: 48px;
+      padding: 0 16px;
       border-bottom: 1px solid #e2e5e8;
       background: #fafbfc;
       color: #68727d;
@@ -3507,8 +3508,8 @@
     }
 
     .wb-v2-workspace .wb-talent-table td {
-      height: 66px;
-      padding: 12px 14px;
+      height: 72px;
+      padding: 14px 16px;
       border-bottom: 1px solid #edf0f2;
       vertical-align: middle;
       color: #334155;
@@ -3581,7 +3582,15 @@
 
     .wb-v2-workspace .wb-talent-library-page {
       background: #f7f8fa;
-      padding: 0 0 24px;
+      padding: 18px 24px 32px;
+    }
+
+    .wb-v2-workspace .wb-v2-companies-page,
+    .wb-v2-workspace .wb-v2-applications-page {
+      max-width: none;
+      margin-left: 0;
+      margin-right: 0;
+      padding: 18px 24px 32px;
     }
 
     .wb-v2-workspace [data-talent-library-toolbar] {
@@ -3690,6 +3699,23 @@
 
     .wb-v2-workspace .wb-talent-filter-field.wb-talent-primary-filter {
       min-width: 195px;
+    }
+
+    .wb-v2-workspace #v2-kb-section > .wb-knowledge-card,
+    .wb-v2-workspace #v2-ai-news-section > .wb-knowledge-card,
+    .wb-v2-workspace #v2-radar-section > .wb-knowledge-card {
+      border-radius: 12px !important;
+      background: #fff !important;
+      box-shadow: none !important;
+    }
+
+    .wb-v2-workspace #v2-kb-section .wb-toolbox-header,
+    .wb-v2-workspace #v2-kb-section .wb-toolbox-header h2,
+    .wb-v2-workspace #v2-kb-section .wb-toolbox-header svg {
+      background: #fff !important;
+      color: #0f172a !important;
+      stroke: currentColor !important;
+      box-shadow: none !important;
     }
 
     @media (max-width: 1024px) {
@@ -4014,16 +4040,10 @@
         </div>
         <!-- ========== Dashboard 首页（截图设计）========== -->
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard max-w-[1400px] mx-auto space-y-5">
-          <!-- 标题区 -->
-          <div class="wb-v2-dashboard-title">
-            <h1 class="text-xl font-bold text-slate-900">渠道效果概览</h1>
-          </div>
-
           <!-- 首页直接展示单家公司漏斗；切换公司时仍保持公司维度隔离 -->
           <section aria-labelledby="home-talent-funnel-title" class="min-h-[calc(100vh-8rem)] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:p-8">
             <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">公司渠道经营</p>
                 <h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2>
               </div>
               <div class="flex flex-wrap items-center gap-2">
@@ -4239,7 +4259,7 @@
           </div>
         </div>
 
-        <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
+        <div v-else-if="workbenchNav === 'companies' && workbenchRoute.type === 'list'" class="wb-v2-companies-page max-w-7xl mx-auto space-y-4">
           <div class="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6"><div><h1 class="text-2xl font-bold text-slate-900">公司看板</h1><p class="mt-1 text-sm text-slate-500">查看岗位需求、候选人进展与业务风险</p></div><div v-if="canWrite" class="flex flex-wrap gap-2"><button v-if="canConfigureAi" @click="runBulkPositionSkillsExtraction" :disabled="positionSkillsBatch.running" class="inline-flex items-center rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:text-slate-400" type="button">{{ positionSkillsBatch.running ? `AI提取中 ${positionSkillsBatch.completed}/${positionSkillsBatch.total}` : '✧ AI提取关键词' }}</button><button @click="openCompanyCreate" class="inline-flex items-center rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800" type="button">＋ 新建公司</button></div></div>
           <form v-if="companyCreate.open && canWrite" @submit.prevent="createWorkbenchCompany()" class="bg-white border border-emerald-200 rounded-xl p-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <label for="wb-company-name" class="text-sm text-slate-600">公司名称<input id="wb-company-name" v-model="companyCreate.name" required autofocus placeholder="例如：远航科技" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500"></label>
@@ -5004,7 +5024,7 @@
         </div>
         </div>
 
-        <div v-else-if="workbenchNav === 'applications' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-4">
+        <div v-else-if="workbenchNav === 'applications' && workbenchRoute.type === 'list'" class="wb-v2-applications-page max-w-7xl mx-auto space-y-4">
           <div class="flex flex-wrap items-end gap-3"><div><h1 class="text-2xl font-bold">推进中心</h1><p class="text-sm text-slate-500 mt-1">集中管理候选人与岗位之间的全部业务推进。</p></div><div class="ml-auto flex rounded-lg bg-slate-200 p-1"><button @click="applicationViewMode = 'table'" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', applicationViewMode === 'table' ? 'bg-white shadow-sm' : 'text-slate-500']" type="button">表格模式</button><button @click="applicationViewMode = 'kanban'" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', applicationViewMode === 'kanban' ? 'bg-white shadow-sm' : 'text-slate-500']" type="button">阶段看板</button></div></div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-2"><select aria-label="按推进公司筛选" v-model="applicationFilters.companyId" class="min-w-40 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select><select aria-label="按推进岗位筛选" v-model="applicationFilters.positionId" class="min-w-40 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部岗位</option><option v-for="position in workbenchV2.positions" :key="position.id" :value="position.id">{{ position.title }}</option></select><select aria-label="按推进负责人筛选" v-model="applicationFilters.owner" class="min-w-40 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><select aria-label="按推进阶段筛选" v-model="applicationFilters.stage" class="min-w-40 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部阶段</option><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select><input aria-label="最低匹配分数" v-model="applicationFilters.scoreMin" type="number" min="0" max="100" placeholder="最低匹配分" class="min-w-32 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"><button v-if="canWrite && canConfigureAi" type="button" @click="runBulkApplicationAiScoring" :disabled="applicationBatchScoring.running" class="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{{ applicationBatchScoring.running ? `评分中 ${applicationBatchScoring.completed}/${applicationBatchScoring.total}` : '✦ 一键AI评分' }}</button></div>
           <div v-if="applicationViewMode === 'table'" class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>候选人</span><span>公司 / 岗位</span><span>负责人</span><span>匹配</span><span>阶段</span><span>更新时间</span></div><div v-for="application in pagedApplications.items" :key="application.id" class="grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 items-center"><button @click="openCandidateDetail(application.candidateId)" class="text-left font-semibold hover:text-emerald-700" type="button">{{ candidateById.get(application.candidateId)?.name || '人才关联失效' }}</button><div class="text-sm"><button @click="openCompanyDetail(application.companyId)" class="font-medium hover:text-emerald-700 text-left" type="button">{{ companyById.get(application.companyId)?.name || '公司已删除' }}</button><button @click="openPositionDetail(application.positionId)" class="block text-slate-400 hover:text-emerald-700 text-left mt-0.5" type="button">{{ positionById.get(application.positionId)?.title || '岗位已删除' }}</button></div><button v-if="application.owner" @click="filterApplicationsByOwner(application.owner)" class="text-sm hover:text-emerald-700 text-left" type="button">{{ application.owner }}</button><span v-else class="text-sm text-slate-400">未分配</span><b>{{ application.matchScore ?? '—' }}</b><select aria-label="修改候选人推进阶段" :value="application.stage" @change="changeWorkbenchApplicationStage(application, $event.target.value)" class="px-2 py-1.5 rounded-lg border border-slate-200 text-xs"><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select><span class="text-xs text-slate-400">{{ application.updatedAt?.slice(0,10) }}</span></div><p v-if="!filteredApplications.length" class="p-12 text-center text-sm text-slate-400">暂无推进记录</p></div>
@@ -5028,7 +5048,7 @@
               <div class="flex flex-wrap gap-2 mb-5">
                 <button v-for="tab in aiToolboxTabs" :key="tab.key" @click="selectAiToolboxTab(tab.key)" type="button"
                   :class="['px-4 py-2 rounded-lg text-sm font-semibold transition',
-                    aiToolbox.activeTab === tab.key ? `bg-${aiToolboxTabColor}-600 text-white shadow-sm` : 'bg-slate-100 text-slate-600 hover:bg-slate-200']">
+                    aiToolbox.activeTab === tab.key ? 'bg-emerald-700 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100']">
                   {{ tab.label }}
                 </button>
               </div>
@@ -5038,7 +5058,7 @@
                   <div v-for="tool in activeAiToolboxTools" :key="tool.key"
                     @click="selectAiToolboxTool(tool.key)"
                     :class="['rounded-xl border p-4 cursor-pointer transition',
-                      aiToolbox.activeTool === tool.key ? `border-${aiToolboxTabColor}-400 bg-${aiToolboxTabColor}-50 shadow-sm ring-2 ring-${aiToolboxTabColor}-100` : `border-slate-200 bg-white hover:border-${aiToolboxTabColor}-200 hover:shadow-sm`]">
+                      aiToolbox.activeTool === tool.key ? 'border-emerald-300 bg-emerald-50 shadow-sm ring-2 ring-emerald-100' : 'border-emerald-100 bg-emerald-50/40 hover:border-emerald-200 hover:shadow-sm']">
                     <div class="flex items-start justify-between gap-3">
                       <div>
                         <h3 class="text-sm font-bold text-slate-800">{{ tool.title }}</h3>
@@ -5051,7 +5071,7 @@
                   </div>
                 </div>
 
-                <div :class="`rounded-xl border border-${aiToolboxTabColor}-200 bg-${aiToolboxTabColor}-50/40 p-5 min-w-0`">
+                <div class="min-w-0 p-1">
                   <div class="flex items-start justify-between gap-4 mb-4">
                     <div>
                       <h3 class="text-base font-bold text-slate-800">{{ activeAiToolboxTool?.title || '选择一个工具' }}</h3>
@@ -5148,18 +5168,12 @@
         </div>
 
         <div v-else-if="workbenchNav === 'aiApps' && workbenchRoute.type === 'list'" class="max-w-7xl mx-auto space-y-5">
-          <!-- 标题区 -->
-          <div class="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h1 class="text-xl font-bold text-slate-900">AI应用中心</h1>
-              <p class="text-sm text-slate-500 mt-1">汇聚团队猎头AI数字化项目，统一管理应用入口、建设进度与产品沉淀。</p>
-            </div>
-            <button v-if="canManageMembers" @click="openAiAppCreate()" type="button" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold shadow-sm transition">
+          <div class="flex justify-end">
+            <button v-if="canManageMembers" @click="openAiAppCreate()" type="button" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
               新增应用
             </button>
           </div>
-
           <!-- 统计卡片 -->
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center text-center shadow-sm">

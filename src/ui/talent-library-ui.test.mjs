@@ -86,7 +86,7 @@ test('人才库采用浅灰页面底色和三层白色内容区域', () => {
 
 test('人才库标题卡片上方不保留重复空白层', () => {
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-main:has\(\[data-talent-library-list\]\)\s*\{\s*padding:\s*16px 28px 28px/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{[\s\S]*?padding:\s*0 0 24px/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-library-page\s*\{[\s\S]*?padding:\s*18px 24px 32px/);
 });
 
 test('人才库保留顶部间距并让表格底部保持圆角', () => {
@@ -325,6 +325,35 @@ test('知识库标题区不使用大面积渐变铺色', () => {
   assert.match(knowledgeBlock, /<h2 class="text-slate-900 font-bold text-lg">全网动态 · 活水雷达<\/h2>/);
   assert.doesNotMatch(knowledgeBlock, /bg-gradient-to-r from-teal-600 to-emerald-600/);
   assert.doesNotMatch(knowledgeBlock, /text-white font-bold text-lg">(?:AI资讯 · Builders Digest|全网动态 · 活水雷达)/);
+});
+
+test('团队知识库保持白底而不是绿色铺色', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace #v2-kb-section \.wb-toolbox-header[\s\S]*?background:\s*#fff !important/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace #v2-kb-section > \.wb-knowledge-card[\s\S]*?background:\s*#fff !important/);
+});
+
+test('AI工具箱下方工具区统一绿色底色且右侧面板保持无底色', () => {
+  const toolboxBlock = INDEX_HTML.match(/workbenchNav === 'ai' && workbenchRoute\.type === 'list'[\s\S]*?<\/div>\s*<\/div>\s*<div v-else-if="workbenchNav === 'aiApps'/)?.[0] || '';
+  assert.ok(toolboxBlock, 'AI toolbox block should exist');
+  assert.match(toolboxBlock, /aiToolbox\.activeTab === tab\.key \? 'bg-emerald-700 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'/);
+  assert.match(toolboxBlock, /aiToolbox\.activeTool === tool\.key \? 'border-emerald-300 bg-emerald-50 shadow-sm ring-2 ring-emerald-100' : 'border-emerald-100 bg-emerald-50\/40 hover:border-emerald-200 hover:shadow-sm'/);
+  assert.match(toolboxBlock, /<div class="min-w-0 p-1">/);
+  assert.doesNotMatch(toolboxBlock, /border-\$\{aiToolboxTabColor\}-200 bg-\$\{aiToolboxTabColor\}-50\/40 p-5/);
+});
+
+test('AI应用中心不重复显示模块级标题说明区', () => {
+  const aiAppsBlock = INDEX_HTML.match(/workbenchNav === 'aiApps' && workbenchRoute\.type === 'list'[\s\S]*?<\/div>\s*<div v-else-if="workbenchNav === 'knowledge'/)?.[0] || '';
+  assert.ok(aiAppsBlock, 'AI applications block should exist');
+  assert.doesNotMatch(aiAppsBlock, /汇聚团队猎头AI数字化项目/);
+  assert.doesNotMatch(aiAppsBlock, /<h1 class="text-xl font-bold text-slate-900">AI应用中心<\/h1>/);
+});
+
+test('首页渠道漏斗不重复显示页面级和模块级说明标题', () => {
+  const dashboardBlock = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<\/div>\s*<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
+  assert.ok(dashboardBlock, 'dashboard block should exist');
+  assert.doesNotMatch(dashboardBlock, /渠道效果概览/);
+  assert.doesNotMatch(dashboardBlock, /公司渠道经营/);
+  assert.match(dashboardBlock, /<h2 id="home-talent-funnel-title"[^>]*>渠道漏斗<\/h2>/);
 });
 
 test('人才上传归类展开控件使用 SVG 下箭头', () => {
