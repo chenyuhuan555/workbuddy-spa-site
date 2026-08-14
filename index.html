@@ -4138,7 +4138,7 @@
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard wb-home-dashboard mx-auto w-full max-w-none space-y-8">
           <section aria-labelledby="home-talent-funnel-title" class="wb-home-section wb-home-funnel">
             <header class="flex flex-wrap items-end justify-between gap-4">
-              <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2><p class="mt-1 text-sm text-slate-500">先看今天和本周渠道发生了什么，再进入人才库处理。</p></div>
+              <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2></div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="home-funnel-time">时间范围</label><select id="home-funnel-time" v-model="homeFunnelTimeRange" class="wb-home-control"><option value="today">今日</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
                 <label class="sr-only" for="home-funnel-company">选择公司</label><select id="home-funnel-company" v-model="homeFunnelCompanyId" class="wb-home-control"><option value="" disabled>选择公司范围</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
