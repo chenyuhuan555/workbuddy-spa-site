@@ -764,10 +764,11 @@ test('推进中心提供批量 AI 评分并回写匹配分', () => {
   assert.match(INDEX_HTML, /applicationMatchAnalysisActions\.analyzeApplication/);
 });
 
-test('候选人岗位匹配采用卡片布局并展示匹配分与标签', () => {
-  assert.match(INDEX_HTML, /candidate-match-card[^\"]*grid-cols-\[minmax\(0,1fr\)_130px_150px\]/, '岗位匹配应保持三栏卡片布局');
+test('候选人岗位匹配采用轻量列表并展示匹配状态与标签', () => {
+  assert.match(INDEX_HTML, /candidate-matching-panel[^\"]*pt-6/, '岗位匹配应使用轻量列表容器');
   assert.match(INDEX_HTML, /positions\.find\(item => item\.id === match\.positionId\)\?\.skills/, '岗位匹配应展示岗位技能标签');
-  assert.match(INDEX_HTML, /匹配分/, '岗位匹配应展示匹配分说明');
+  assert.match(INDEX_HTML, /match\.score >= 70[\s\S]*?匹配较低/, '岗位匹配应展示轻量匹配状态');
+  assert.match(INDEX_HTML, /\.slice\(0, 3\)/, '岗位匹配默认只展示少量标签');
   assert.match(INDEX_HTML, />创建推荐<\/button>/, '岗位匹配应提供创建推荐操作');
 });
 

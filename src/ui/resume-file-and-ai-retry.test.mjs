@@ -52,14 +52,14 @@ test('原件替换保留当前版本并只更新文件元数据', () => {
   assert.doesNotMatch(body, /createTalent|appendTalentResumeVersion|createApplication/);
 });
 
-test('新增简历动作保持按钮类型和文件输入可访问名称', () => {
+test('新增简历动作保持按钮类型、页签语义和文件输入可访问名称', () => {
   assert.match(INDEX_HTML, /<button[^>]+type="button"[^>]*>使用现有文本重新处理<\/button>/);
   assert.match(INDEX_HTML, /<button[^>]+type="button"[^>]*>从原始文件重新提取并处理<\/button>/);
   assert.match(INDEX_HTML, /class="resume-toolbar[^"]*"/);
   assert.match(INDEX_HTML, />编辑简历<\/button>/);
-  assert.match(INDEX_HTML, />重新处理 <span/);
+  assert.match(INDEX_HTML, /重新处理 <svg[\s\S]*?d="m6 9 6 6 6-6"/);
   assert.match(INDEX_HTML, /candidateResumeProcessMenuOpen/);
-  assert.match(INDEX_HTML, /candidateResumeView\.mode === 'text' \? 'bg-emerald-100/);
+  assert.match(INDEX_HTML, /candidateResumeView\.mode === 'text'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
   assert.match(INDEX_HTML, /version\.formatStatus === 'processing'/);
   assert.match(INDEX_HTML, /<input[^>]+aria-label="重新上传当前简历原件"[^>]+type="file"/);
 });

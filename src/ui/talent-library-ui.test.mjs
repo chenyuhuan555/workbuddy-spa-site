@@ -235,16 +235,16 @@ test('candidate drawer close guards active core and resume drafts before resetti
   assert.match(closeBlock, /if\s*\([^)]*!confirm\([\s\S]*?\)\)\s*return false;/);
 });
 
-test('candidate drawer isolates the background and only exposes modal semantics while open', () => {
+test('candidate drawer keeps the talent list visible as a non-modal context panel', () => {
   const listWrapper = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'"[^>]*>/)?.[0] || '';
-  assert.match(listWrapper, /:inert="candidateDrawerOpen"/);
-  assert.match(listWrapper, /:aria-hidden="candidateDrawerOpen \? 'true' : undefined"/);
+  assert.doesNotMatch(listWrapper, /:inert="candidateDrawerOpen"/);
+  assert.doesNotMatch(listWrapper, /:aria-hidden="candidateDrawerOpen/);
   const detailWrapper = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'candidate' && selectedCandidate"[^>]*>/)?.[0] || '';
-  assert.match(detailWrapper, /:role="candidateDrawerOpen \? 'dialog' : undefined"/);
-  assert.match(detailWrapper, /:aria-modal="candidateDrawerOpen \? 'true' : undefined"/);
+  assert.doesNotMatch(detailWrapper, /:role="candidateDrawerOpen \? 'dialog'/);
+  assert.doesNotMatch(detailWrapper, /:aria-modal="candidateDrawerOpen \? 'true'/);
   assert.match(INDEX_HTML, /watch\(candidateDrawerOpen,[\s\S]*?document\.body\.classList\.toggle\('wb-candidate-drawer-open',\s*isOpen\)/);
   assert.match(INDEX_HTML, /onBeforeUnmount\(\(\)\s*=>\s*\{[\s\S]*?document\.body\.classList\.remove\('wb-candidate-drawer-open'\)/);
-  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*hidden;/);
+  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*visible;/);
 });
 
 test('candidate drawer manages initial focus, traps Tab, and restores its trigger', () => {
@@ -263,4 +263,54 @@ test('candidate drawer uses a softer panel surface and lightweight top actions',
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-open-full rounded-lg px-3 py-2"/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-close inline-flex h-9 w-9 items-center justify-center rounded-full border/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-candidate-tabs\s*\{[\s\S]*?margin-top:\s*24px[\s\S]*?border-bottom:\s*1px solid #edf1ef/);
+});
+
+test('候选人简历将操作与内容视图分成两层', () => {
+  const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="rounded-xl border border-slate-200 bg-white p-5">/)?.[0] || '';
+  assert.ok(resumeBlock, 'resume content block should exist');
+  assert.match(resumeBlock, /class="resume-toolbar[^\"]*rounded-xl/);
+  assert.match(resumeBlock, /class="resume-toolbar-actions[^\"]*"/);
+  assert.match(resumeBlock, /编辑简历/);
+  assert.match(resumeBlock, /class="[^\"]*h-10[^\"]*rounded-lg[^\"]*bg-emerald-700/);
+  assert.match(resumeBlock, /重新处理[\s\S]*?<svg[\s\S]*?d="m6 9 6 6 6-6"/);
+  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*border-b/);
+  assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
+  assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?border-b-2[\s\S]*?border-emerald-600/);
+  assert.doesNotMatch(resumeBlock, /inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm/);
+});
+
+test('岗位匹配使用轻量列表层级而不是大卡片装饰', () => {
+  const matchingBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'matching'"[\s\S]*?<div v-else-if="workbenchRoute\.tab === 'ai'"/)?.[0] || '';
+  assert.ok(matchingBlock, 'matching content block should exist');
+  assert.match(matchingBlock, /class="candidate-matching-panel[^\"]*pt-6/);
+  assert.match(matchingBlock, /<h2[^>]*>岗位匹配<\/h2>/);
+  assert.doesNotMatch(matchingBlock, /aria-hidden="true">▣<\/span>/);
+  assert.match(matchingBlock, /class="candidate-matching-list[^\"]*divide-y/);
+  assert.match(matchingBlock, /class="candidate-matching-row[^\"]*py-4/);
+  assert.match(matchingBlock, /\.slice\(0,\s*3\)/);
+  assert.match(matchingBlock, /\+\{\{[\s\S]*?\.length - 3/);
+  assert.match(matchingBlock, /match\.score >= 70/);
+  assert.match(matchingBlock, /class="[^\"]*h-9[^\"]*rounded-lg[^\"]*border-emerald-700/);
+  assert.doesNotMatch(matchingBlock, /text-4xl font-bold/);
+  assert.doesNotMatch(matchingBlock, /rounded-2xl border border-slate-100 bg-white p-5 shadow-sm/);
+});
+
+test('候选人详情作为非模态并排面板保留人才列表可见可操作', () => {
+  const listWrapper = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'list' \|\| candidateDetailMode === 'drawer'"[^>]*>/)?.[0] || '';
+  assert.doesNotMatch(listWrapper, /:inert="candidateDrawerOpen"/);
+  assert.doesNotMatch(listWrapper, /:aria-hidden="candidateDrawerOpen/);
+  const detailWrapper = INDEX_HTML.match(/<div v-if="workbenchRoute\.type === 'candidate' && selectedCandidate"[^>]*>/)?.[0] || '';
+  assert.match(detailWrapper, /:class="\[[^\]]*'wb-candidate-drawer': candidateDetailMode === 'drawer'/);
+  assert.doesNotMatch(detailWrapper, /:role="candidateDrawerOpen \? 'dialog'/);
+  assert.doesNotMatch(detailWrapper, /:aria-modal="candidateDrawerOpen \? 'true'/);
+  assert.match(INDEX_HTML, /body\.wb-candidate-drawer-open\s*\{\s*overflow:\s*visible;/);
+});
+
+test('AI工具箱和知识库复用推进中心的轻量工作区表面', () => {
+  assert.match(INDEX_HTML, /workbenchNav === 'ai' && workbenchRoute\.type === 'list'" class="wb-toolbox-page max-w-7xl mx-auto space-y-4/);
+  assert.match(INDEX_HTML, /class="wb-toolbox-card bg-white rounded-xl border border-slate-200 overflow-hidden"/);
+  assert.match(INDEX_HTML, /class="wb-toolbox-header px-6 py-4 bg-white border-b border-slate-100/);
+  assert.match(INDEX_HTML, /workbenchNav === 'knowledge' && workbenchRoute\.type === 'list'" class="wb-knowledge-page max-w-7xl mx-auto space-y-4/);
+  assert.match(INDEX_HTML, /class="wb-knowledge-tabs flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1"/);
+  assert.match(INDEX_HTML, /class="wb-knowledge-card bg-white rounded-xl border border-slate-200 overflow-hidden"/);
 });
