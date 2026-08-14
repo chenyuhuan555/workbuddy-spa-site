@@ -42,6 +42,11 @@ test('首页渠道卡片将查看详情与导入人才拆分', () => {
   assert.doesNotMatch(INDEX_HTML, /仅展示最近 8 人/);
 });
 
+test('公司漏斗结论区不再显示独立的 AI 优化建议提示块', () => {
+  assert.doesNotMatch(INDEX_HTML, /AI 优化建议/);
+  assert.doesNotMatch(INDEX_HTML, /系统统计事实不会被 AI 修改/);
+});
+
 test('公司编辑支持修改名称，顾问助手头像编辑菜单支持隐藏', () => {
   assert.match(INDEX_HTML, /id="wb-company-profile-name"/);
   assert.match(INDEX_HTML, /companyProfileEdit\.name/);
