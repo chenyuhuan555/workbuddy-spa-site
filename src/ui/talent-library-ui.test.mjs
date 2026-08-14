@@ -162,7 +162,7 @@ test('renders custom column controls, selection, and accessible row actions', ()
   assert.match(INDEX_HTML, /candidateRowMenuId\s*===\s*candidate\.id\s*\?\s*''\s*:\s*candidate\.id/);
   assert.match(INDEX_HTML, /aria-label="候选人操作"[\s\S]*?>\s*···\s*<\/button>/);
   assert.match(INDEX_HTML, /function selectCandidateDetail\(id,\s*tab\)[\s\S]*?Object\.assign\(workbenchRoute,[\s\S]*?tab\s*\}\);/);
-  assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab\s*=\s*'overview'\)[\s\S]*?selectCandidateDetail\(id,\s*tab\);/);
+  assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab\s*=\s*'resume'\)[\s\S]*?selectCandidateDetail\(id,\s*tab\);/);
 });
 
 test('keeps cloud search status results and paging reachable inside the compact list', () => {
@@ -201,7 +201,7 @@ test('candidate drawer defaults to resume and keeps full-page matching available
   assert.equal((tabSets[1].match(/\{\s*id:/g) || []).length, 6);
   assert.equal((tabSets[2].match(/\{\s*id:/g) || []).length, 7);
   assert.match(tabSets[1], /resume[\s\S]*?原始简历[\s\S]*?overview[\s\S]*?结构化信息[\s\S]*?applications[\s\S]*?推荐记录[\s\S]*?interviews[\s\S]*?面试进度[\s\S]*?activity[\s\S]*?跟进记录[\s\S]*?ai[\s\S]*?AI分析/);
-  assert.match(tabSets[2], /overview[\s\S]*?候选人概览[\s\S]*?resume[\s\S]*?简历[\s\S]*?matching[\s\S]*?岗位匹配[\s\S]*?applications[\s\S]*?推进记录[\s\S]*?interviews[\s\S]*?面试进度[\s\S]*?ai[\s\S]*?AI分析[\s\S]*?activity[\s\S]*?备注与动态/);
+  assert.match(tabSets[2], /resume[\s\S]*?原始简历[\s\S]*?overview[\s\S]*?结构化信息[\s\S]*?matching[\s\S]*?岗位匹配[\s\S]*?applications[\s\S]*?推荐记录[\s\S]*?interviews[\s\S]*?面试进度[\s\S]*?ai[\s\S]*?AI分析[\s\S]*?activity[\s\S]*?跟进记录/);
   const listBlock = INDEX_HTML.match(/<div data-talent-library-list[\s\S]*?<span data-talent-library-list-end hidden><\/span>/)?.[0] || '';
   assert.match(listBlock, /@click="openCandidateDrawer\(candidate\.id\)"[\s\S]*?\{\{ candidate\.name \|\| '-' \}\}/);
   assert.match(listBlock, /@click="candidateRowMenuId = ''; openCandidateDrawer\(candidate\.id,\s*'overview'\)"[^>]*>查看详情<\/button>/);
@@ -371,4 +371,28 @@ test('人才库筛选字段使用统一的纵向标签和控件尺寸', () => {
   assert.match(filterBar, /class="wb-talent-filter-field text-xs font-medium text-slate-500">学历/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field\s*\{[\s\S]*?flex-direction:\s*column[\s\S]*?min-height:\s*64px/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field input,[\s\S]*?\.wb-v2-workspace \.wb-talent-filter-field select\s*\{[\s\S]*?min-height:\s*36px/);
+});
+
+test('人才详情默认以原始简历为主视图并复用六个详情页签', () => {
+  assert.match(INDEX_HTML, /const workbenchRoute = reactive\(\{ type: 'list', id: '', parentId: '', tab: 'resume' \}\)/);
+  assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab = 'resume'\)/);
+  assert.match(INDEX_HTML, /const candidateResumeView = reactive\(\{[\s\S]*?mode:\s*'original'/);
+  assert.match(INDEX_HTML, /candidateDetailTabs = computed\(\(\) =>[\s\S]*?原始简历[\s\S]*?结构化信息[\s\S]*?推荐记录[\s\S]*?面试进度[\s\S]*?跟进记录[\s\S]*?AI分析/);
+  assert.match(INDEX_HTML, /当前 Base/);
+  assert.match(INDEX_HTML, /当前求职状态/);
+});
+
+test('人才详情推荐记录和面试进度展示候选人的全部推进关系', () => {
+  assert.match(INDEX_HTML, /selectedCandidateApplications\.map|v-for="application in selectedCandidateApplications"/);
+  assert.match(INDEX_HTML, /推荐日期|推荐时间/);
+  assert.match(INDEX_HTML, /最近更新时间|更新时间/);
+  assert.match(INDEX_HTML, /selectedCandidateInterviewApplications/);
+  assert.match(INDEX_HTML, /pipelineStageSequence|applicationPipelineStages|candidatePipelineLabel\(application\.stage\)/);
+});
+
+test('人才详情跟进记录复用 followups 和 pipelineEvents 并按时间倒序', () => {
+  assert.match(INDEX_HTML, /selectedCandidateFollowupItems/);
+  assert.match(INDEX_HTML, /followups/);
+  assert.match(INDEX_HTML, /pipelineEvents/);
+  assert.match(INDEX_HTML, /sort\(\(a, b\) =>[\s\S]*?Date\.parse/);
 });
