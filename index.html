@@ -3205,6 +3205,10 @@
     .wb-v2-workspace .wb-home-secondary { border: 1px solid #dbe3e8; color: #475569; background: #fff; }
     .wb-v2-workspace .wb-home-secondary:hover { background: #f8fafc; }
     .wb-v2-workspace .wb-home-funnel-flow, .wb-v2-workspace .wb-home-source-list { border: 1px solid #eef2f3; border-radius: 10px; padding: 16px; }
+    .wb-v2-workspace .wb-home-funnel { font-size: 15px; }
+    .wb-v2-workspace .wb-home-funnel h2 { font-size: 30px; }
+    .wb-v2-workspace .wb-home-funnel .wb-home-control { font-size: 14px; }
+    .wb-v2-workspace .wb-home-company-select { font-weight: 700; }
     .wb-v2-workspace .wb-home-stage-row { display: flex; align-items: center; gap: 12px; }
     .wb-v2-workspace .wb-home-stage-button { display: flex; flex: 1; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f4; padding: 14px 10px; text-align: left; }
     .wb-v2-workspace .wb-home-stage-button:hover { background: #f8fafc; }
@@ -4141,10 +4145,10 @@
               <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2></div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="home-funnel-time">时间范围</label><select id="home-funnel-time" v-model="homeFunnelTimeRange" class="wb-home-control"><option value="today">今日</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
-                <label class="sr-only" for="home-funnel-company">选择公司</label><select id="home-funnel-company" v-model="homeFunnelCompanyId" class="wb-home-control"><option value="" disabled>选择公司范围</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
+                <label class="sr-only" for="home-funnel-company">选择公司</label><select id="home-funnel-company" v-model="homeFunnelCompanyId" class="wb-home-control wb-home-company-select"><option value="" disabled>选择公司范围</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
                 <label class="sr-only" for="home-funnel-position">岗位筛选</label><select id="home-funnel-position" v-model="homeFunnelPositionId" class="wb-home-control"><option value="all">全部岗位</option><option v-for="position in workbenchV2.positions" :key="position.id" :value="position.id">{{ position.title || '未命名岗位' }}</option></select>
                 <select aria-label="归属顾问" v-model="homeFunnelOwnerId" class="wb-home-control"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
-                <button v-if="homeFunnelCompanyId" type="button" @click="reloadHomeTalentFunnelDashboard" class="wb-home-secondary">刷新</button>
+                <button v-if="homeFunnelCompanyId" type="button" @click="reloadHomeTalentFunnelDashboard" class="wb-home-secondary" aria-label="刷新渠道漏斗" title="刷新"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 0 0-14.9-3.9L3 9m0 0V4m0 5h5M4 13a8 8 0 0 0 14.9 3.9L21 15m0 0v5m0-5h-5"/></svg></button>
                 <button type="button" @click="openTalentIntake" class="wb-home-primary">＋ 导入人才</button>
               </div>
             </header>
