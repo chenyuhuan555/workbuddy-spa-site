@@ -3199,21 +3199,21 @@
     .wb-v2-workspace .wb-home-section { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 24px; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
     .wb-v2-workspace .wb-home-funnel { min-height: min(620px, calc(100vh - 150px)); }
     .wb-v2-workspace .wb-home-control { min-height: 38px; border: 1px solid #dbe3e8; border-radius: 8px; background: #fff; padding: 0 12px; font-size: 13px; color: #334155; }
-    .wb-v2-workspace .wb-home-primary, .wb-v2-workspace .wb-home-secondary { min-height: 38px; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 600; }
+    .wb-v2-workspace .wb-home-primary, .wb-v2-workspace .wb-home-secondary { min-height: 38px; border-radius: 8px; padding: 0 14px; font-size: 15px; font-weight: 600; }
     .wb-v2-workspace .wb-home-primary { background: #24734f; color: #fff; }
     .wb-v2-workspace .wb-home-primary:hover { background: #1d6042; }
     .wb-v2-workspace .wb-home-secondary { border: 1px solid #dbe3e8; color: #475569; background: #fff; }
     .wb-v2-workspace .wb-home-secondary:hover { background: #f8fafc; }
     .wb-v2-workspace .wb-home-funnel-flow, .wb-v2-workspace .wb-home-source-list { border: 1px solid #eef2f3; border-radius: 10px; padding: 16px; }
-    .wb-v2-workspace .wb-home-funnel { font-size: 15px; }
+    .wb-v2-workspace .wb-home-funnel { font-size: 16px; }
     .wb-v2-workspace .wb-home-funnel h2 { font-size: 30px; }
-    .wb-v2-workspace .wb-home-funnel .wb-home-control { font-size: 14px; }
+    .wb-v2-workspace .wb-home-funnel .wb-home-control { font-size: 15px; }
     .wb-v2-workspace .wb-home-company-select { font-weight: 700; }
     .wb-v2-workspace .wb-home-stage-row { display: flex; align-items: center; gap: 12px; }
     .wb-v2-workspace .wb-home-stage-button { display: flex; flex: 1; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f4; padding: 14px 10px; text-align: left; }
     .wb-v2-workspace .wb-home-stage-button:hover { background: #f8fafc; }
-    .wb-v2-workspace .wb-home-stage-button strong { font-size: 24px; color: #0f172a; }
-    .wb-v2-workspace .wb-home-stage-rate { width: 58px; color: #94a3b8; font-size: 12px; }
+    .wb-v2-workspace .wb-home-stage-button strong { font-size: 28px; color: #0f172a; }
+    .wb-v2-workspace .wb-home-stage-rate { width: 58px; color: #94a3b8; font-size: 14px; }
     .wb-v2-workspace .wb-home-todo-table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px; }
     .wb-v2-workspace .wb-home-todo-table th { background: #f8fafc; padding: 11px 12px; text-align: left; color: #64748b; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .wb-v2-workspace .wb-home-todo-table td { border-top: 1px solid #f1f5f9; padding: 15px 12px; color: #475569; }
@@ -4142,7 +4142,7 @@
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard wb-home-dashboard mx-auto w-full max-w-none space-y-8">
           <section aria-labelledby="home-talent-funnel-title" class="wb-home-section wb-home-funnel">
             <header class="flex flex-wrap items-end justify-between gap-4">
-              <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2></div>
+              <div><p class="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2></div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="home-funnel-time">时间范围</label><select id="home-funnel-time" v-model="homeFunnelTimeRange" class="wb-home-control"><option value="today">今日</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
                 <label class="sr-only" for="home-funnel-company">选择公司</label><select id="home-funnel-company" v-model="homeFunnelCompanyId" class="wb-home-control wb-home-company-select"><option value="" disabled>选择公司范围</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
@@ -4155,8 +4155,8 @@
             <p v-if="homeFunnelDashboard.error" role="alert" class="wb-home-alert">{{ homeFunnelDashboard.error }}</p>
             <p v-else-if="homeFunnelDashboard.loading" class="wb-home-empty">正在加载渠道漏斗…</p>
             <div v-else class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,.8fr)]">
-              <div class="wb-home-funnel-flow"><div v-for="(stage, index) in homeFunnelStageSummary" :key="stage.label" class="wb-home-stage-row"><button type="button" class="wb-home-stage-button" @click="openHomeFunnelCandidates(stage)"><span class="text-sm font-medium text-slate-600">{{ stage.label }}</span><strong>{{ stage.count }}</strong></button><span v-if="index < homeFunnelStageSummary.length - 1" class="wb-home-stage-rate">↓ {{ homeFunnelStageSummary[index + 1].conversion === null ? '—' : `${homeFunnelStageSummary[index + 1].conversion}%` }}</span></div></div>
-              <div class="wb-home-source-list"><div class="flex items-center justify-between"><h3 class="text-base font-semibold text-slate-900">渠道来源</h3><span class="text-xs text-slate-400">点击查看新增人才</span></div><div class="mt-3 divide-y divide-slate-100"><div v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" class="flex items-center justify-between gap-3 py-3"><button type="button" @click="openHomeFunnelChannelDetails(channel)" class="min-w-0 flex-1 text-left hover:text-emerald-700"><span class="truncate text-sm font-medium text-slate-700">{{ channel.channelName }}</span><span class="block text-xs text-slate-400">新增 · 触达 {{ channel.stages[1]?.count || 0 }} · 推荐 {{ channel.stages[2]?.count || 0 }}</span></button><div class="flex shrink-0 items-center gap-3"><strong class="text-base text-slate-900">{{ channel.stages[0]?.count || 0 }}</strong><button type="button" @click="openHomeFunnelChannelImport(channel)" class="text-xs font-semibold text-emerald-700">导入</button></div></div><p v-if="!homeFunnelDashboard.model.channels.length" class="py-8 text-center text-sm text-slate-400">暂无渠道数据</p></div></div>
+              <div class="wb-home-funnel-flow"><div v-for="(stage, index) in homeFunnelStageSummary" :key="stage.label" class="wb-home-stage-row"><button type="button" class="wb-home-stage-button" @click="openHomeFunnelCandidates(stage)"><span class="text-base font-medium text-slate-600">{{ stage.label }}</span><strong>{{ stage.count }}</strong></button><span v-if="index < homeFunnelStageSummary.length - 1" class="wb-home-stage-rate">↓ {{ homeFunnelStageSummary[index + 1].conversion === null ? '—' : `${homeFunnelStageSummary[index + 1].conversion}%` }}</span></div></div>
+              <div class="wb-home-source-list"><div class="flex items-center justify-between"><h3 class="text-lg font-semibold text-slate-900">渠道来源</h3><span class="text-sm text-slate-400">点击查看新增人才</span></div><div class="mt-3 divide-y divide-slate-100"><div v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" class="flex items-center justify-between gap-3 py-3"><button type="button" @click="openHomeFunnelChannelDetails(channel)" class="min-w-0 flex-1 text-left hover:text-emerald-700"><span class="truncate text-base font-medium text-slate-700">{{ channel.channelName }}</span><span class="block text-sm text-slate-400">新增 · 触达 {{ channel.stages[1]?.count || 0 }} · 推荐 {{ channel.stages[2]?.count || 0 }}</span></button><div class="flex shrink-0 items-center gap-3"><strong class="text-lg text-slate-900">{{ channel.stages[0]?.count || 0 }}</strong><button type="button" @click="openHomeFunnelChannelImport(channel)" class="text-sm font-semibold text-emerald-700">导入</button></div></div><p v-if="!homeFunnelDashboard.model.channels.length" class="py-8 text-center text-base text-slate-400">暂无渠道数据</p></div></div>
             </div>
           </section>
 
