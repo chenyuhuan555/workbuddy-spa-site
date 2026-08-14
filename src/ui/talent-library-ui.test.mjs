@@ -262,23 +262,24 @@ test('candidate drawer uses a softer panel surface and lightweight top actions',
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-candidate-drawer\s*\{[\s\S]*?top:\s*16px[\s\S]*?right:\s*16px[\s\S]*?width:\s*min\(860px[\s\S]*?border-radius:\s*24px[\s\S]*?box-shadow:\s*0 24px 70px/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-actions flex items-center justify-end gap-2"/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-open-full rounded-lg px-3 py-2"/);
-  assert.match(INDEX_HTML, /class="wb-candidate-drawer-more rounded-lg px-2 py-2/);
+  assert.doesNotMatch(INDEX_HTML, /wb-candidate-drawer-more|更多候选人操作/);
   assert.match(INDEX_HTML, /class="wb-candidate-drawer-close inline-flex h-9 w-9 items-center justify-center rounded-full border/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-candidate-tabs\s*\{[\s\S]*?margin-top:\s*24px[\s\S]*?border-bottom:\s*1px solid #edf1ef/);
 });
 
 test('候选人简历将操作与内容视图分成两层', () => {
-  const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="border-t border-slate-200 bg-white px-6 pt-4 pb-6">/)?.[0] || '';
+  const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="border-t border-slate-200 bg-white px-4 pt-3 pb-5">/)?.[0] || '';
   assert.ok(resumeBlock, 'resume content block should exist');
-  assert.match(resumeBlock, /class="resume-toolbar[^\"]*px-6 py-0/);
+  assert.match(resumeBlock, /class="resume-toolbar[^\"]*px-4 py-0/);
   assert.match(resumeBlock, /class="resume-toolbar-actions[^\"]*"/);
   assert.match(resumeBlock, /编辑简历/);
+  assert.doesNotMatch(resumeBlock, /<h2[^>]*>简历<\/h2>/);
   assert.match(resumeBlock, /class="[^\"]*h-8[^\"]*rounded-md[^\"]*border-emerald-700[^\"]*bg-transparent/);
   assert.match(resumeBlock, /重新处理[\s\S]*?<svg[\s\S]*?d="m6 9 6 6 6-6"/);
-  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-5/);
+  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-4/);
   assert.doesNotMatch(resumeBlock, /电子简历[\s\S]*?<span aria-hidden="true">/);
-  assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?电子简历/);
-  assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?原始文件/);
+  assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?rounded-md border[\s\S]*?电子简历/);
+  assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?rounded-md border[\s\S]*?原始文件/);
   assert.doesNotMatch(resumeBlock, /candidateResumeView\.mode === '[^']+'[\s\S]*?border-b-2/);
   assert.doesNotMatch(resumeBlock, /inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm/);
 });
