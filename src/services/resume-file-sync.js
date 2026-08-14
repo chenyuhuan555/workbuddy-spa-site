@@ -58,9 +58,9 @@
       return { code, message: '当前设备没有可同步的原始文件' };
     }
     if (/network|fetch|BACKEND_REQUEST_FAILED/i.test(text)) {
-      return { code: 'STORAGE_NETWORK', message: '原始文件云端同步失败，请检查网络后重试' };
+      return { code: 'STORAGE_NETWORK', message: '原件缺失' };
     }
-    return { code: 'STORAGE_FAILED', message: '原始文件云端同步失败，请重试' };
+    return { code: 'STORAGE_FAILED', message: '原件缺失' };
   }
 
   async function persistOrThrow(deps) {

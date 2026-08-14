@@ -14,8 +14,8 @@
     if (!version) return '暂无原始文件';
     if (version.originalFileStatus === 'syncing') return '原件正在同步到私有云端';
     if (version.originalFileStatus === 'synced') return '原件已同步，可跨设备查看';
-    if (version.originalFileStatus === 'sync-failed') return version.originalFileError || '原件仅在已缓存设备可用，云端同步失败';
-    if (version.originalFileStatus === 'missing') return '原件缺失，可重新上传且不会影响业务记录';
+    if (version.originalFileStatus === 'sync-failed') return '原件缺失';
+    if (version.originalFileStatus === 'missing') return '原件缺失';
     return '原件仅在已缓存设备可用';
   }
 

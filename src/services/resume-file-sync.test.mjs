@@ -86,12 +86,12 @@ test('云端上传失败保留本地引用并保存可重试状态', async () =>
     upload: async () => { throw Object.assign(new Error('fetch failed'), { code: 'BACKEND_REQUEST_FAILED' }); },
     download: async () => null,
     persist: async () => { states.push(version.originalFileStatus); return true; },
-  }), /原始文件云端同步失败/);
+  }), /原件缺失/);
 
   assert.deepEqual(states, ['syncing', 'sync-failed']);
   assert.equal(version.originalFileStatus, 'sync-failed');
   assert.equal(version.fileId, 'f1');
-  assert.match(version.originalFileError, /同步失败/);
+  assert.match(version.originalFileError, /原件缺失/);
 });
 
 test('浏览器未提供 MIME 时按文件扩展名上传允许的内容类型', async () => {
