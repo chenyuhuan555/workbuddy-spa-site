@@ -61,7 +61,7 @@ test('人才库工具栏和筛选区使用精简视觉结构', () => {
 
   assert.match(listBlock, /data-talent-library-toolbar/);
   assert.match(listBlock, /data-talent-library-filter-chips/);
-  assert.match(listBlock, /⌕ 筛选/);
+  assert.match(listBlock, /<svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current"[\s\S]*?<span>筛选<\/span>/);
   assert.match(listBlock, /人才库专属搜索/);
   assert.match(INDEX_HTML, /\.wb-talent-library-page\s*\{[\s\S]*?background:\s*#fff/);
   assert.doesNotMatch(listBlock, /rounded-xl border border-slate-200 bg-white p-3/);

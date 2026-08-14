@@ -4630,7 +4630,7 @@
                     <button v-if="canWrite && canConfigureAi" role="menuitem" type="button" @click="talentLibraryActionsOpen = false; runCandidateSmartOrganize()" :disabled="batchSmartOrganizing" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60">{{ batchSmartOrganizing ? 'AI填写中…' : 'AI填写信息' }}</button>
                   </div>
                 </div>
-                <button type="button" @click="talentLibraryMoreFiltersOpen = !talentLibraryMoreFiltersOpen" :aria-expanded="talentLibraryMoreFiltersOpen" class="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">⌕ 筛选</button>
+                <button type="button" @click="talentLibraryMoreFiltersOpen = !talentLibraryMoreFiltersOpen" :aria-expanded="talentLibraryMoreFiltersOpen" class="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.2v5.3l-3 1.5v-6.8L4 5Z"></path></svg><span>筛选</span></button>
                 <button v-if="canWrite" type="button" @click="openTalentIntake" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增人才</button>
               </div>
             </header>
