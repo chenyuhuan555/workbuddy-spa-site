@@ -357,7 +357,7 @@ test('首页渠道漏斗不重复显示页面级和模块级说明标题', () =>
   assert.ok(dashboardBlock, 'dashboard block should exist');
   assert.doesNotMatch(dashboardBlock, /渠道效果概览/);
   assert.doesNotMatch(dashboardBlock, /公司渠道经营/);
-  assert.match(dashboardBlock, /<h2 id="home-talent-funnel-title"[^>]*>\{\{ selectedHomeFunnelCompany\?\.name \|\| '当前公司' \}\} · 公司招聘漏斗<\/h2>/);
+  assert.match(dashboardBlock, /<h2 id="home-talent-funnel-title"[^>]*>渠道漏斗<\/h2>/);
 });
 
 test('首页渠道漏斗保留大标题字号并放大其余信息文字', () => {
@@ -367,11 +367,10 @@ test('首页渠道漏斗保留大标题字号并放大其余信息文字', () =>
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel \.wb-home-control \{ font-size: 15px; \}/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-stage strong \{[^}]*font-size: 32px;/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-label \{[^}]*font-size: 14px;/);
-  assert.match(dashboardBlock, /工作台[^<]*<\/p><h2 id="home-talent-funnel-title"/);
   assert.match(dashboardBlock, /class="wb-home-pipeline-label">\{\{ stage\.label \}\}/);
-  assert.match(dashboardBlock, /id="home-channel-title"[^>]*>渠道来源<\/h3>/);
-  assert.match(dashboardBlock, /class="wb-home-channel-name">\{\{ channel\.channelName \}\}/);
-  assert.match(dashboardBlock, /class="wb-home-channel-import"[^>]*>导入<\/button>/);
+  assert.match(dashboardBlock, /class="wb-home-channel-switcher-label">渠道来源<\/span>/);
+  assert.match(dashboardBlock, /v-for="channel in homeFunnelChannelOptions"/);
+  assert.match(dashboardBlock, /openHomeFunnelChannelImport\(selectedHomeFunnelChannelRow\)/);
 });
 
 test('人才上传归类展开控件使用 SVG 下箭头', () => {
