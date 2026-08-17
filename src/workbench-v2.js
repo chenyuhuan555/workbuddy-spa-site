@@ -112,7 +112,7 @@
       && item.positionId === position.id
       && item.status !== 'archived'
     ));
-    if (existing) throw new Error('该候选人已存在此岗位推进');
+    if (existing) throw new Error('该人才已推荐至此岗位');
 
     const company = bundle.companies.find(item => item.id === position.companyId);
     const defaultOwner = position.owner || company?.owner || candidate.owner || '';
@@ -759,7 +759,7 @@
   // 按 id 定位推进记录并推进阶段；只修改 application，绝不回写人才基础资料。
   function updateApplicationStage(bundle, applicationId, stage, metadata = {}) {
     const application = (bundle.applications || []).find(item => item.id === applicationId);
-    if (!application) throw new Error('推进记录不存在');
+    if (!application) throw new Error('推荐记录不存在');
     return changeApplicationStage(application, { toStage: stage, ...metadata });
   }
 

@@ -368,7 +368,7 @@ test('首页渠道漏斗保留大标题字号并放大其余信息文字', () =>
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-stage strong \{[^}]*font-size: 32px;/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-label \{[^}]*font-size: 14px;/);
   assert.match(dashboardBlock, /class="wb-home-pipeline-label">\{\{ stage\.label \}\}/);
-  assert.match(dashboardBlock, /class="wb-home-channel-switcher-label">渠道来源<\/span>/);
+  assert.doesNotMatch(dashboardBlock, /渠道来源<\/span>/);
   assert.match(dashboardBlock, /v-for="channel in homeFunnelChannelOptions"/);
   assert.match(dashboardBlock, /openHomeFunnelChannelImport\(selectedHomeFunnelChannelRow\)/);
 });

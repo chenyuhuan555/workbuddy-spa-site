@@ -15,7 +15,7 @@ export function createWorkbenchApplicationActions({
 
   function openApplicationDetail(id) {
     const application = resolveApplication(id);
-    if (!application) { showToast('推进记录不存在', 'error'); return; }
+    if (!application) { showToast('推荐记录不存在', 'error'); return; }
     if (typeof application.progressNote !== 'string') application.progressNote = '';
     if (typeof application.communicationLog !== 'string') application.communicationLog = '';
     if (typeof application.owner !== 'string') application.owner = '';
@@ -27,7 +27,7 @@ export function createWorkbenchApplicationActions({
   async function saveApplicationDetail() {
     if (!requireWritePermission()) return false;
     const saved = await saveWorkbenchV2();
-    if (saved) showToast('推进记录已保存');
+    if (saved) showToast('推荐记录已保存');
     return saved;
   }
 
@@ -51,10 +51,12 @@ export function createWorkbenchApplicationActions({
         candidateId, positionId, matchScore: match.score ?? null, matchReason: match.reason || '',
         matchHighlights: match.highlights || [], matchGaps: match.gaps || [], matchRisks: match.risks || [],
       });
-      if (await saveWorkbenchV2()) showToast('已创建推进记录');
+      if (await saveWorkbenchV2()) showToast('已创建推荐');
       return application;
     } catch (error) {
       showToast(error.message, 'error');
+      const existing = (state.applications || []).find(item => item.candidateId === candidateId && item.positionId === positionId && item.status !== 'archived');
+      if (existing) openApplicationDetail(existing.id);
       return null;
     }
   }
@@ -75,7 +77,9 @@ export function createWorkbenchApplicationActions({
           reasonNote: toStage === stages.CLOSED ? '从推进中心结束' : '',
         });
       }
-      return await saveWorkbenchV2();
+      const saved = await saveWorkbenchV2();
+      if (saved) showToast('推进状态已更新');
+      return saved;
     } catch (error) {
       showToast(error.message, 'error');
       return false;

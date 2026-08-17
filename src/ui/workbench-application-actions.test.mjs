@@ -143,5 +143,5 @@ test('创建推荐使用完整工作区创建候选人与岗位推进', async ()
   assert.equal(receivedBundle, bundle);
   assert.equal(bundle.applications.length, 1);
   assert.equal(saves, 1);
-  assert.equal(toast, '已创建推进记录');
+  assert.equal(toast, '已创建推荐');
 });
