@@ -64,7 +64,7 @@ test('工作台首页按渠道漏斗、今日待办、今日复盘分层', () =>
   assert.match(dashboard, /homeFunnelStageSummary/);
   assert.match(dashboard, /openTalentIntake/);
   assert.match(dashboard, /openHomeFunnelChannelImport\(channel\)/);
-  assert.match(dashboard, /dashboardTodos\.slice\(0, 8\)/);
+  assert.match(dashboard, /filteredHomeTodos\.slice\(0, 6\)/);
   assert.match(dashboard, /homeFunnelReview\.added/);
 });
 
@@ -79,6 +79,18 @@ test('首页使用横向公司招聘漏斗和渠道进度列表', () => {
   assert.match(dashboard, /openHomeFunnelChannelDetails\(channel\)/);
   assert.match(dashboard, /openHomeFunnelChannelImport\(channel\)/);
   assert.doesNotMatch(dashboard, /wb-home-stage-row/);
+});
+
+test('今日待办与今日复盘使用紧凑两栏工作区', () => {
+  const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
+  assert.match(dashboard, /wb-home-execution-grid/);
+  assert.match(dashboard, /homeTodoTabs/);
+  assert.match(dashboard, /filteredHomeTodos/);
+  assert.match(dashboard, /wb-home-todo-status/);
+  assert.match(dashboard, /homeFunnelAiSummary/);
+  assert.match(dashboard, /AI 智能总结/);
+  assert.match(dashboard, /v-model="homeReviewNotes\.issue"/);
+  assert.match(dashboard, /v-model="homeReviewNotes\.tomorrow"/);
 });
 
 test('工作台首页不再展示旧的 KPI 卡片和业务进展大卡片', () => {

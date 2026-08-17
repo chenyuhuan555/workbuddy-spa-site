@@ -3199,15 +3199,23 @@
     .wb-v2-workspace .wb-ai-app-stats { display: none !important; }
     .wb-v2-workspace .wb-home-section { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 24px; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
     .wb-v2-workspace .wb-home-funnel-section { min-height: auto; border: 1px solid #e9ecea; border-radius: 12px; background: #fff; padding: 22px; box-shadow: none; }
-    .wb-v2-workspace .wb-home-activity-section { border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; background: transparent; padding: 20px 0; box-shadow: none; }
-    .wb-v2-workspace .wb-home-activity-section h2 { font-size: 24px; line-height: 1.25; }
+    .wb-v2-workspace .wb-home-execution-grid { display: grid; grid-template-columns: minmax(0, 13fr) minmax(340px, 7fr); gap: 18px; align-items: start; }
+    .wb-v2-workspace .wb-home-activity-section { border: 1px solid #e9ecea; border-radius: 12px; background: #fff; padding: 20px; box-shadow: none; }
+    .wb-v2-workspace .wb-home-activity-section h2 { font-size: 22px; line-height: 1.25; }
     .wb-v2-workspace .wb-home-todo-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 6px; color: #64748b; font-size: 14px; }
     .wb-v2-workspace .wb-home-todo-summary strong { color: #0f172a; font-size: 16px; }
     .wb-v2-workspace .wb-home-todo-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #f1f5f9; margin-top: 16px; padding-top: 18px; color: #64748b; font-size: 15px; }
-    .wb-v2-workspace .wb-home-review-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin-top: 16px; color: #64748b; font-size: 15px; }
-    .wb-v2-workspace .wb-home-review-stats strong { margin-left: 4px; color: #0f172a; font-size: 26px; line-height: 1; }
-    .wb-v2-workspace .wb-home-note { display: grid; grid-template-columns: 32px 150px minmax(0, 1fr) 18px; align-items: center; gap: 16px; border-top: 0; border-bottom: 1px solid #e2e8f0; padding: 18px 0; }
-    .wb-v2-workspace .wb-home-note textarea { display: block; width: 100%; min-height: 36px; resize: vertical; border: 0; background: transparent; padding: 0; color: #344054; font-size: 16px; line-height: 1.55; outline: none; }
+    .wb-v2-workspace .wb-home-review-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 18px; color: #64748b; font-size: 12px; }
+    .wb-v2-workspace .wb-home-review-stats span { min-width: 0; padding: 0 8px; text-align: center; }
+    .wb-v2-workspace .wb-home-review-stats span + span { border-left: 1px solid #eef1ef; }
+    .wb-v2-workspace .wb-home-review-stats strong { display: block; margin-top: 5px; color: #087a55; font-size: 25px; line-height: 1; }
+    .wb-v2-workspace .wb-home-ai-label { border-radius: 999px; background: #edf8f1; padding: 3px 7px; color: #16834b; font-size: 11px; font-weight: 600; }
+    .wb-v2-workspace .wb-home-ai-summary { margin-top: 18px; border-radius: 10px; background: #f3f8f5; padding: 14px 16px; color: #475569; font-size: 13px; line-height: 1.6; }
+    .wb-v2-workspace .wb-home-ai-summary strong { color: #16834b; font-size: 13px; }
+    .wb-v2-workspace .wb-home-ai-summary p { margin-top: 6px; }
+    .wb-v2-workspace .wb-home-review-notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .wb-v2-workspace .wb-home-note { display: block; border: 1px solid #eef1ef; border-radius: 10px; padding: 12px; }
+    .wb-v2-workspace .wb-home-note textarea { display: block; width: 100%; min-height: 58px; resize: vertical; border: 0; background: transparent; padding: 8px 0 0; color: #344054; font-size: 13px; line-height: 1.55; outline: none; }
     .wb-v2-workspace .wb-home-note textarea:focus { color: #334155; }
     .wb-v2-workspace .wb-home-funnel { min-height: auto; }
     .wb-v2-workspace .wb-home-control { min-height: 38px; border: 1px solid #dbe3e8; border-radius: 8px; background: #fff; padding: 0 12px; font-size: 13px; color: #334155; }
@@ -3253,9 +3261,9 @@
     .wb-v2-workspace .wb-home-channel-count { color: #0f172a; font-size: 14px; font-weight: 700; text-align: right; }
     .wb-v2-workspace .wb-home-channel-share { color: #94a3b8; font-size: 12px; text-align: right; }
     .wb-v2-workspace .wb-home-channel-import { color: #087a55; font-size: 12px; font-weight: 600; }
-    .wb-v2-workspace .wb-home-todo-table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px; }
-    .wb-v2-workspace .wb-home-todo-table th { background: #f8fafc; padding: 11px 12px; text-align: left; color: #64748b; font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .wb-v2-workspace .wb-home-todo-table td { border-top: 1px solid #f1f5f9; padding: 15px 12px; color: #475569; }
+    .wb-v2-workspace .wb-home-todo-table { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 13px; }
+    .wb-v2-workspace .wb-home-todo-table th { padding: 11px 10px; text-align: left; color: #94a3b8; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .wb-v2-workspace .wb-home-todo-table td { border-top: 1px solid #eef1ef; padding: 13px 10px; color: #475569; }
     .wb-v2-workspace .wb-home-todo-table tbody tr { cursor: pointer; }
     .wb-v2-workspace .wb-home-todo-table tbody tr:hover { background: #f8fafc; }
     .wb-v2-workspace .wb-home-todo-list { border-top: 1px solid #e2e8f0; }
@@ -3266,14 +3274,21 @@
     .wb-v2-workspace .wb-home-todo-due { display: grid; grid-template-columns: 22px auto; align-items: center; justify-content: end; gap: 10px; color: #16834b; white-space: nowrap; }
     .wb-v2-workspace .wb-home-todo-due.is-overdue { color: #ef4444; }
     .wb-v2-workspace .wb-home-todo-due svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; }
-    .wb-v2-workspace .wb-home-todo-tabs { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 18px; border-bottom: 1px solid #e2e8f0; }
-    .wb-v2-workspace .wb-home-todo-tab { border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 0 0 12px; color: #475569; font-size: 16px; }
+    .wb-v2-workspace .wb-home-todo-tabs { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 15px; border-bottom: 1px solid #eef1ef; }
+    .wb-v2-workspace .wb-home-todo-tab { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 0 0 10px; color: #64748b; font-size: 13px; }
+    .wb-v2-workspace .wb-home-todo-tab span { margin-left: 3px; color: #94a3b8; }
     .wb-v2-workspace .wb-home-todo-tab.is-active { border-bottom-color: #16834b; color: #16834b; }
+    .wb-v2-workspace .wb-home-todo-tab.is-active span { color: #16834b; }
+    .wb-v2-workspace .wb-home-todo-status { display: inline-flex; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .wb-v2-workspace .wb-home-todo-status.is-touch { background: #fff7ed; color: #c2410c; }
+    .wb-v2-workspace .wb-home-todo-status.is-feedback { background: #eff6ff; color: #2563eb; }
+    .wb-v2-workspace .wb-home-todo-status.is-recommendation { background: #f5f3ff; color: #7c3aed; }
+    .wb-v2-workspace .wb-home-todo-status.is-interview { background: #ecfdf5; color: #16834b; }
     .wb-v2-workspace .wb-home-link { color: #24734f; font-size: 13px; font-weight: 600; }
     .wb-v2-workspace .wb-home-review-item { display: flex; min-height: 82px; flex-direction: column; justify-content: space-between; border: 1px solid #eef2f3; border-radius: 10px; padding: 14px; }
     .wb-v2-workspace .wb-home-review-item span { font-size: 13px; color: #64748b; }
     .wb-v2-workspace .wb-home-review-item strong { font-size: 24px; color: #0f172a; }
-    .wb-v2-workspace .wb-home-note h3 { font-size: 17px; font-weight: 500; color: #253247; }
+    .wb-v2-workspace .wb-home-note h3 { font-size: 13px; font-weight: 600; color: #334155; }
     .wb-v2-workspace .wb-home-note-icon { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 50%; background: #f1f5f3; color: #16834b; }
     .wb-v2-workspace .wb-home-note-icon svg, .wb-v2-workspace .wb-home-note-arrow svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
     .wb-v2-workspace .wb-home-note-arrow { color: #94a3b8; }
@@ -3281,12 +3296,11 @@
       .wb-v2-workspace .wb-home-dashboard { padding-top: 20px; }
       .wb-v2-workspace .wb-home-todo-row { grid-template-columns: 1fr; gap: 5px; }
       .wb-v2-workspace .wb-home-todo-due { justify-content: start; }
-      .wb-v2-workspace .wb-home-note { grid-template-columns: 32px 1fr 18px; }
-      .wb-v2-workspace .wb-home-note h3 { grid-column: 2; }
-      .wb-v2-workspace .wb-home-note textarea { grid-column: 2 / -1; }
+      .wb-v2-workspace .wb-home-review-notes { grid-template-columns: 1fr; }
     }
     @media (max-width: 1180px) {
       .wb-v2-workspace .wb-home-company-funnel-grid { grid-template-columns: 1fr; }
+      .wb-v2-workspace .wb-home-execution-grid { grid-template-columns: 1fr; }
       .wb-v2-workspace .wb-home-pipeline-scroll { overflow-x: auto; }
     }
     .wb-v2-workspace .wb-home-alert { margin-top: 16px; border-radius: 8px; background: #fff1f2; padding: 10px 12px; font-size: 13px; color: #be123c; }
@@ -4255,9 +4269,31 @@
             </div>
           </section>
 
-          <section aria-labelledby="home-todo-title" class="wb-home-section wb-home-activity-section"><div class="flex flex-wrap items-start justify-between gap-3"><div><h2 id="home-todo-title" class="font-bold text-slate-900">今日待办 <span class="ml-2 text-emerald-700">{{ dashboardTodos.length }}</span></h2><div class="wb-home-todo-tabs"><span class="wb-home-todo-tab is-active">全部</span><span class="wb-home-todo-tab">待跟进&nbsp; {{ homeTodoSummary.pending }}</span><span class="wb-home-todo-tab">今日面试&nbsp; {{ homeTodoSummary.interviews }}</span><span class="wb-home-todo-tab">待推荐&nbsp; {{ homeTodoSummary.recommendations }}</span><span class="wb-home-todo-tab text-rose-600">已逾期&nbsp; {{ homeTodoSummary.overdue }}</span></div></div><button type="button" @click="openTodoListView()" class="wb-home-link">查看全部 <svg aria-hidden="true" viewBox="0 0 24 24" class="ml-1 inline h-4 w-4 align-[-2px]" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-6-6 6 6-6 6"/></svg></button></div><div v-if="dashboardTodos.length" class="wb-home-todo-list"><button v-for="todo in dashboardTodos.slice(0, 8)" :key="todo.id" type="button" class="wb-home-todo-row" @click="openTodoDetail(todo)"><span class="wb-home-todo-row-person font-semibold text-slate-900">{{ todo.linkLabel || todo.title }}</span><span class="wb-home-todo-row-task text-slate-900">{{ todo.subtitle || '—' }}<small>{{ todo.type || '跟进' }} · {{ todo.title }} · {{ accountDisplayName }}</small></span><span class="wb-home-todo-due" :class="todo.date !== '—' && todo.date < homeTodoSummary.today ? 'is-overdue' : ''"><svg v-if="todo.date !== '—' && todo.date < homeTodoSummary.today" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><svg v-else aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg><span>{{ todo.date }}</span></span></button></div><div v-else class="wb-home-todo-empty"><span>今天暂无待办<br><small>可以从候选人或推进记录中添加</small></span><button type="button" @click="openTodoForm()" class="wb-home-link">＋ 新增待办</button></div></section>
+          <div class="wb-home-execution-grid">
+            <section aria-labelledby="home-todo-title" class="wb-home-section wb-home-activity-section">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div><h2 id="home-todo-title" class="font-bold text-slate-900">今日待办 <span class="ml-2 text-emerald-700">{{ dashboardTodos.length }}</span></h2></div>
+                <button type="button" @click="openTodoListView()" class="wb-home-link">查看全部 <svg aria-hidden="true" viewBox="0 0 24 24" class="ml-1 inline h-4 w-4 align-[-2px]" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-6-6 6 6-6 6"/></svg></button>
+              </div>
+              <div class="wb-home-todo-tabs" role="tablist" aria-label="待办类型">
+                <button v-for="tab in homeTodoTabs" :key="tab.key" type="button" role="tab" class="wb-home-todo-tab" :class="{ 'is-active': homeTodoFilter === tab.key }" :aria-selected="homeTodoFilter === tab.key" @click="homeTodoFilter = tab.key">{{ tab.label }} <span>{{ tab.count }}</span></button>
+              </div>
+              <div v-if="filteredHomeTodos.length" class="overflow-x-auto">
+                <table class="wb-home-todo-table">
+                  <thead><tr><th>候选人</th><th>公司 / 岗位</th><th>当前状态</th><th>下一步动作</th><th>截止时间</th></tr></thead>
+                  <tbody><tr v-for="todo in filteredHomeTodos.slice(0, 6)" :key="todo.id" @click="openTodoDetail(todo)"><td class="font-semibold text-slate-900">{{ todo.linkLabel || todo.title }}</td><td>{{ todo.subtitle || '—' }}</td><td><span class="wb-home-todo-status" :class="'is-' + todo.category">{{ todo.statusLabel }}</span></td><td>{{ todo.title }}</td><td :class="todo.date !== '—' && todo.date < homeTodoSummary.today ? 'text-rose-600' : ''">{{ todo.date }}</td></tr></tbody>
+                </table>
+              </div>
+              <div v-else class="wb-home-todo-empty"><span>今天暂无待办<br><small>可以从候选人或推进记录中添加</small></span><button type="button" @click="openTodoForm()" class="wb-home-link">＋ 新增待办</button></div>
+            </section>
 
-          <section aria-labelledby="home-review-title" class="wb-home-section wb-home-activity-section"><div><h2 id="home-review-title" class="font-bold text-slate-900">今日复盘</h2></div><div class="wb-home-review-stats"><span>新增人才 <strong>{{ homeFunnelReview.added }}</strong></span><span>触达 <strong>{{ homeFunnelReview.touched }}</strong></span><span>推荐 <strong>{{ homeFunnelReview.recommended }}</strong></span><span>面试 <strong>{{ homeFunnelReview.interviewed }}</strong></span><span>完成待办 <strong>{{ homeFunnelReview.completedTodos }}</strong></span></div><div class="mt-3"><label class="wb-home-note"><span class="wb-home-note-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg></span><h3>今日问题</h3><textarea v-model="homeReviewNotes.issue" aria-label="今日问题" placeholder="记录今天需要关注的问题"></textarea><span class="wb-home-note-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg></span></label><label class="wb-home-note"><span class="wb-home-note-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3"/></svg></span><h3>明日重点</h3><textarea v-model="homeReviewNotes.tomorrow" aria-label="明日重点" placeholder="记录明天优先处理的事项"></textarea><span class="wb-home-note-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg></span></label></div></section>
+            <section aria-labelledby="home-review-title" class="wb-home-section wb-home-activity-section">
+              <div class="flex items-center gap-2"><h2 id="home-review-title" class="font-bold text-slate-900">今日复盘</h2><span class="wb-home-ai-label">AI 生成</span></div>
+              <div class="wb-home-review-stats"><span>新增人才 <strong>{{ homeFunnelReview.added }}</strong></span><span>触达 <strong>{{ homeFunnelReview.touched }}</strong></span><span>有意向 <strong>{{ homeFunnelReview.interested }}</strong></span><span>已推荐 <strong>{{ homeFunnelReview.recommended }}</strong></span><span>进入面试 <strong>{{ homeFunnelReview.interviewed }}</strong></span></div>
+              <div class="wb-home-ai-summary"><strong>AI 智能总结</strong><p>{{ homeFunnelAiSummary }}</p></div>
+              <div class="wb-home-review-notes"><label class="wb-home-note"><h3>今天遇到的问题</h3><textarea v-model="homeReviewNotes.issue" aria-label="今天遇到的问题" placeholder="记录今天需要关注的问题"></textarea></label><label class="wb-home-note"><h3>明日重点</h3><textarea v-model="homeReviewNotes.tomorrow" aria-label="明日重点" placeholder="记录明天优先处理的事项"></textarea></label></div>
+            </section>
+          </div>
 
           <div v-if="channelDetailDialog.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" @click.self="closeChannelDetails">
             <section role="dialog" aria-modal="true" aria-labelledby="channel-detail-title" class="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
@@ -13288,6 +13324,7 @@ const vueAppConfig = {
     const homeFunnelReview = computed(() => ({
       added: homeFunnelStageSummary.value[0]?.count || 0,
       touched: homeFunnelStageSummary.value[2]?.count || 0,
+      interested: homeFunnelStageSummary.value[3]?.count || 0,
       recommended: homeFunnelStageSummary.value[4]?.count || 0,
       interviewed: homeFunnelStageSummary.value[5]?.count || 0,
       completedTodos: dashboardTodos.value.filter(todo => todo.done).length,
@@ -13303,6 +13340,34 @@ const vueAppConfig = {
         recommendations: todos.filter(todo => !todo.done && /推荐/.test(`${todo.type} ${todo.title}`)).length,
         overdue: todos.filter(todo => !todo.done && todo.date !== '—' && todo.date < today).length,
       };
+    });
+    const homeTodoFilter = ref('all');
+    const homeTodoRows = computed(() => dashboardTodos.value.map(todo => {
+      const text = `${todo.type || ''} ${todo.title || ''}`;
+      const category = /面试/.test(text) ? 'interview' : /推荐/.test(text) ? 'recommendation' : /反馈/.test(text) ? 'feedback' : 'touch';
+      return {
+        ...todo,
+        category,
+        statusLabel: { touch: '待触达', feedback: '待反馈', recommendation: '待推荐', interview: '待面试' }[category],
+      };
+    }));
+    const homeTodoTabs = computed(() => [
+      { key: 'all', label: '全部', count: homeTodoRows.value.length },
+      { key: 'touch', label: '待触达', count: homeTodoRows.value.filter(todo => todo.category === 'touch').length },
+      { key: 'feedback', label: '待反馈', count: homeTodoRows.value.filter(todo => todo.category === 'feedback').length },
+      { key: 'recommendation', label: '待推荐', count: homeTodoRows.value.filter(todo => todo.category === 'recommendation').length },
+      { key: 'interview', label: '待面试', count: homeTodoRows.value.filter(todo => todo.category === 'interview').length },
+    ]);
+    const filteredHomeTodos = computed(() => homeTodoFilter.value === 'all'
+      ? homeTodoRows.value
+      : homeTodoRows.value.filter(todo => todo.category === homeTodoFilter.value));
+    const homeFunnelAiSummary = computed(() => {
+      const added = homeFunnelReview.value.added;
+      const touched = homeFunnelReview.value.touched;
+      const touchRate = added ? Math.round((touched / added) * 100) : 0;
+      const primary = homeFunnelChannelRows.value.slice().sort((a, b) => b.count - a.count)[0];
+      if (!added) return '当前筛选范围内暂无新增人才，建议先补充渠道数据并保持推进记录完整。';
+      return `当前新增人才 ${added} 位${primary?.count ? `，主要来源为${primary.channelName}` : ''}。触达率为 ${touchRate}%，尚有 ${Math.max(added - touched, 0)} 位未触达人才。`;
     });
     const homeReviewNotes = reactive({ issue: '', tomorrow: '' });
     const channelDetailDialog = reactive({ open: false, companyId: '', channelId: '', channelName: '', query: '', status: 'all' });
@@ -25331,7 +25396,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelOwnerId, homeFunnelStageSummary, selectedHomeFunnelCompany, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelOwnerId, homeFunnelStageSummary, selectedHomeFunnelCompany, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,
