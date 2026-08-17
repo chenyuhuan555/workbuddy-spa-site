@@ -2942,6 +2942,7 @@
     .wb-v2-workspace .wb-v2-sidebar-navigation > button:nth-of-type(5) {
       margin-top: 14px;
       padding-top: 16px;
+      padding-bottom: 16px;
       border-top: 1px solid #edf1ef;
     }
 
@@ -3877,6 +3878,15 @@
       box-shadow: none !important;
     }
 
+    .wb-v2-workspace .wb-toolbox-page,
+    .wb-v2-workspace .wb-knowledge-page {
+      max-width: 1480px !important;
+    }
+    .wb-v2-workspace .wb-toolbox-page > .wb-toolbox-card,
+    .wb-v2-workspace .wb-knowledge-page > .wb-knowledge-card {
+      border-color: #e2e8f0 !important;
+    }
+
     .wb-v2-workspace #v2-kb-section .wb-toolbox-header,
     .wb-v2-workspace #v2-kb-section .wb-toolbox-header h2,
     .wb-v2-workspace #v2-kb-section .wb-toolbox-header svg {
@@ -4227,7 +4237,7 @@
             <div v-else class="wb-home-channel-funnel-card">
               <div class="wb-home-channel-switcher">
                 <div><span class="wb-home-channel-switcher-label">渠道来源</span><div class="wb-home-channel-options" role="tablist" aria-label="渠道来源"><button v-for="channel in homeFunnelChannelOptions" :key="channel.channelId" type="button" role="tab" class="wb-home-channel-option" :class="{ 'is-active': homeFunnelSelectedChannelId === channel.channelId }" :aria-selected="homeFunnelSelectedChannelId === channel.channelId" @click="homeFunnelSelectedChannelId = channel.channelId">{{ channel.channelName }} <span>{{ channel.count }}</span></button></div></div>
-                <div class="wb-home-channel-actions"><button type="button" class="wb-home-link" @click="openHomeFunnelCandidates(homeFunnelStageSummary[0])">查看新增人才</button><button v-if="selectedHomeFunnelChannelRow" type="button" class="wb-home-link" @click="openHomeFunnelChannelDetails(selectedHomeFunnelChannelRow)">渠道详情</button><button v-if="selectedHomeFunnelChannelRow" type="button" class="wb-home-link" @click="openHomeFunnelChannelImport(selectedHomeFunnelChannelRow)">导入</button></div>
+                <div class="wb-home-channel-actions"><button v-if="selectedHomeFunnelChannelRow" type="button" class="wb-home-link" @click="openHomeFunnelChannelDetails(selectedHomeFunnelChannelRow)">渠道详情</button><button v-if="selectedHomeFunnelChannelRow" type="button" class="wb-home-link" @click="openHomeFunnelChannelImport(selectedHomeFunnelChannelRow)">导入</button></div>
               </div>
               <div class="wb-home-pipeline-card">
                 <div class="wb-home-pipeline-scroll">
@@ -4831,7 +4841,10 @@
 
             <div class="wb-talent-filter-toolbar">
             <div data-talent-library-filter-chips class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <span v-if="candidateFilters.query || candidateFilters.owner !== 'all' || talentLibraryFilters.intake.preset !== 'all' || talentLibraryFilters.stage !== 'all'" class="mr-1">当前筛选</span>
+              <span v-if="candidateFilters.query || candidateFilters.owner !== 'all' || talentLibraryFilters.intake.preset !== 'all' || talentLibraryFilters.stage !== 'all' || talentLibraryFilters.sourceCompanyId !== 'all' || talentLibraryFilters.sourceChannelId !== 'all' || talentLibraryFilters.stageKeys.length" class="mr-1">当前筛选</span>
+              <button v-if="talentLibraryFilters.sourceCompanyId !== 'all'" type="button" @click="talentLibraryFilters.sourceCompanyId = 'all'">来源公司：{{ talentLibrarySourceCompanyLabel }} ×</button>
+              <button v-if="talentLibraryFilters.sourceChannelId !== 'all'" type="button" @click="talentLibraryFilters.sourceChannelId = 'all'">来源渠道：{{ talentLibrarySourceChannelLabel }} ×</button>
+              <button v-if="talentLibraryFilters.stageKeys.length" type="button" @click="talentLibraryFilters.stageKeys = []; talentLibraryFilters.stageKeysLabel = ''">漏斗阶段：{{ talentLibraryFilters.stageKeysLabel }} ×</button>
               <button v-if="talentLibraryFilters.intake.preset !== 'all'" type="button" @click="talentLibraryFilters.intake.preset = 'all'">入库时间：{{ talentLibraryFilters.intake.preset }} ×</button>
               <button v-if="candidateFilters.owner !== 'all'" type="button" @click="candidateFilters.owner = 'all'">归属顾问：{{ candidateFilters.owner }} ×</button>
               <button v-if="talentLibraryFilters.stage !== 'all'" type="button" @click="talentLibraryFilters.stage = 'all'">流程阶段：{{ candidatePipelineLabel(talentLibraryFilters.stage) }} ×</button>
@@ -5248,7 +5261,7 @@
           <nav v-if="pagedApplications.total" aria-label="推进列表分页" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-600"><span>第 {{ pagedApplications.start }}–{{ pagedApplications.end }} 条，共 {{ pagedApplications.total }} 条</span><div class="flex flex-wrap items-center gap-2"><button type="button" :disabled="pagedApplications.page === 1" @click="applicationPage = 1" class="px-2 py-1 rounded border disabled:opacity-40">首页</button><button type="button" :disabled="pagedApplications.page === 1" @click="applicationPage -= 1" class="px-2 py-1 rounded border disabled:opacity-40">上一页</button><span aria-live="polite">第 {{ pagedApplications.page }} / {{ pagedApplications.totalPages }} 页</span><button type="button" :disabled="pagedApplications.page === pagedApplications.totalPages" @click="applicationPage += 1" class="px-2 py-1 rounded border disabled:opacity-40">下一页</button><button type="button" :disabled="pagedApplications.page === pagedApplications.totalPages" @click="applicationPage = pagedApplications.totalPages" class="px-2 py-1 rounded border disabled:opacity-40">末页</button></div></nav>
         </div>
 
-        <div v-else-if="workbenchNav === 'ai' && workbenchRoute.type === 'list'" class="wb-toolbox-page max-w-7xl mx-auto space-y-4">
+        <div v-else-if="workbenchNav === 'ai' && workbenchRoute.type === 'list'" class="wb-toolbox-page max-w-7xl mx-auto space-y-4 border border-slate-200 rounded-2xl p-6">
           <div class="wb-toolbox-card bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div class="wb-toolbox-header px-6 py-4 bg-white border-b border-slate-100 flex items-center gap-2">
               <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5466,7 +5479,7 @@
           </div>
         </div>
 
-        <div v-else-if="workbenchNav === 'knowledge' && workbenchRoute.type === 'list'" class="wb-knowledge-page max-w-7xl mx-auto space-y-4">
+        <div v-else-if="workbenchNav === 'knowledge' && workbenchRoute.type === 'list'" class="wb-knowledge-page max-w-7xl mx-auto space-y-4 border border-slate-200 rounded-2xl p-6">
           <div class="flex items-center gap-2 mb-1">
             <h1 class="text-2xl font-bold text-slate-900">知识库 · 资讯中心</h1>
             <span class="text-xs text-slate-400">文档沉淀 · AI 资讯 · 行业动态，集中在此管理</span>
@@ -6116,7 +6129,7 @@
         </section>
           </template>
         </div>
-        <section v-else-if="workbenchNav === 'settings' && canConfigureAi" class="max-w-5xl mx-auto space-y-5">
+        <section v-else-if="workbenchNav === 'settings' && canConfigureAi" class="max-w-[1400px] mx-auto space-y-5">
           <div v-if="canManageMembers" data-settings-card="members" class="bg-white border border-slate-200 rounded-2xl p-6">
             <div class="flex items-start justify-between gap-4 mb-5">
               <div><p class="text-xs font-bold tracking-wider text-emerald-700">设置</p><h1 class="text-xl font-bold text-slate-900 mt-1">成员管理</h1><p class="text-sm text-slate-500 mt-1">{{ memberManagement.form.role === 'editor' ? '高级成员可编辑业务数据，但不能管理账号。' : '普通成员只能浏览数据，无法修改任何内容。' }}</p></div>
@@ -11835,6 +11848,7 @@ const vueAppConfig = {
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
     const talentLibraryFilters = reactive({
       base: '', positionId: 'all', stage: 'all', education: '',
+      sourceCompanyId: 'all', sourceChannelId: 'all', stageKeys: [], stageKeysLabel: '',
       intake: { preset: 'all', from: '', to: '' },
       touch: { preset: 'all', from: '', to: '' },
       recommendation: { preset: 'all', from: '', to: '' },
@@ -13404,7 +13418,19 @@ const vueAppConfig = {
       openChannelCandidateImport(homeFunnelCompanyId.value, channel.channelId, channel.channelName);
     }
     function openHomeFunnelCandidates(stage) {
-      if (stage?.key) talentLibraryFilters.stage = stage.key;
+      if (stage?.key) {
+        // 漏斗阶段（imported/contacted/...）是聚合 key，
+        // 人才库阶段筛选使用真实 application.stage，需做一次反向映射取首个 application 阶段。
+        const funnelStageToAppStage = {
+          imported: 'discovered',
+          contacted: 'contacted',
+          matched: 'screening',
+          interviewed: 'interview_pending',
+          offered: 'offer',
+          hired: 'onboarded',
+        };
+        talentLibraryFilters.stage = funnelStageToAppStage[stage.key] || 'all';
+      }
       selectWorkbenchNav('candidates');
     }
     function exportChannelDetails() {
