@@ -11854,6 +11854,17 @@ const vueAppConfig = {
       recommendation: { preset: 'all', from: '', to: '' },
     });
     const talentLibraryColumnKeys=ref(TalentLibrary.loadColumnKeys(window.localStorage));
+    const talentLibrarySourceCompanyLabel = computed(() => {
+      const id = talentLibraryFilters.sourceCompanyId;
+      if (!id || id === 'all') return '';
+      return workbenchV2.companies.find(company => company.id === id)?.name || id;
+    });
+    const talentLibrarySourceChannelLabel = computed(() => {
+      const id = talentLibraryFilters.sourceChannelId;
+      if (!id || id === 'all') return '';
+      const channel = (Array.isArray(workbenchV2.talentSourceChannels) ? workbenchV2.talentSourceChannels : []).find(item => item.id === id);
+      return channel?.name || id;
+    });
     const talentLibraryColumnsOpen=ref(false);
     const talentLibraryActionsOpen = ref(false);
     const talentLibraryMoreFiltersOpen = ref(false);
@@ -13418,11 +13429,14 @@ const vueAppConfig = {
       openChannelCandidateImport(homeFunnelCompanyId.value, channel.channelId, channel.channelName);
     }
     function openHomeFunnelCandidates(stage) {
-      if (stage?.key) {
-        // 漏斗阶段（imported/contacted/...）是聚合 key，
-        // 人才库阶段筛选使用真实 application.stage，需做一次反向映射取首个 application 阶段。
+      // 漏斗首页是"某家公司"的渠道漏斗，点击阶段跳转应带出该公司（首次来源公司）与渠道筛选，
+      // 而不是人才库的全局流程阶段筛选。
+      talentLibraryFilters.sourceCompanyId = homeFunnelCompanyId.value || 'all';
+      talentLibraryFilters.sourceChannelId = homeFunnelSelectedChannelId.value || 'all';
+      // "新增人才"（imported）阶段的候选人可能还没有推进记录（application），
+      // 不能用 application 阶段过滤，否则会漏掉刚入库的人才；其余阶段才映射到 application 阶段。
+      if (stage?.key && stage.key !== 'imported') {
         const funnelStageToAppStage = {
-          imported: 'discovered',
           contacted: 'contacted',
           matched: 'screening',
           interviewed: 'interview_pending',
@@ -13430,6 +13444,8 @@ const vueAppConfig = {
           hired: 'onboarded',
         };
         talentLibraryFilters.stage = funnelStageToAppStage[stage.key] || 'all';
+      } else {
+        talentLibraryFilters.stage = 'all';
       }
       selectWorkbenchNav('candidates');
     }
@@ -25418,7 +25434,7 @@ ${clipped}`
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
       companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
-      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
+      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
