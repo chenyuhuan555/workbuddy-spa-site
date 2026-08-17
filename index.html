@@ -3195,10 +3195,10 @@
       font-size: 20px;
     }
 
-    .wb-v2-workspace .wb-home-dashboard { padding-top: 32px; padding-bottom: 32px; }
+    .wb-v2-workspace .wb-home-dashboard { background: #fafaf8; padding: 28px 28px 36px; }
     .wb-v2-workspace .wb-ai-app-stats { display: none !important; }
     .wb-v2-workspace .wb-home-section { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 24px; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
-    .wb-v2-workspace .wb-home-funnel-section { min-height: auto; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; background: transparent; padding: 0 0 34px; box-shadow: none; }
+    .wb-v2-workspace .wb-home-funnel-section { min-height: auto; border: 1px solid #e9ecea; border-radius: 12px; background: #fff; padding: 22px; box-shadow: none; }
     .wb-v2-workspace .wb-home-activity-section { border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; background: transparent; padding: 20px 0; box-shadow: none; }
     .wb-v2-workspace .wb-home-activity-section h2 { font-size: 24px; line-height: 1.25; }
     .wb-v2-workspace .wb-home-todo-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 6px; color: #64748b; font-size: 14px; }
@@ -3216,16 +3216,43 @@
     .wb-v2-workspace .wb-home-primary:hover { background: #1d6042; }
     .wb-v2-workspace .wb-home-secondary { border: 1px solid #dbe3e8; color: #475569; background: #fff; }
     .wb-v2-workspace .wb-home-secondary:hover { background: #f8fafc; }
-    .wb-v2-workspace .wb-home-funnel-flow, .wb-v2-workspace .wb-home-source-list { border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; padding: 0; }
     .wb-v2-workspace .wb-home-funnel { font-size: 16px; }
-    .wb-v2-workspace .wb-home-funnel h2 { font-size: 30px; }
+    .wb-v2-workspace .wb-home-funnel h2 { font-size: 24px; }
     .wb-v2-workspace .wb-home-funnel .wb-home-control { font-size: 15px; }
     .wb-v2-workspace .wb-home-company-select { font-weight: 700; }
-    .wb-v2-workspace .wb-home-stage-row { display: flex; align-items: center; gap: 12px; }
-    .wb-v2-workspace .wb-home-stage-button { display: flex; flex: 1; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f4; padding: 14px 10px; text-align: left; }
-    .wb-v2-workspace .wb-home-stage-button:hover { background: #f8fafc; }
-    .wb-v2-workspace .wb-home-stage-button strong { font-size: 28px; color: #0f172a; }
-    .wb-v2-workspace .wb-home-stage-rate { width: 58px; flex: 0 0 58px; color: #94a3b8; font-size: 14px; white-space: nowrap; }
+    .wb-v2-workspace .wb-home-company-funnel-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr); gap: 18px; margin-top: 20px; }
+    .wb-v2-workspace .wb-home-pipeline-card, .wb-v2-workspace .wb-home-channel-card { min-width: 0; border: 1px solid #e9ecea; border-radius: 12px; background: #fff; }
+    .wb-v2-workspace .wb-home-pipeline-card { overflow: hidden; padding: 12px 16px 14px; }
+    .wb-v2-workspace .wb-home-pipeline-scroll { overflow-x: hidden; }
+    .wb-v2-workspace .wb-home-pipeline { display: grid; grid-template-columns: repeat(6, minmax(104px, 1fr)); min-width: 720px; }
+    .wb-v2-workspace .wb-home-pipeline-stage { position: relative; min-width: 0; padding: 18px 12px 14px; text-align: center; }
+    .wb-v2-workspace .wb-home-pipeline-stage:not(:last-child) { border-right: 1px solid #eef1ef; }
+    .wb-v2-workspace .wb-home-pipeline-stage:hover { background: #fbfdfc; }
+    .wb-v2-workspace .wb-home-pipeline-label { color: #475569; font-size: 14px; font-weight: 600; }
+    .wb-v2-workspace .wb-home-pipeline-icon { display: inline-flex; width: 38px; height: 38px; margin-top: 10px; align-items: center; justify-content: center; border-radius: 50%; background: #f0f7f3; color: #087a55; }
+    .wb-v2-workspace .wb-home-pipeline-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    .wb-v2-workspace .wb-home-pipeline-stage strong { display: block; margin-top: 10px; color: #0f172a; font-size: 32px; line-height: 1; }
+    .wb-v2-workspace .wb-home-pipeline-share { display: block; margin-top: 8px; color: #087a55; font-size: 13px; font-weight: 600; }
+    .wb-v2-workspace .wb-home-pipeline-arrow { position: absolute; top: 82px; right: -9px; z-index: 2; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #94a3b8; }
+    .wb-v2-workspace .wb-home-pipeline-arrow svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+    .wb-v2-workspace .wb-home-conversion-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-width: 600px; margin: 2px 9% 12px; color: #64748b; font-size: 12px; text-align: center; }
+    .wb-v2-workspace .wb-home-conversion-row strong { display: block; margin-top: 2px; color: #087a55; font-size: 14px; }
+    .wb-v2-workspace .wb-home-funnel-metrics { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #eef1ef; }
+    .wb-v2-workspace .wb-home-funnel-metric { padding: 13px 12px 4px; text-align: center; }
+    .wb-v2-workspace .wb-home-funnel-metric + .wb-home-funnel-metric { border-left: 1px solid #eef1ef; }
+    .wb-v2-workspace .wb-home-funnel-metric span { display: block; color: #94a3b8; font-size: 12px; }
+    .wb-v2-workspace .wb-home-funnel-metric strong { display: block; margin-top: 3px; color: #087a55; font-size: 20px; }
+    .wb-v2-workspace .wb-home-channel-card { padding: 18px; }
+    .wb-v2-workspace .wb-home-channel-list { margin-top: 16px; }
+    .wb-v2-workspace .wb-home-channel-row { display: grid; grid-template-columns: minmax(0, 1fr) 36px 42px 28px; gap: 8px; align-items: center; padding: 9px 0; text-align: left; }
+    .wb-v2-workspace .wb-home-channel-details { display: grid; grid-column: 1 / 4; grid-template-columns: minmax(0, 1fr) 36px 42px; gap: 8px; align-items: center; text-align: left; }
+    .wb-v2-workspace .wb-home-channel-name { grid-column: 1 / -1; color: #334155; font-size: 14px; font-weight: 600; }
+    .wb-v2-workspace .wb-home-channel-track { height: 8px; overflow: hidden; border-radius: 999px; background: #f0f2f1; }
+    .wb-v2-workspace .wb-home-channel-fill { height: 100%; border-radius: inherit; background: #087a55; }
+    .wb-v2-workspace .wb-home-channel-fill.is-empty { background: #dfe4e1; }
+    .wb-v2-workspace .wb-home-channel-count { color: #0f172a; font-size: 14px; font-weight: 700; text-align: right; }
+    .wb-v2-workspace .wb-home-channel-share { color: #94a3b8; font-size: 12px; text-align: right; }
+    .wb-v2-workspace .wb-home-channel-import { color: #087a55; font-size: 12px; font-weight: 600; }
     .wb-v2-workspace .wb-home-todo-table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px; }
     .wb-v2-workspace .wb-home-todo-table th { background: #f8fafc; padding: 11px 12px; text-align: left; color: #64748b; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .wb-v2-workspace .wb-home-todo-table td { border-top: 1px solid #f1f5f9; padding: 15px 12px; color: #475569; }
@@ -3257,6 +3284,10 @@
       .wb-v2-workspace .wb-home-note { grid-template-columns: 32px 1fr 18px; }
       .wb-v2-workspace .wb-home-note h3 { grid-column: 2; }
       .wb-v2-workspace .wb-home-note textarea { grid-column: 2 / -1; }
+    }
+    @media (max-width: 1180px) {
+      .wb-v2-workspace .wb-home-company-funnel-grid { grid-template-columns: 1fr; }
+      .wb-v2-workspace .wb-home-pipeline-scroll { overflow-x: auto; }
     }
     .wb-v2-workspace .wb-home-alert { margin-top: 16px; border-radius: 8px; background: #fff1f2; padding: 10px 12px; font-size: 13px; color: #be123c; }
     .wb-v2-workspace .wb-home-empty { margin-top: 24px; border: 1px dashed #cbd5e1; padding: 30px; text-align: center; font-size: 13px; color: #64748b; }
@@ -4174,7 +4205,7 @@
         <div v-if="workbenchNav === 'dashboard' && workbenchRoute.type === 'list'" class="wb-v2-dashboard wb-home-dashboard mx-auto w-full max-w-none space-y-6">
           <section aria-labelledby="home-talent-funnel-title" class="wb-home-section wb-home-funnel wb-home-funnel-section">
             <header class="flex flex-wrap items-end justify-between gap-4">
-              <div><p class="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 text-2xl font-bold text-slate-900">渠道漏斗</h2></div>
+              <div><p class="text-sm font-semibold text-emerald-700">工作台 · {{ new Date().toLocaleDateString('zh-CN') }}</p><h2 id="home-talent-funnel-title" class="mt-2 font-bold text-slate-900">{{ selectedHomeFunnelCompany?.name || '当前公司' }} · 公司招聘漏斗</h2></div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="home-funnel-time">时间范围</label><select id="home-funnel-time" v-model="homeFunnelTimeRange" class="wb-home-control"><option value="today">今日</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
                 <label class="sr-only" for="home-funnel-company">选择公司</label><select id="home-funnel-company" v-model="homeFunnelCompanyId" class="wb-home-control wb-home-company-select"><option value="" disabled>选择公司范围</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
@@ -4185,10 +4216,42 @@
               </div>
             </header>
             <p v-if="homeFunnelDashboard.error" role="alert" class="wb-home-alert">{{ homeFunnelDashboard.error }}</p>
-            <p v-else-if="homeFunnelDashboard.loading" class="wb-home-empty">正在加载渠道漏斗…</p>
-            <div v-else class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,.8fr)]">
-              <div class="wb-home-funnel-flow"><div v-for="(stage, index) in homeFunnelStageSummary" :key="stage.label" class="wb-home-stage-row"><button type="button" class="wb-home-stage-button" @click="openHomeFunnelCandidates(stage)"><span class="text-base font-medium text-slate-600">{{ stage.label }}</span><strong>{{ stage.count }}</strong></button><span v-if="index < homeFunnelStageSummary.length - 1" class="wb-home-stage-rate">↓ {{ homeFunnelStageSummary[index + 1].conversion === null ? '—' : `${homeFunnelStageSummary[index + 1].conversion}%` }}</span><span v-else class="wb-home-stage-rate" aria-hidden="true"></span></div></div>
-              <div class="wb-home-source-list"><div class="flex items-center justify-between"><h3 class="text-lg font-semibold text-slate-900">渠道来源</h3><span class="text-sm text-slate-400">点击查看新增人才</span></div><div class="mt-3 divide-y divide-slate-100"><div v-for="channel in homeFunnelDashboard.model.channels" :key="channel.channelId" class="flex items-center justify-between gap-3 py-3"><button type="button" @click="openHomeFunnelChannelDetails(channel)" class="min-w-0 flex-1 text-left hover:text-emerald-700"><span class="truncate text-base font-medium text-slate-700">{{ channel.channelName }}</span><span class="block text-sm text-slate-400">新增 · 触达 {{ channel.stages[1]?.count || 0 }} · 推荐 {{ channel.stages[2]?.count || 0 }}</span></button><div class="flex shrink-0 items-center gap-3"><strong class="text-lg text-slate-900">{{ channel.stages[0]?.count || 0 }}</strong><button type="button" @click="openHomeFunnelChannelImport(channel)" class="text-sm font-semibold text-emerald-700">导入</button></div></div><p v-if="!homeFunnelDashboard.model.channels.length" class="py-8 text-center text-base text-slate-400">暂无渠道数据</p></div></div>
+            <p v-else-if="homeFunnelDashboard.loading" class="wb-home-empty">正在加载公司招聘漏斗…</p>
+            <div v-else class="wb-home-company-funnel-grid">
+              <div class="wb-home-pipeline-card">
+                <div class="wb-home-pipeline-scroll">
+                  <div class="wb-home-pipeline">
+                    <button v-for="(stage, index) in homeFunnelStageSummary" :key="stage.key" type="button" class="wb-home-pipeline-stage" @click="openHomeFunnelCandidates(stage)">
+                      <span class="wb-home-pipeline-label">{{ stage.label }}</span>
+                      <span class="wb-home-pipeline-icon" aria-hidden="true">
+                        <svg v-if="index === 0" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"/><path d="M4 20v-2a6 6 0 0 1 12 0v2m3-9v6m-3-3h6"/></svg>
+                        <svg v-else-if="index === 1" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                        <svg v-else-if="index === 2" viewBox="0 0 24 24"><path d="M5 18.5 3 21v-5a8 8 0 1 1 3.4 3.2"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>
+                        <svg v-else-if="index === 3" viewBox="0 0 24 24"><path d="M20.8 5.8a5 5 0 0 0-7.1 0L12 7.5l-1.7-1.7a5 5 0 0 0-7.1 7.1L12 21l8.8-8.1a5 5 0 0 0 0-7.1Z"/></svg>
+                        <svg v-else-if="index === 4" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-8-8-2Z"/><path d="m11 13 4-4"/></svg>
+                        <svg v-else viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0M4 4h16v16H4z"/></svg>
+                      </span>
+                      <strong>{{ stage.count }}</strong>
+                      <span class="wb-home-pipeline-share">{{ stage.share === null ? '—' : `${stage.share}%` }}</span>
+                      <span v-if="index < homeFunnelStageSummary.length - 1" class="wb-home-pipeline-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-5-5 5 5-5 5"/></svg></span>
+                    </button>
+                  </div>
+                  <div class="wb-home-conversion-row">
+                    <span v-for="(stage, index) in homeFunnelStageSummary.slice(1)" :key="stage.key">{{ ['查看率', '触达率', '意向率', '推荐率', '面试率'][index] }}<strong>{{ stage.conversion === null ? '—' : `${stage.conversion}%` }}</strong></span>
+                  </div>
+                </div>
+                <div class="wb-home-funnel-metrics"><div class="wb-home-funnel-metric"><span>总体转化率</span><strong>{{ homeFunnelBusinessMetrics.overallRate }}</strong></div><div class="wb-home-funnel-metric"><span>较上周同期</span><strong>{{ homeFunnelBusinessMetrics.previousPeriod }}</strong></div><div class="wb-home-funnel-metric"><span>本期新增</span><strong>+{{ homeFunnelBusinessMetrics.added }}</strong></div></div>
+              </div>
+              <aside class="wb-home-channel-card" aria-labelledby="home-channel-title">
+                <div class="flex items-center justify-between gap-3"><h3 id="home-channel-title" class="text-lg font-bold text-slate-900">渠道来源</h3><button type="button" class="wb-home-link" @click="openHomeFunnelCandidates(homeFunnelStageSummary[0])">查看新增人才 <svg aria-hidden="true" viewBox="0 0 24 24" class="ml-1 inline h-4 w-4 align-[-2px]" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-5-5 5 5-5 5"/></svg></button></div>
+                <div class="wb-home-channel-list">
+                  <div v-for="channel in homeFunnelChannelRows" :key="channel.channelId" class="wb-home-channel-row">
+                    <button type="button" class="wb-home-channel-details" @click="openHomeFunnelChannelDetails(channel)"><span class="wb-home-channel-name">{{ channel.channelName }}</span><span class="wb-home-channel-track"><span class="wb-home-channel-fill" :class="{ 'is-empty': !channel.count }" :style="{ width: `${channel.width}%` }"></span></span><strong class="wb-home-channel-count">{{ channel.count }}</strong><span class="wb-home-channel-share">{{ channel.share }}%</span></button>
+                    <button type="button" class="wb-home-channel-import" @click="openHomeFunnelChannelImport(channel)">导入</button>
+                  </div>
+                  <p v-if="!homeFunnelChannelRows.length" class="py-8 text-center text-sm text-slate-400">暂无渠道数据</p>
+                </div>
+              </aside>
             </div>
           </section>
 
@@ -13187,11 +13250,40 @@ const vueAppConfig = {
     const homeFunnelStageSummary = computed(() => {
       const channels = Array.isArray(homeFunnelDashboard.model?.channels) ? homeFunnelDashboard.model.channels : [];
       const labels = ['新增人才', '已查看', '已触达', '有意向', '已推荐', '进入面试'];
+      const counts = labels.map((_, stageIndex) => channels.reduce((sum, channel) => sum + (Number(channel?.stages?.[stageIndex]?.count) || 0), 0));
       return labels.map((label, index) => {
-        const count = channels.reduce((sum, channel) => sum + (Number(channel?.stages?.[index]?.count) || 0), 0);
-        const previous = index ? labels.slice(0, index).map((_, stageIndex) => channels.reduce((sum, channel) => sum + (Number(channel?.stages?.[stageIndex]?.count) || 0), 0)).pop() : 0;
-        return { key: ['imported', 'contacted', 'matched', 'interviewed', 'offered', 'hired'][index], label, count, conversion: index && previous ? Math.round((count / previous) * 100) : null };
+        const count = counts[index];
+        const previous = index ? counts[index - 1] : 0;
+        return {
+          key: ['imported', 'contacted', 'matched', 'interviewed', 'offered', 'hired'][index],
+          label,
+          count,
+          conversion: index && previous ? Math.round((count / previous) * 100) : null,
+          share: counts[0] ? Math.round((count / counts[0]) * 100) : null,
+        };
       });
+    });
+    const selectedHomeFunnelCompany = computed(() => workbenchV2.companies.find(company => company.id === homeFunnelCompanyId.value) || null);
+    const homeFunnelBusinessMetrics = computed(() => {
+      const first = homeFunnelStageSummary.value[0]?.count || 0;
+      const last = homeFunnelStageSummary.value[homeFunnelStageSummary.value.length - 1]?.count || 0;
+      return {
+        overallRate: first ? `${Math.round((last / first) * 1000) / 10}%` : '—',
+        previousPeriod: '—',
+        added: first,
+      };
+    });
+    const homeFunnelChannelRows = computed(() => {
+      const channels = Array.isArray(homeFunnelDashboard.model?.channels) ? homeFunnelDashboard.model.channels : [];
+      const counts = channels.map(channel => Number(channel?.stages?.[0]?.count) || 0);
+      const total = counts.reduce((sum, count) => sum + count, 0);
+      const maximum = Math.max(0, ...counts);
+      return channels.map((channel, index) => ({
+        ...channel,
+        count: counts[index],
+        share: total ? Math.round((counts[index] / total) * 100) : 0,
+        width: maximum ? Math.round((counts[index] / maximum) * 100) : 0,
+      }));
     });
     const homeFunnelReview = computed(() => ({
       added: homeFunnelStageSummary.value[0]?.count || 0,
@@ -25239,7 +25331,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelOwnerId, homeFunnelStageSummary, homeFunnelReview, homeTodoSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelOwnerId, homeFunnelStageSummary, selectedHomeFunnelCompany, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,

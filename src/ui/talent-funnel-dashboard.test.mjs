@@ -68,6 +68,19 @@ test('工作台首页按渠道漏斗、今日待办、今日复盘分层', () =>
   assert.match(dashboard, /homeFunnelReview\.added/);
 });
 
+test('首页使用横向公司招聘漏斗和渠道进度列表', () => {
+  const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
+  assert.match(dashboard, /wb-home-company-funnel-grid/);
+  assert.match(dashboard, /wb-home-pipeline/);
+  assert.match(dashboard, /v-for="\(stage, index\) in homeFunnelStageSummary"/);
+  assert.match(dashboard, /homeFunnelBusinessMetrics\.overallRate/);
+  assert.match(dashboard, /homeFunnelChannelRows/);
+  assert.match(dashboard, /openHomeFunnelCandidates\(stage\)/);
+  assert.match(dashboard, /openHomeFunnelChannelDetails\(channel\)/);
+  assert.match(dashboard, /openHomeFunnelChannelImport\(channel\)/);
+  assert.doesNotMatch(dashboard, /wb-home-stage-row/);
+});
+
 test('工作台首页不再展示旧的 KPI 卡片和业务进展大卡片', () => {
   const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
   assert.match(dashboard, /wb-home-section/);

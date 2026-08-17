@@ -357,22 +357,21 @@ test('首页渠道漏斗不重复显示页面级和模块级说明标题', () =>
   assert.ok(dashboardBlock, 'dashboard block should exist');
   assert.doesNotMatch(dashboardBlock, /渠道效果概览/);
   assert.doesNotMatch(dashboardBlock, /公司渠道经营/);
-  assert.match(dashboardBlock, /<h2 id="home-talent-funnel-title"[^>]*>渠道漏斗<\/h2>/);
+  assert.match(dashboardBlock, /<h2 id="home-talent-funnel-title"[^>]*>\{\{ selectedHomeFunnelCompany\?\.name \|\| '当前公司' \}\} · 公司招聘漏斗<\/h2>/);
 });
 
 test('首页渠道漏斗保留大标题字号并放大其余信息文字', () => {
   const dashboardBlock = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<\/div>\s*<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
   assert.ok(dashboardBlock, 'dashboard block should exist');
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel h2 \{ font-size: 30px; \}/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel h2 \{ font-size: 24px; \}/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel \.wb-home-control \{ font-size: 15px; \}/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-stage-button strong \{ font-size: 28px;/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-stage-rate \{[^}]*font-size: 14px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-stage strong \{[^}]*font-size: 32px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-label \{[^}]*font-size: 14px;/);
   assert.match(dashboardBlock, /工作台[^<]*<\/p><h2 id="home-talent-funnel-title"/);
-  assert.match(dashboardBlock, /class="text-base font-medium text-slate-600">\{\{ stage\.label \}\}/);
-  assert.match(dashboardBlock, /class="text-lg font-semibold text-slate-900">渠道来源<\/h3>/);
-  assert.match(dashboardBlock, /class="truncate text-base font-medium text-slate-700">\{\{ channel\.channelName \}\}/);
-  assert.match(dashboardBlock, /class="block text-sm text-slate-400">新增/);
-  assert.match(dashboardBlock, /class="text-sm font-semibold text-emerald-700">导入<\/button>/);
+  assert.match(dashboardBlock, /class="wb-home-pipeline-label">\{\{ stage\.label \}\}/);
+  assert.match(dashboardBlock, /id="home-channel-title"[^>]*>渠道来源<\/h3>/);
+  assert.match(dashboardBlock, /class="wb-home-channel-name">\{\{ channel\.channelName \}\}/);
+  assert.match(dashboardBlock, /class="wb-home-channel-import"[^>]*>导入<\/button>/);
 });
 
 test('人才上传归类展开控件使用 SVG 下箭头', () => {
