@@ -12,6 +12,8 @@ export function createTodoActions({
   openCandidateDetail = () => {},
   openPositionDetail = () => {},
   openCompanyDetail = () => {},
+  openApplicationDetail = null,
+  onTodoToggled = null,
 }) {
   function resetTodoForm() {
     Object.assign(todoForm, {
@@ -107,22 +109,41 @@ export function createTodoActions({
   }
 
   async function toggleTodoDone(todo) {
-    if (!todo || todo.source !== 'manual') return;
+    if (!todo) return;
     const raw = todo._raw || privateTodos.find(item => item.id === todo.id);
     if (!raw) return;
+    const source = raw.source || (todo.source === 'system' ? 'system' : 'manual');
+    if (source !== 'manual' && source !== 'system') return;
+    const done = !raw.done;
+    const now = new Date().toISOString();
     try {
-      const saved = await getPrivateTodoClient().save({ ...raw, done: !raw.done, updatedAt: new Date().toISOString() });
+      const saved = await getPrivateTodoClient().save({
+        ...raw,
+        done,
+        status: done ? 'done' : 'pending',
+        completedAt: done ? now : null,
+        source,
+        updatedAt: now,
+      });
       const index = privateTodos.findIndex(item => item.id === saved.id);
       if (index >= 0) privateTodos.splice(index, 1, saved);
       todoDetail.todo = dashboardTodos.value.find(item => item.id === saved.id) || null;
-      showToast(saved.done ? '已标记完成' : '已恢复待办');
+      showToast(done ? '已标记完成' : '已恢复待办');
+      if (typeof onTodoToggled === 'function') onTodoToggled(saved);
     } catch (error) {
       showToast('待办更新失败，请重试', 'error');
     }
   }
 
   async function deleteTodo(todo) {
-    if (!todo || todo.source !== 'manual') return;
+    // System Todo 禁止物理删除（可完成或忽略）；Manual Todo / 旧数据保持原有删除能力
+    if (!todo) return;
+    const raw = todo._raw || privateTodos.find(item => item.id === todo.id);
+    const source = raw ? raw.source : todo.source;
+    if (source === 'system') {
+      showToast('系统待办不支持删除，可标记完成或忽略', 'error');
+      return;
+    }
     const index = privateTodos.findIndex(item => item.id === todo.id);
     if (index < 0) return;
     try {
@@ -146,6 +167,10 @@ export function createTodoActions({
     if (todo.linkType === 'position') return openPositionDetail(todo.linkId);
     if (todo.linkType === 'company') return openCompanyDetail(todo.linkId);
     if (todo.linkType === 'application') {
+      // System Todo 推荐优先打开 Application Detail；没有独立详情时回退候选人详情
+      if (typeof openApplicationDetail === 'function') {
+        return openApplicationDetail(todo.linkId);
+      }
       const application = workbenchV2.applications.find(item => item.id === todo.linkId);
       if (application?.candidateId) return openCandidateDetail(application.candidateId);
       showToast('关联推进记录已不存在', 'error');

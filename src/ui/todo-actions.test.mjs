@@ -46,3 +46,51 @@ test('jumps to a linked candidate', () => {
   assert.equal(todoListView.open, false);
   assert.deepEqual(calls.at(-1), ['candidate', 'c1']);
 });
+
+test('jumps to a linked application via application detail first', () => {
+  const { actions, calls } = setup();
+  const appOpen = [];
+  const actionsWithApp = createTodoActions({
+    todoForm: { open: false, mode: 'create', error: '', editingId: '', saving: false, form: {} },
+    todoDetail: { open: true, todo: null }, todoListView: { open: true, filter: 'all' },
+    privateTodos: [], todoLinkOptions: { value: [] },
+    workbenchV2: { createTodo: p => ({ id: 't1', ...p }), applications: [] },
+    getPrivateTodoClient: () => ({ save: async t => t, remove: async () => {} }),
+    showToast: () => {}, openApplicationDetail: id => appOpen.push(id),
+  });
+  actionsWithApp.jumpToTodoLink({ linkType: 'application', linkId: 'app1' });
+  assert.deepEqual(appOpen, ['app1']);
+});
+
+test('system todo can be marked done and restored', async () => {
+  const { actions, privateTodos, todoDetail } = setup();
+  privateTodos.push({ id: 't-sys', title: '跟进客户反馈', done: false, source: 'system', status: 'pending', dedupeKey: 'application.client_feedback_due:app1' });
+  const view = { id: 't-sys', title: '跟进客户反馈', done: false, source: 'system', _raw: privateTodos[0] };
+  todoDetail.todo = view;
+  await actions.toggleTodoDone(view);
+  assert.equal(privateTodos[0].done, true);
+  assert.equal(privateTodos[0].status, 'done');
+  assert.ok(privateTodos[0].completedAt, '完成时应写入 completedAt');
+  await actions.toggleTodoDone({ id: 't-sys', source: 'system', _raw: privateTodos[0] });
+  assert.equal(privateTodos[0].done, false);
+  assert.equal(privateTodos[0].status, 'pending');
+  assert.equal(privateTodos[0].completedAt, null, '恢复时清空 completedAt');
+});
+
+test('system todo cannot be deleted', async () => {
+  const { actions, privateTodos, calls } = setup();
+  privateTodos.push({ id: 't-sys', title: '跟进客户反馈', done: false, source: 'system', status: 'pending' });
+  await actions.deleteTodo({ id: 't-sys', source: 'system', _raw: privateTodos[0] });
+  assert.equal(privateTodos.length, 1, 'system todo 不应被删除');
+  assert.deepEqual(calls.at(-1), ['toast', '系统待办不支持删除，可标记完成或忽略', 'error']);
+});
+
+test('legacy todo without source can still be toggled and deleted', async () => {
+  const { actions, privateTodos } = setup();
+  privateTodos.push({ id: 't-old', title: '旧待办', done: false });
+  await actions.toggleTodoDone({ id: 't-old', _raw: privateTodos[0] });
+  assert.equal(privateTodos[0].done, true);
+  assert.equal(privateTodos[0].status, 'done');
+  await actions.deleteTodo({ id: 't-old', _raw: privateTodos[0] });
+  assert.equal(privateTodos.length, 0, '旧数据（无 source）应视为 manual 可删除');
+});
