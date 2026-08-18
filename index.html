@@ -69,6 +69,9 @@
   <script src="./src/quantum-radar/tasks.js?v=20260810-quantumtasks1"></script>
   <script src="./src/services/repo/quantum-radar-repo.js?v=20260810-quantumrepo1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
+  <script src="./src/ui/external-opportunities.js?v=20260818-extopps1"></script>
+  <script src="./src/ui/job-opportunity-preferences.js?v=20260818-joboppprefs1"></script>
+  <script src="./src/ui/candidate-job-opportunity-actions.js?v=20260818-joboppact1"></script>
   <script src="./src/ui/resume-formatted-text-editor.js?v=20260730-resumeedit1"></script>
   <script src="./src/ui/resume-status-labels.js?v=20260803-resumestatus1"></script>
   <script src="./src/ui/company-research-helpers.js?v=20260803-companyresearch1"></script>
@@ -76,6 +79,7 @@
   <script src="./src/ui/company-list-filter.js?v=20260803-companylistfilter1"></script>
   <script src="./src/ui/workbench-owners.js?v=20260803-workbenchowners1"></script>
   <script src="./src/ui/talent-library-table.js?v=20260813-talenttable1"></script>
+  <script src="./src/ui/position-library-table.js?v=20260817-positiontable1"></script>
   <script src="./src/ui/ai-assessment-report.js?v=20260805-aiassessment1"></script>
   <script src="./src/ui/position-application-filter.js?v=20260803-positionapps1"></script>
   <script src="./src/ui/candidate-directions.js?v=20260803-candidatedirections1"></script>
@@ -3323,6 +3327,8 @@
       box-shadow: 0 24px 70px rgba(15, 23, 42, .18);
     }
 
+    .wb-v2-workspace .wb-position-drawer { width: min(900px, calc(100vw - 32px)); }
+
     .wb-v2-workspace .wb-candidate-drawer .wb-v2-candidate-tab-icon { display: none; }
     .wb-v2-workspace .wb-candidate-drawer .wb-v2-candidate-hero { border: 0; box-shadow: none; padding: 12px 24px 0; }
     .wb-v2-workspace .wb-candidate-drawer .text-sm { font-size: .9375rem; line-height: 1.5; }
@@ -3588,7 +3594,7 @@
     }
 
     .wb-v2-workspace .wb-v2-candidate-overview {
-      grid-template-columns: minmax(0, 1.6fr) minmax(280px, .92fr);
+      grid-template-columns: 1fr;
       gap: 22px;
     }
 
@@ -4648,12 +4654,13 @@
                 <p class="text-sm text-slate-500 mt-2">{{ selectedPosition.city || '地点待补充' }} · {{ selectedPosition.salary || '薪资待补充' }} · 负责人 {{ selectedPosition.owner || '未分配' }}</p>
               </div>
               <div v-if="canWrite" class="flex flex-wrap items-center gap-2">
-                <span :class="selectedPosition.status === 'closed' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'" class="px-2.5 py-1 rounded-full text-xs font-semibold">
-                  {{ selectedPosition.status === 'closed' ? '已关闭' : '开放中' }}
+                <span :class="['px-2.5 py-1 rounded-full text-xs font-semibold', selectedPosition.status === 'open' ? 'bg-emerald-50 text-emerald-700' : (selectedPosition.status === 'paused' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500')]">
+                  {{ PositionLibrary.STATUS_LABELS[selectedPosition.status] }}
                 </span>
                 <button type="button" @click="toggleWorkbenchPositionStatus" class="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold hover:bg-slate-50">
-                  {{ selectedPosition.status === 'closed' ? '重新开放' : '关闭岗位' }}
+                  {{ selectedPosition.status === 'open' ? '暂停招聘' : '重新开放' }}
                 </button>
+                <button v-if="selectedPosition.status !== 'closed'" type="button" @click="closeWorkbenchPosition" class="px-3 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50">关闭岗位</button>
                 <button type="button" @click="requestWorkbenchPositionDelete" class="px-3 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50">删除岗位</button>
               </div>
             </div>
@@ -5080,11 +5087,246 @@
                 <div><p class="font-medium text-slate-500">人才分类</p><div class="mt-2 flex flex-wrap gap-2"><label v-for="category in talentCategoryPaths" :key="category.id" class="cursor-pointer"><input :checked="(selectedCandidate.categoryIds || []).includes(category.id)" @change="updateSelectedCandidateCategories(category.id, $event.target.checked)" type="checkbox" class="sr-only"><span :class="['inline-flex px-2.5 py-1 rounded-full border text-xs font-medium transition', (selectedCandidate.categoryIds || []).includes(category.id) ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300']">{{ category.path }}</span></label><span v-if="!talentCategoryPaths.length" class="text-xs text-slate-400">请先在人才库创建分类</span></div></div>
               </div>
             </section>
-            <aside class="wb-v2-candidate-card cursor-pointer hover:border-emerald-300 hover:shadow-md transition" @click="workbenchRoute.tab = 'applications'">
-              <h2 class="wb-v2-candidate-card-title font-bold flex items-center justify-between"><span class="flex items-center gap-2"><span class="wb-v2-candidate-card-icon flex items-center justify-center">▥</span>推进摘要</span><span class="text-xs font-normal text-emerald-700">查看详情 →</span></h2>
-              <p class="wb-v2-candidate-progress-number font-bold">{{ selectedCandidateApplications.filter(item => item.stage !== SK.CLOSED).length }}</p>
-              <p class="mt-3 text-sm text-slate-500">总推进职位</p>
-            </aside>
+            <div class="wb-v2-overview-body grid gap-5 lg:grid-cols-4">
+              <section class="wb-v2-candidate-card lg:col-span-3">
+                <header class="flex flex-wrap items-center justify-between gap-3">
+                  <h2 class="wb-v2-candidate-card-title font-bold flex items-center gap-2">
+                    <span class="wb-v2-candidate-card-icon flex items-center justify-center">▤</span>
+                    求职进展（多公司机会）
+                  </h2>
+                  <div class="flex items-center gap-3 text-sm text-slate-500">
+                    <span>{{ jobOpportunitySummary.inProcess }} 家在流程中</span>
+                    <button v-if="canWrite && !jobOpportunityEdit.active" type="button" @click="startJobOpportunityCreate" class="text-emerald-700 hover:text-emerald-800 font-semibold">+ 新增</button>
+                  </div>
+                </header>
+                <p class="mt-1 text-xs text-slate-400">候选人在外部市场或其他公司推进的求职记录（不替代内部「推荐记录」/「面试进度」）。</p>
+                <div v-if="jobOpportunityEdit.active" class="mt-5 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                  <h3 class="text-sm font-bold text-slate-700">{{ jobOpportunityEdit.mode === 'create' ? '新增公司机会' : '编辑公司机会' }}</h3>
+                  <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">公司名称 *</span>
+                      <input v-model="jobOpportunityEdit.draft.companyName" type="text" required class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    </label>
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">公司方向</span>
+                      <input v-model="jobOpportunityEdit.draft.companyDirection" type="text" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    </label>
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">Base</span>
+                      <input v-model="jobOpportunityEdit.draft.base" type="text" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    </label>
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">当前进度</span>
+                      <select v-model="jobOpportunityEdit.draft.stage" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <option value="">未填写</option>
+                        <option v-for="opt in workBuddyStageOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        <option value="已结束">已结束</option>
+                        <option value="已拒">已拒</option>
+                      </select>
+                    </label>
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">意向度</span>
+                      <select v-model="jobOpportunityEdit.draft.intention" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <option value="">未填写</option>
+                        <option v-for="opt in workBuddyIntentionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                      </select>
+                    </label>
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">薪酬</span>
+                      <input v-model="jobOpportunityEdit.draft.compensation" type="text" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    </label>
+                    <label class="block">
+                      <span class="block text-xs text-slate-500">公司性质（可选）</span>
+                      <select v-model="jobOpportunityEdit.draft.companyType" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <option value="">未填写</option>
+                        <option v-for="opt in workBuddyCompanyTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                      </select>
+                    </label>
+                  </div>
+                  <details class="mt-3 text-sm">
+                    <summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-700">展开详细字段（已做事项 / 感受 / 顾虑 / 备注）</summary>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <label class="block">
+                        <span class="block text-xs text-slate-500">已做事项</span>
+                        <textarea v-model="jobOpportunityEdit.draft.workContent" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2"></textarea>
+                      </label>
+                      <label class="block">
+                        <span class="block text-xs text-slate-500">对公司的感受</span>
+                        <textarea v-model="jobOpportunityEdit.draft.feeling" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2"></textarea>
+                      </label>
+                      <label class="block">
+                        <span class="block text-xs text-slate-500">对公司的顾虑</span>
+                        <textarea v-model="jobOpportunityEdit.draft.concern" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2"></textarea>
+                      </label>
+                      <label class="block">
+                        <span class="block text-xs text-slate-500">备注</span>
+                        <textarea v-model="jobOpportunityEdit.draft.remark" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2"></textarea>
+                      </label>
+                    </div>
+                  </details>
+                  <p v-if="jobOpportunityEdit.error" role="alert" class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ jobOpportunityEdit.error }}</p>
+                  <div class="mt-4 flex items-center gap-2">
+                    <button type="button" @click="saveJobOpportunityEdit" :disabled="jobOpportunityEdit.saving" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 disabled:opacity-50">{{ jobOpportunityEdit.saving ? '保存中…' : '保存' }}</button>
+                    <button type="button" @click="cancelJobOpportunityEdit" :disabled="jobOpportunityEdit.saving" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50">取消</button>
+                  </div>
+                </div>
+                <div v-if="selectedCandidateExternalOpportunities.length" class="mt-5 overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="text-left text-xs text-slate-500 border-b border-slate-200">
+                        <th class="py-2 pr-3 font-medium">公司</th>
+                        <th class="py-2 pr-3 font-medium">公司方向</th>
+                        <th class="py-2 pr-3 font-medium">Base</th>
+                        <th class="py-2 pr-3 font-medium">当前进度</th>
+                        <th class="py-2 pr-3 font-medium">意向度</th>
+                        <th class="py-2 pr-3 font-medium">薪酬</th>
+                        <th class="py-2 pr-3 font-medium">更新时间</th>
+                        <th class="py-2 font-medium w-24 text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template v-for="opp in selectedCandidateExternalOpportunities" :key="opp.id">
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                          <td class="py-2.5 pr-3 text-slate-800 font-medium">{{ opp.companyName }}</td>
+                          <td class="py-2.5 pr-3 text-slate-600">{{ opp.companyDirection || '—' }}</td>
+                          <td class="py-2.5 pr-3 text-slate-600">{{ opp.base || '—' }}</td>
+                          <td class="py-2.5 pr-3">
+                            <span :class="workBuddyStageBadgeClass(opp.stage)" class="inline-block px-2 py-0.5 rounded text-xs font-medium">{{ workBuddyStageLabel(opp.stage) }}</span>
+                          </td>
+                          <td class="py-2.5 pr-3">
+                            <span v-if="opp.intention" :class="workBuddyIntentionBadgeClass(opp.intention)" class="inline-block px-2 py-0.5 rounded text-xs font-medium">{{ opp.intention }}</span>
+                            <span v-else class="text-slate-400">—</span>
+                          </td>
+                          <td class="py-2.5 pr-3 text-slate-600">{{ opp.compensation || '—' }}</td>
+                          <td class="py-2.5 pr-3 text-slate-500 whitespace-nowrap">{{ workBuddyFormatUpdatedAt(opp.updatedAt) }}</td>
+                          <td class="py-2.5 text-right whitespace-nowrap text-xs">
+                            <button v-if="canWrite" type="button" @click="toggleOpportunityExpanded(opp.id)" :aria-label="expandedOpportunityId === opp.id ? '收起' : '展开详情'" class="text-slate-400 hover:text-slate-700 px-1.5">{{ expandedOpportunityId === opp.id ? '⌃' : '⌄' }}</button>
+                            <button v-if="canWrite && !jobOpportunityEdit.active" type="button" @click="startJobOpportunityEdit(opp)" class="text-slate-400 hover:text-emerald-600 px-1.5">编辑</button>
+                            <button v-if="canWrite" type="button" @click="removeJobOpportunity(opp.id)" class="text-slate-400 hover:text-red-600 px-1.5">删除</button>
+                          </td>
+                        </tr>
+                        <tr v-if="expandedOpportunityId === opp.id">
+                          <td colspan="8" class="px-3 py-4 bg-slate-50/60 border-b border-slate-100">
+                            <div class="text-xs text-slate-500">
+                              <span class="font-medium text-slate-700">{{ opp.companyName }}</span>
+                              <span v-if="opp.companyDirection" class="ml-2">{{ opp.companyDirection }}</span>
+                              <span v-if="opp.base" class="ml-2">· {{ opp.base }}</span>
+                              <span v-if="opp.stage" class="ml-2">· {{ workBuddyStageLabel(opp.stage) }}</span>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                              <div v-if="opp.feeling">
+                                <p class="text-xs text-slate-500">对公司的感受</p>
+                                <p class="mt-1 text-slate-700 leading-6 whitespace-pre-line">{{ opp.feeling }}</p>
+                              </div>
+                              <div v-if="opp.concern">
+                                <p class="text-xs text-slate-500">对公司的顾虑</p>
+                                <p class="mt-1 text-slate-700 leading-6 whitespace-pre-line">{{ opp.concern }}</p>
+                              </div>
+                              <div v-if="opp.workContent">
+                                <p class="text-xs text-slate-500">已做事项</p>
+                                <p class="mt-1 text-slate-700 leading-6 whitespace-pre-line">{{ opp.workContent }}</p>
+                              </div>
+                              <div v-if="opp.compensation">
+                                <p class="text-xs text-slate-500">薪酬</p>
+                                <p class="mt-1 text-slate-700 leading-6 whitespace-pre-line">{{ opp.compensation }}</p>
+                              </div>
+                              <div v-if="opp.remark">
+                                <p class="text-xs text-slate-500">备注</p>
+                                <p class="mt-1 text-slate-700 leading-6 whitespace-pre-line">{{ opp.remark }}</p>
+                              </div>
+                              <p v-if="!opp.feeling && !opp.concern && !opp.workContent && !opp.remark" class="text-sm text-slate-400">暂无详细记录</p>
+                            </div>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+                <p v-else-if="!jobOpportunityEdit.active" class="mt-5 text-sm text-slate-400">暂无外部公司机会记录，点击右上角「+ 新增」开始记录。</p>
+              </section>
+              <aside class="wb-v2-candidate-card lg:col-span-1">
+                <h2 class="wb-v2-candidate-card-title font-bold flex items-center gap-2">
+                  <span class="wb-v2-candidate-card-icon flex items-center justify-center">▦</span>
+                  求职摘要
+                </h2>
+                <dl class="mt-4 text-sm">
+                  <div class="py-2.5 border-b border-slate-100">
+                    <dt class="text-xs text-slate-500">在流程公司数</dt>
+                    <dd class="mt-1 text-slate-800 font-semibold text-lg">{{ jobOpportunitySummary.inProcess }} 家</dd>
+                  </div>
+                  <div class="py-2.5 border-b border-slate-100">
+                    <dt class="text-xs text-slate-500">最深阶段</dt>
+                    <dd class="mt-1 text-slate-800 font-semibold">
+                      {{ workBuddyStageLabel(jobOpportunitySummary.deepestStage) || '—' }}
+                      <span v-if="jobOpportunitySummary.deepestStageCount > 0" class="ml-1 text-slate-500 text-sm font-normal">{{ jobOpportunitySummary.deepestStageCount }} 家</span>
+                    </dd>
+                  </div>
+                  <div class="py-2.5 border-b border-slate-100">
+                    <dt class="text-xs text-slate-500">谈薪公司</dt>
+                    <dd class="mt-1 text-slate-800 font-semibold">{{ jobOpportunitySummary.negotiatingCount }} 家</dd>
+                  </div>
+                  <div class="py-2.5 border-b border-slate-100">
+                    <dt class="text-xs text-slate-500">期望年包</dt>
+                    <dd class="mt-1 text-slate-800 font-semibold">{{ jobOpportunitySummary.expectedCompensation || '—' }}</dd>
+                  </div>
+                  <div class="py-2.5">
+                    <dt class="text-xs text-slate-500">重点顾虑</dt>
+                    <dd class="mt-1 text-slate-700">
+                      <ul v-if="jobOpportunitySummary.keyConcerns.length" class="space-y-1">
+                        <li v-for="(c, i) in jobOpportunitySummary.keyConcerns" :key="i" class="text-sm">· {{ c }}</li>
+                      </ul>
+                      <span v-else class="text-slate-400 text-sm">—</span>
+                    </dd>
+                  </div>
+                </dl>
+                <div v-if="jobOpportunitySummary.overallAssessment" class="mt-4 pt-4 border-t border-slate-100">
+                  <p class="text-xs text-slate-500">总体判断</p>
+                  <p class="mt-1 text-sm text-slate-700 leading-6 whitespace-pre-line">{{ jobOpportunitySummary.overallAssessment }}</p>
+                </div>
+              </aside>
+            </div>
+            <section class="wb-v2-candidate-card">
+              <header class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="wb-v2-candidate-card-title font-bold flex items-center gap-2">
+                  <span class="wb-v2-candidate-card-icon flex items-center justify-center">◇</span>
+                  求职判断
+                </h2>
+                <button v-if="canWrite && !jobOpportunityPreferencesEdit.active" type="button" @click="startJobOpportunityPreferencesEdit" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">编辑</button>
+              </header>
+              <dl v-if="!jobOpportunityPreferencesEdit.active" class="mt-4 text-sm">
+                <div v-for="(row, idx) in workBuddyPreferenceRows" :key="row.key" :class="['flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-6 py-2.5', idx < workBuddyPreferenceRows.length - 1 ? 'border-b border-slate-100' : '']">
+                  <dt class="w-24 text-slate-500 text-xs sm:text-sm shrink-0">{{ row.label }}</dt>
+                  <dd class="flex-1 text-slate-700 leading-6 whitespace-pre-line">{{ selectedCandidateJobOpportunityPreferences[row.key] || '—' }}</dd>
+                </div>
+              </dl>
+              <div v-else class="mt-4 space-y-3 text-sm">
+                <div v-for="row in workBuddyPreferenceRows" :key="row.key">
+                  <label class="block">
+                    <span class="block text-xs text-slate-500">{{ row.label }}</span>
+                    <textarea v-model="jobOpportunityPreferencesEdit.draft[row.key]" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2"></textarea>
+                  </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="block text-xs text-slate-500">期望年包（显示在右侧摘要）</span>
+                    <input v-model="jobOpportunityPreferencesEdit.draft.expectedCompensation" type="text" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2" placeholder="例如：60W+">
+                  </label>
+                  <label class="block">
+                    <span class="block text-xs text-slate-500">重点顾虑（顿号或逗号分隔）</span>
+                    <input v-model="jobOpportunityPreferencesEdit.draft.concernsInput" type="text" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2" placeholder="例如：岗位内容陌生度、薪资与 Base、公司稳定性">
+                  </label>
+                </div>
+                <label class="block">
+                  <span class="block text-xs text-slate-500">总体判断（显示在右侧摘要底部）</span>
+                  <textarea v-model="jobOpportunityPreferencesEdit.draft.overallAssessment" rows="2" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2"></textarea>
+                </label>
+                <p v-if="jobOpportunityPreferencesEdit.error" role="alert" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ jobOpportunityPreferencesEdit.error }}</p>
+                <div class="flex items-center gap-2">
+                  <button type="button" @click="saveJobOpportunityPreferencesEdit" :disabled="jobOpportunityPreferencesEdit.saving" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 disabled:opacity-50">{{ jobOpportunityPreferencesEdit.saving ? '保存中…' : '保存' }}</button>
+                  <button type="button" @click="cancelJobOpportunityPreferencesEdit" :disabled="jobOpportunityPreferencesEdit.saving" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50">取消</button>
+                </div>
+              </div>
+            </section>
           </div>
           <div v-else-if="workbenchRoute.tab === 'resume'" class="space-y-4">
             <div class="resume-toolbar bg-white px-4 py-0">
@@ -5103,11 +5345,11 @@
                     <button v-if="hasCandidateResumeOriginal" type="button" @click="candidateResumeProcessMenuOpen = false; reextractCandidateResumeFromOriginal()" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700">从原始文件重新提取并处理</button>
                   </div>
                 </div>
+                <div class="candidate-resume-view-tabs ml-auto flex items-center gap-3" role="tablist" aria-label="简历内容视图">
+                  <button type="button" role="tab" :aria-selected="candidateResumeView.mode === 'text'" @click="switchCandidateResumeMode('text')" :class="['rounded-md border px-3 py-1.5 text-sm transition', candidateResumeView.mode === 'text' ? 'border-emerald-200 font-medium text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700']">电子简历</button>
+                  <button v-if="hasCandidateResumeOriginal" type="button" role="tab" :aria-selected="candidateResumeView.mode === 'original'" @click="switchCandidateResumeMode('original')" :class="['rounded-md border px-3 py-1.5 text-sm transition', candidateResumeView.mode === 'original' ? 'border-emerald-200 font-medium text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700']">原始文件</button>
                 </div>
-              </div>
-              <div class="candidate-resume-view-tabs mt-4 flex items-center gap-3" role="tablist" aria-label="简历内容视图">
-                <button type="button" role="tab" :aria-selected="candidateResumeView.mode === 'text'" @click="switchCandidateResumeMode('text')" :class="['rounded-md border px-3 py-1.5 text-sm transition', candidateResumeView.mode === 'text' ? 'border-emerald-200 font-medium text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700']">电子简历</button>
-                <button v-if="hasCandidateResumeOriginal" type="button" role="tab" :aria-selected="candidateResumeView.mode === 'original'" @click="switchCandidateResumeMode('original')" :class="['rounded-md border px-3 py-1.5 text-sm transition', candidateResumeView.mode === 'original' ? 'border-emerald-200 font-medium text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700']">原始文件</button>
+                </div>
               </div>
             </div>
             <div class="border-t border-slate-200 bg-white px-4 pt-3 pb-5">
@@ -5250,6 +5492,272 @@
           </div>
           <div v-else class="bg-white border border-slate-200 rounded-xl p-10 text-center text-sm text-slate-400">顾问备注、联系记录和档案动态将在这里展示。</div>
         </div>
+        </div>
+
+        <div v-else-if="workbenchNav === 'positions'" class="relative" @keydown.esc.window="closePositionDrawer(); positionLibraryColumnsOpen = false; positionRowMenuId = ''; positionLibraryMoreFiltersOpen = false">
+          <div class="wb-talent-library-page space-y-3">
+            <header class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex items-baseline gap-3">
+                <h1 class="font-bold text-slate-900">岗位库</h1><span class="text-sm font-medium text-slate-400">{{ positionLibrarySummary.total }} 个岗位 · 开放 {{ positionLibrarySummary.open }} · 暂停 {{ positionLibrarySummary.paused }} · 关闭 {{ positionLibrarySummary.closed }}</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="sr-only" for="position-library-search">岗位库搜索</label>
+                <input id="position-library-search" aria-label="岗位库搜索" v-model="positionLibraryFilters.query" type="search" placeholder="搜索岗位名 / 公司 / JD 关键词 / 技能">
+                <select v-model="positionLibraryFilters.companyId" aria-label="按公司筛选" class="min-h-[34px] rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
+                <select v-model="positionLibraryFilters.status" aria-label="按岗位状态筛选" class="min-h-[34px] rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部状态</option><option v-for="s in PositionLibrary.STATUS_VALUES" :key="s" :value="s">{{ PositionLibrary.STATUS_LABELS[s] }}</option></select>
+                <select v-model="positionLibraryFilters.owner" aria-label="按负责人筛选" class="min-h-[34px] rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
+                <input v-model="positionLibraryFilters.base" aria-label="按 Base 筛选" type="search" placeholder="Base" class="min-h-[34px] w-24 rounded-lg border border-slate-200 px-2 text-sm">
+                <div class="relative wb-position-secondary-actions">
+                  <button type="button" aria-haspopup="menu" aria-label="更多操作" :aria-expanded="positionLibraryColumnsOpen" @click="positionLibraryColumnsOpen = !positionLibraryColumnsOpen" class="inline-flex min-h-[38px] w-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-base font-semibold text-slate-700 hover:bg-slate-50">···</button>
+                  <div v-if="positionLibraryColumnsOpen" role="menu" class="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                    <button role="menuitem" type="button" @click="positionLibraryColumnsOpen = false; openPositionBulkImportLibrary()" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-50">批量导入岗位</button>
+                    <button role="menuitem" type="button" @click="positionLibraryColumnsOpen = false; exportPositions()" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">导出 CSV</button>
+                    <button role="menuitem" type="button" @click="positionLibraryColumnsOpen = false; showToast('字段管理建设中')" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-50">管理字段</button>
+                  </div>
+                </div>
+                <button type="button" @click="positionLibraryMoreFiltersOpen = !positionLibraryMoreFiltersOpen" :aria-expanded="positionLibraryMoreFiltersOpen" class="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.2v5.3l-3 1.5v-6.8L4 5Z"></path></svg><span>更多筛选</span></button>
+                <button v-if="canWrite" type="button" @click="createPositionLibrary" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增岗位</button>
+              </div>
+            </header>
+
+            <div v-if="positionLibraryMoreFiltersOpen" class="wb-talent-filter-bar flex flex-wrap items-end rounded-xl border border-slate-200 bg-white p-3">
+              <label class="wb-talent-filter-field text-xs font-medium text-slate-500">最低薪资(k)
+                <input v-model="positionLibraryFilters.salaryMin" type="number" min="0" aria-label="最低薪资" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
+              </label>
+              <label class="wb-talent-filter-field text-xs font-medium text-slate-500">最高薪资(k)
+                <input v-model="positionLibraryFilters.salaryMax" type="number" min="0" aria-label="最高薪资" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
+              </label>
+              <label class="wb-talent-filter-field text-xs font-medium text-slate-500">创建日期
+                <select v-model="positionLibraryFilters.created.preset" aria-label="创建日期范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
+              </label>
+              <template v-if="positionLibraryFilters.created.preset === 'custom'"><input v-model="positionLibraryFilters.created.from" type="date" aria-label="创建开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="positionLibraryFilters.created.to" type="date" aria-label="创建结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
+              <label class="wb-talent-filter-field text-xs font-medium text-slate-500">更新时间
+                <select v-model="positionLibraryFilters.updated.preset" aria-label="更新时间范围" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm"><option value="all">全部</option><option value="today">今天</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
+              </label>
+              <template v-if="positionLibraryFilters.updated.preset === 'custom'"><input v-model="positionLibraryFilters.updated.from" type="date" aria-label="更新开始日期" class="rounded-lg border border-slate-200 px-2 text-sm"><input v-model="positionLibraryFilters.updated.to" type="date" aria-label="更新结束日期" class="rounded-lg border border-slate-200 px-2 text-sm"></template>
+              <label class="wb-talent-filter-field text-xs font-medium text-slate-500">有无推荐
+                <select v-model="positionLibraryFilters.hasRecommendation" aria-label="按有无推荐筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm"><option value="all">不限</option><option value="yes">有推荐</option><option value="no">无推荐</option></select>
+              </label>
+              <label class="wb-talent-filter-field text-xs font-medium text-slate-500">有无面试
+                <select v-model="positionLibraryFilters.hasInterview" aria-label="按有无面试筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm"><option value="all">不限</option><option value="yes">有面试</option><option value="no">无面试</option></select>
+              </label>
+              <label v-if="positionLibraryTagOptions.length" class="wb-talent-filter-field text-xs font-medium text-slate-500">岗位标签
+                <select v-model="positionLibraryFilters.tag" aria-label="按岗位标签筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm"><option value="all">全部标签</option><option v-for="tag in positionLibraryTagOptions" :key="tag" :value="tag">{{ tag }}</option></select>
+              </label>
+            </div>
+
+            <div class="wb-talent-table-shell">
+              <table class="wb-talent-table">
+                <thead>
+                  <tr>
+                    <th class="wb-talent-table-name-cell">岗位</th>
+                    <th>公司</th>
+                    <th class="w-20">Base</th>
+                    <th class="w-28">薪资</th>
+                    <th>负责人</th>
+                    <th class="w-20">状态</th>
+                    <th class="w-16 text-center">已推荐</th>
+                    <th class="w-16 text-center">面试中</th>
+                    <th class="w-28">最近更新</th>
+                    <th class="wb-talent-table-action-cell" aria-label="操作"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in filteredPositionLibraryRows" :key="row.id" @click="openPositionDrawer(row.id)" class="cursor-pointer">
+                    <td class="wb-talent-table-name-cell">
+                      <button type="button" @click.stop="openPositionDrawer(row.id)" class="font-semibold text-slate-900 hover:text-emerald-700 hover:underline">{{ row.title }}</button>
+                      <p v-if="row.jdPreview" class="wb-talent-cell-clamp mt-0.5 text-xs text-slate-400">{{ row.jdPreview }}</p>
+                    </td>
+                    <td><button type="button" @click.stop="openCompanyDetail(row.companyId)" class="text-left hover:text-emerald-700">{{ row.companyName }}</button></td>
+                    <td>{{ row.base }}</td>
+                    <td>{{ row.salary }}</td>
+                    <td>{{ row.owner }}</td>
+                    <td><span :class="['rounded-full px-2 py-0.5 text-xs font-semibold', row.status === 'open' ? 'bg-emerald-50 text-emerald-700' : (row.status === 'paused' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500')]">{{ row.statusLabel }}</span></td>
+                    <td class="text-center font-semibold" :class="row.recommended ? 'text-emerald-700' : 'text-slate-400'">{{ row.recommended }}</td>
+                    <td class="text-center font-semibold" :class="row.interviewing ? 'text-indigo-700' : 'text-slate-400'">{{ row.interviewing }}</td>
+                    <td class="text-xs text-slate-400">{{ row.lastUpdated && row.lastUpdated !== '-' ? formatBeijingDateTime(row.lastUpdated) : '-' }}</td>
+                    <td class="wb-talent-table-action-cell">
+                      <div class="relative flex justify-center">
+                        <button type="button" aria-label="岗位操作" aria-haspopup="menu" :aria-expanded="positionRowMenuId === row.id" @click.stop="positionRowMenuId = positionRowMenuId === row.id ? '' : row.id" class="h-8 w-8 rounded-lg text-lg font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">···</button>
+                        <div v-if="positionRowMenuId === row.id" role="menu" class="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                          <button role="menuitem" type="button" @click.stop="positionRowMenuId = ''; openPositionDrawer(row.id, 'overview')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">查看详情</button>
+                          <button v-if="canWrite" role="menuitem" type="button" @click.stop="positionRowMenuId = ''; openPositionLibraryEdit(row.id)" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">编辑岗位</button>
+                          <button v-if="canWrite" role="menuitem" type="button" @click.stop="positionRowMenuId = ''; openPositionOwnerEditor(row.id)" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">修改负责人</button>
+                          <button v-if="canWrite && row.status !== 'paused'" role="menuitem" type="button" @click.stop="positionRowMenuId = ''; setPositionLibraryStatus(row.id, 'paused')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">暂停岗位</button>
+                          <button v-if="canWrite && row.status !== 'open'" role="menuitem" type="button" @click.stop="positionRowMenuId = ''; setPositionLibraryStatus(row.id, 'open')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">开放岗位</button>
+                          <button v-if="canWrite && row.status !== 'closed'" role="menuitem" type="button" @click.stop="positionRowMenuId = ''; setPositionLibraryStatus(row.id, 'closed')" class="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50">关闭岗位</button>
+                          <button v-if="canWrite" role="menuitem" type="button" @click.stop="positionRowMenuId = ''; deletePositionLibrary(row.id)" class="w-full rounded px-2 py-1.5 text-left text-xs text-rose-600 hover:bg-rose-50">删除</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="!filteredPositionLibraryRows.length">
+                    <td colspan="10" class="py-12 text-center">
+                      <p class="font-semibold text-slate-700">暂无符合条件的岗位</p>
+                      <p class="mt-1 text-sm text-slate-400">调整筛选条件，或新增岗位建立主档。</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="positionDrawerOpen" class="wb-candidate-drawer wb-position-drawer" :tabindex="-1">
+            <div class="wb-v2-candidate-hero">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <h1 class="text-2xl font-bold text-slate-900">{{ selectedPositionLibrary.title }}</h1>
+                  <p class="mt-2 text-sm text-slate-500">{{ companyById.get(selectedPositionLibrary.companyId)?.name || '公司待补充' }} · {{ selectedPositionLibrary.city || 'Base 待补充' }} · {{ selectedPositionLibrary.salary || '薪资待补充' }}</p>
+                  <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <span :class="['inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-semibold', selectedPositionLibrary.status === 'open' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : (selectedPositionLibrary.status === 'paused' ? 'border-amber-100 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-100 text-slate-500')]"><i class="h-1.5 w-1.5 rounded-full" :class="selectedPositionLibrary.status === 'open' ? 'bg-emerald-600' : (selectedPositionLibrary.status === 'paused' ? 'bg-amber-500' : 'bg-slate-400')" aria-hidden="true"></i>{{ PositionLibrary.STATUS_LABELS[selectedPositionLibrary.status] }}</span>
+                    <span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">负责人：{{ selectedPositionLibrary.owner || '未分配' }}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button v-if="canWrite" type="button" @click="positionDrawerTab = 'matches'" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">匹配人才</button>
+                  <button type="button" @click="closePositionDrawer" aria-label="关闭岗位详情" class="inline-flex h-9 w-9 items-center justify-center rounded-full border text-xl hover:bg-slate-50">×</button>
+                </div>
+              </div>
+              <nav aria-label="岗位详情页签" class="wb-v2-candidate-tabs text-sm mt-4">
+                <button type="button" @click="positionDrawerTab = 'overview'" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': positionDrawerTab === 'overview' }]">岗位概览</button>
+                <i class="wb-v2-candidate-tab-separator" aria-hidden="true"></i>
+                <button type="button" @click="positionDrawerTab = 'jd'" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': positionDrawerTab === 'jd' }]">JD</button>
+                <i class="wb-v2-candidate-tab-separator" aria-hidden="true"></i>
+                <button type="button" @click="positionDrawerTab = 'matches'" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': positionDrawerTab === 'matches' }]">匹配人才</button>
+                <i class="wb-v2-candidate-tab-separator" aria-hidden="true"></i>
+                <button type="button" @click="positionDrawerTab = 'applications'" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': positionDrawerTab === 'applications' }]">推荐记录</button>
+                <i class="wb-v2-candidate-tab-separator" aria-hidden="true"></i>
+                <button type="button" @click="positionDrawerTab = 'interviews'" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': positionDrawerTab === 'interviews' }]">面试进度</button>
+                <i class="wb-v2-candidate-tab-separator" aria-hidden="true"></i>
+                <button type="button" @click="positionDrawerTab = 'remark'" :class="['wb-v2-candidate-tab whitespace-nowrap', { 'wb-v2-candidate-tab-active': positionDrawerTab === 'remark' }]">备注跟进</button>
+              </nav>
+            </div>
+
+            <section v-if="positionDrawerTab === 'overview'" class="space-y-4">
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="text-2xl font-bold text-slate-800">{{ selectedPositionLibraryProgress.recommended }}</div><div class="mt-1 text-xs text-slate-500">已推荐</div></div>
+                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="text-2xl font-bold text-slate-800">{{ selectedPositionLibraryProgress.clientReview }}</div><div class="mt-1 text-xs text-slate-500">客户审核中</div></div>
+                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="text-2xl font-bold text-indigo-700">{{ selectedPositionLibraryProgress.interviewing }}</div><div class="mt-1 text-xs text-slate-500">面试中</div></div>
+                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="text-2xl font-bold text-slate-800">{{ selectedPositionLibraryProgress.offer }}</div><div class="mt-1 text-xs text-slate-500">Offer</div></div>
+                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="text-2xl font-bold text-emerald-700">{{ selectedPositionLibraryProgress.onboarded }}</div><div class="mt-1 text-xs text-slate-500">已入职</div></div>
+              </div>
+              <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-600 sm:grid-cols-4">
+                <div><dt class="text-xs text-slate-400">所属公司</dt><dd class="mt-0.5">{{ companyById.get(selectedPositionLibrary.companyId)?.name || '公司待补充' }}</dd></div>
+                <div><dt class="text-xs text-slate-400">Base</dt><dd class="mt-0.5">{{ selectedPositionLibrary.city || '待补充' }}</dd></div>
+                <div><dt class="text-xs text-slate-400">薪资</dt><dd class="mt-0.5">{{ selectedPositionLibrary.salary || '待补充' }}</dd></div>
+                <div><dt class="text-xs text-slate-400">负责人</dt><dd class="mt-0.5">{{ selectedPositionLibrary.owner || '未分配' }}</dd></div>
+                <div><dt class="text-xs text-slate-400">岗位状态</dt><dd class="mt-0.5">{{ PositionLibrary.STATUS_LABELS[selectedPositionLibrary.status] }}</dd></div>
+                <div><dt class="text-xs text-slate-400">创建时间</dt><dd class="mt-0.5">{{ (selectedPositionLibrary.createdAt || '').slice(0,10) || '待补充' }}</dd></div>
+                <div><dt class="text-xs text-slate-400">最近更新</dt><dd class="mt-0.5">{{ (selectedPositionLibrary.updatedAt || '').slice(0,10) || '待补充' }}</dd></div>
+                <div><dt class="text-xs text-slate-400">岗位标签</dt><dd class="mt-0.5">{{ (selectedPositionLibrary.tags || []).join('、') || '无' }}</dd></div>
+              </dl>
+            </section>
+
+            <section v-else-if="positionDrawerTab === 'jd'" class="space-y-3">
+              <div class="rounded-xl border border-slate-200 bg-white p-4">
+                <h3 class="mb-2 text-sm font-semibold text-slate-700">岗位描述（JD）</h3>
+                <p v-if="selectedPositionLibrary.description" class="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{{ selectedPositionLibrary.description }}</p>
+                <p v-else class="text-sm text-slate-400">尚未录入 JD。</p>
+              </div>
+            </section>
+
+            <section v-else-if="positionDrawerTab === 'matches'" class="space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-slate-700">匹配人才（潜力池）</h3>
+                <span class="text-xs text-slate-400">{{ positionLibraryMatches.length }} 位候选</span>
+              </div>
+              <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table class="w-full text-sm">
+                  <thead><tr class="bg-slate-50 text-xs font-semibold text-slate-500"><th class="px-3 py-2 text-left">人才</th><th class="px-3 py-2 text-left">当前履历</th><th class="px-3 py-2 text-left">Base</th><th class="px-3 py-2 text-left">匹配分</th><th class="px-3 py-2 text-right">操作</th></tr></thead>
+                  <tbody>
+                    <tr v-for="match in positionLibraryMatches" :key="match.candidateId" class="border-t border-slate-100">
+                      <td class="px-3 py-2"><button type="button" @click="openCandidateDetail(match.candidateId)" class="font-semibold text-slate-800 hover:text-emerald-700 hover:underline">{{ candidateById.get(match.candidateId)?.name || '人才' }}</button></td>
+                      <td class="px-3 py-2 text-slate-500">{{ candidateById.get(match.candidateId)?.currentCompany || '-' }} · {{ candidateById.get(match.candidateId)?.currentTitle || '-' }}</td>
+                      <td class="px-3 py-2 text-slate-500">{{ candidateById.get(match.candidateId)?.city || '-' }}</td>
+                      <td class="px-3 py-2 font-semibold text-emerald-700">{{ match.score }}</td>
+                      <td class="px-3 py-2 text-right"><button v-if="canWrite" type="button" @click="createApplicationFromMatch(match.candidateId, selectedPositionLibrary.id, match)" class="whitespace-nowrap rounded-lg border border-emerald-700 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">创建推荐</button></td>
+                    </tr>
+                    <tr v-if="!positionLibraryMatches.length"><td colspan="5" class="px-3 py-8 text-center text-sm text-slate-400">暂无匹配人才</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section v-else-if="positionDrawerTab === 'applications'" class="space-y-3">
+              <h3 class="text-sm font-semibold text-slate-700">推荐记录（正式推进）</h3>
+              <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table class="w-full text-sm">
+                  <thead><tr class="bg-slate-50 text-xs font-semibold text-slate-500"><th class="px-3 py-2 text-left">人才</th><th class="px-3 py-2 text-left">阶段</th><th class="px-3 py-2 text-left">负责人</th><th class="px-3 py-2 text-left">更新</th><th class="px-3 py-2 text-right">操作</th></tr></thead>
+                  <tbody>
+                    <tr v-for="application in positionLibraryApplications" :key="application.id" class="border-t border-slate-100">
+                      <td class="px-3 py-2"><button type="button" @click="openCandidateDetail(application.candidateId)" class="font-semibold text-slate-800 hover:text-emerald-700 hover:underline">{{ candidateById.get(application.candidateId)?.name || '人才' }}</button></td>
+                      <td class="px-3 py-2 text-slate-500">{{ candidatePipelineLabel(application.stage) }}</td>
+                      <td class="px-3 py-2 text-slate-500">{{ application.owner || '未分配' }}</td>
+                      <td class="px-3 py-2 text-xs text-slate-400">{{ (application.updatedAt || '').slice(0,10) }}</td>
+                      <td class="px-3 py-2 text-right"><button type="button" @click="openApplicationDetail(application.id)" class="whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">查看</button></td>
+                    </tr>
+                    <tr v-if="!positionLibraryApplications.length"><td colspan="5" class="px-3 py-8 text-center text-sm text-slate-400">暂无推荐记录</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section v-else-if="positionDrawerTab === 'interviews'" class="space-y-3">
+              <h3 class="text-sm font-semibold text-slate-700">面试进度</h3>
+              <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table class="w-full text-sm">
+                  <thead><tr class="bg-slate-50 text-xs font-semibold text-slate-500"><th class="px-3 py-2 text-left">人才</th><th class="px-3 py-2 text-left">面试阶段</th><th class="px-3 py-2 text-left">负责人</th><th class="px-3 py-2 text-left">更新</th></tr></thead>
+                  <tbody>
+                    <tr v-for="application in positionLibraryInterviews" :key="application.id" class="border-t border-slate-100">
+                      <td class="px-3 py-2"><button type="button" @click="openCandidateDetail(application.candidateId)" class="font-semibold text-slate-800 hover:text-emerald-700 hover:underline">{{ candidateById.get(application.candidateId)?.name || '人才' }}</button></td>
+                      <td class="px-3 py-2 text-indigo-700">{{ candidatePipelineLabel(application.stage) }}</td>
+                      <td class="px-3 py-2 text-slate-500">{{ application.owner || '未分配' }}</td>
+                      <td class="px-3 py-2 text-xs text-slate-400">{{ (application.updatedAt || '').slice(0,10) }}</td>
+                    </tr>
+                    <tr v-if="!positionLibraryInterviews.length"><td colspan="4" class="px-3 py-8 text-center text-sm text-slate-400">暂无面试中的候选人</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section v-else-if="positionDrawerTab === 'remark'" class="space-y-3">
+              <h3 class="text-sm font-semibold text-slate-700">备注跟进</h3>
+              <textarea v-model="positionRemarkDraft" rows="6" aria-label="岗位备注" class="w-full rounded-xl border border-slate-200 p-3 text-sm" placeholder="记录客户沟通、岗位变化、跟进事项…"></textarea>
+              <div class="flex justify-end"><button v-if="canWrite" type="button" @click="savePositionRemark" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">保存备注</button></div>
+            </section>
+          </div>
+
+          <div v-if="positionLibraryEditor.active" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+              <h2 class="text-lg font-bold text-slate-900">{{ positionLibraryEditor.id ? '编辑岗位' : '新增岗位' }}</h2>
+              <div class="mt-4 space-y-3">
+                <label class="block text-sm"><span class="text-slate-500">岗位名称 *</span><input v-model="positionLibraryEditor.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
+                <label class="block text-sm"><span class="text-slate-500">所属公司 *</span><select v-model="positionLibraryEditor.companyId" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">请选择公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select></label>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block text-sm"><span class="text-slate-500">Base</span><input v-model="positionLibraryEditor.city" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
+                  <label class="block text-sm"><span class="text-slate-500">薪资</span><input v-model="positionLibraryEditor.salary" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="如 30-50k"></label>
+                </div>
+                <label class="block text-sm"><span class="text-slate-500">负责人</span><select v-model="positionLibraryEditor.owner" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">未分配</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select></label>
+                <label class="block text-sm"><span class="text-slate-500">JD / 岗位描述</span><textarea v-model="positionLibraryEditor.description" rows="4" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></textarea></label>
+                <p v-if="positionLibraryEditor.error" class="text-xs text-rose-600">{{ positionLibraryEditor.error }}</p>
+              </div>
+              <div class="mt-5 flex justify-end gap-2">
+                <button type="button" @click="cancelPositionLibraryEdit" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">取消</button>
+                <button type="button" @click="positionLibraryEditor.id ? savePositionLibraryEdit() : savePositionLibraryCreate()" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">{{ positionLibraryEditor.id ? '保存' : '创建' }}</button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="positionOwnerEditor.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+            <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+              <h2 class="text-lg font-bold text-slate-900">修改负责人</h2>
+              <label class="mt-4 block text-sm"><span class="text-slate-500">负责人</span><select v-model="positionOwnerEditor.owner" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">未分配</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select></label>
+              <div class="mt-5 flex justify-end gap-2">
+                <button type="button" @click="positionOwnerEditor.open = false" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">取消</button>
+                <button type="button" @click="setPositionLibraryOwner(positionOwnerEditor.id, positionOwnerEditor.owner)" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">保存</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div v-else-if="workbenchNav === 'applications' && workbenchRoute.type === 'list'" class="wb-v2-applications-page max-w-7xl mx-auto space-y-4">
@@ -11461,6 +11969,17 @@ const vueAppConfig = {
     const { PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate } = window.WorkBuddyListPerformance;
     const TalentLibrary = window.WorkBuddyTalentLibraryTable;
     const CandidateCoreEditor = window.WorkBuddyCandidateCoreEditor;
+    const ExternalOpportunities = window.WorkBuddyExternalOpportunities;
+    const JobOpportunityPreferences = window.WorkBuddyJobOpportunityPreferences;
+    const JobOpportunityActions = window.WorkBuddyCandidateJobOpportunityActions;
+    const workBuddyStageOptions = ExternalOpportunities.STAGE_OPTIONS;
+    const workBuddyIntentionOptions = ExternalOpportunities.INTENTION_OPTIONS;
+    const workBuddyCompanyTypeOptions = ExternalOpportunities.COMPANY_TYPE_OPTIONS;
+    const workBuddyPreferenceRows = JobOpportunityPreferences.PREFERENCE_ROWS;
+    const workBuddyStageLabel = ExternalOpportunities.stageLabel;
+    const workBuddyStageBadgeClass = ExternalOpportunities.stageBadgeClass;
+    const workBuddyIntentionBadgeClass = ExternalOpportunities.intentionBadgeClass;
+    const workBuddyFormatUpdatedAt = ExternalOpportunities.formatUpdatedAt;
     const ResumeFormattedTextEditor = window.WorkBuddyResumeFormattedTextEditor;
     const ResumeAiProcessing = window.WorkBuddyResumeAiProcessing;
     const ResumeFileSync = window.WorkBuddyResumeFileSync;
@@ -11660,6 +12179,7 @@ const vueAppConfig = {
     const workbenchNavItems = [
       { key: 'dashboard', label: '工作台', icon: '台' },
       { key: 'companies', label: '公司', icon: '司' },
+      { key: 'positions', label: '岗位库', icon: '岗' },
       { key: 'candidates', label: '人才库', icon: '人' },
       { key: 'applications', label: '推进中心', icon: '进' },
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
@@ -12359,8 +12879,172 @@ const vueAppConfig = {
         if (candidateCoreEdit.active && (type !== 'candidate' || id !== candidateCoreEdit.candidateId || tab !== 'overview')) {
           resetCandidateCoreEdit();
         }
+        if (jobOpportunityEdit.active || jobOpportunityPreferencesEdit.active || expandedOpportunityId.value) {
+          cancelJobOpportunityEdit();
+          cancelJobOpportunityPreferencesEdit();
+          expandedOpportunityId.value = '';
+        }
       },
     );
+    // ===== 求职进展 / 求职判断 / 求职摘要：候选人外部市场求职记录（不替代内部 Application / Pipeline）=====
+    const expandedOpportunityId = ref('');
+    const jobOpportunityEdit = reactive({
+      mode: '', // 'create' | 'edit'
+      active: false,
+      saving: false,
+      error: '',
+      id: '',
+      draft: ExternalOpportunities.createDraft(),
+    });
+    const jobOpportunityPreferencesEdit = reactive({
+      active: false,
+      saving: false,
+      error: '',
+      draft: JobOpportunityPreferences.createDraft(),
+    });
+    const selectedCandidateExternalOpportunities = computed(() => {
+      const candidate = selectedCandidate.value;
+      if (!candidate) return [];
+      return ExternalOpportunities.sortByUpdatedDesc(
+        ExternalOpportunities.readOpportunities(candidate),
+      );
+    });
+    const selectedCandidateJobOpportunityPreferences = computed(() => {
+      const candidate = selectedCandidate.value;
+      if (!candidate) return JobOpportunityPreferences.createDraft();
+      return JobOpportunityPreferences.readPreferences(candidate);
+    });
+    const jobOpportunitySummary = computed(() => {
+      return ExternalOpportunities.summary({
+        opportunities: selectedCandidateExternalOpportunities.value,
+        preferences: selectedCandidateJobOpportunityPreferences.value,
+      });
+    });
+    function resetJobOpportunityEdit() {
+      jobOpportunityEdit.active = false;
+      jobOpportunityEdit.mode = '';
+      jobOpportunityEdit.saving = false;
+      jobOpportunityEdit.error = '';
+      jobOpportunityEdit.id = '';
+      jobOpportunityEdit.draft = ExternalOpportunities.createDraft();
+    }
+    function startJobOpportunityCreate() {
+      if (!canWrite) return;
+      if (typeof requireTalentWritePermission === 'function' && !requireTalentWritePermission()) return;
+      resetJobOpportunityEdit();
+      jobOpportunityEdit.mode = 'create';
+      jobOpportunityEdit.active = true;
+    }
+    function startJobOpportunityEdit(opp) {
+      if (!canWrite) return;
+      if (typeof requireTalentWritePermission === 'function' && !requireTalentWritePermission()) return;
+      resetJobOpportunityEdit();
+      jobOpportunityEdit.mode = 'edit';
+      jobOpportunityEdit.active = true;
+      jobOpportunityEdit.id = opp.id;
+      jobOpportunityEdit.draft = ExternalOpportunities.createDraft(opp);
+    }
+    function cancelJobOpportunityEdit() {
+      if (jobOpportunityEdit.saving) return;
+      resetJobOpportunityEdit();
+    }
+    async function saveJobOpportunityEdit() {
+      if (!selectedCandidate.value || jobOpportunityEdit.saving) return;
+      if (typeof requireTalentWritePermission === 'function' && !requireTalentWritePermission()) return;
+      jobOpportunityEdit.saving = true;
+      jobOpportunityEdit.error = '';
+      const deps = {
+        canWrite,
+        bundle: workbenchV2,
+        updateTalent: WorkbenchV2.updateTalent,
+        persist: saveWorkbenchV2,
+        schedulePush,
+        showToast,
+      };
+      try {
+        if (jobOpportunityEdit.mode === 'create') {
+          await JobOpportunityActions.addOpportunity(deps, selectedCandidate.value, jobOpportunityEdit.draft);
+          showToast('已新增公司机会');
+        } else if (jobOpportunityEdit.mode === 'edit') {
+          await JobOpportunityActions.editOpportunity(deps, selectedCandidate.value, jobOpportunityEdit.id, jobOpportunityEdit.draft);
+          showToast('已保存');
+        }
+        jobOpportunityEdit.active = false;
+        jobOpportunityEdit.mode = '';
+        jobOpportunityEdit.id = '';
+        if (typeof schedulePush === 'function') schedulePush();
+      } catch (err) {
+        jobOpportunityEdit.error = (err && err.message) ? err.message : '保存失败，请重试';
+      } finally {
+        jobOpportunityEdit.saving = false;
+      }
+    }
+    async function removeJobOpportunity(id) {
+      if (!selectedCandidate.value) return;
+      if (typeof requireTalentWritePermission === 'function' && !requireTalentWritePermission()) return;
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm('确认删除这家公司机会？')) return;
+      const deps = {
+        canWrite,
+        bundle: workbenchV2,
+        updateTalent: WorkbenchV2.updateTalent,
+        persist: saveWorkbenchV2,
+        schedulePush,
+        showToast,
+      };
+      try {
+        await JobOpportunityActions.removeOpportunity(deps, selectedCandidate.value, id);
+        if (expandedOpportunityId.value === id) expandedOpportunityId.value = '';
+        showToast('已删除');
+        if (typeof schedulePush === 'function') schedulePush();
+      } catch (err) {
+        showToast((err && err.message) ? err.message : '删除失败', 'error');
+      }
+    }
+    function toggleOpportunityExpanded(id) {
+      expandedOpportunityId.value = expandedOpportunityId.value === id ? '' : id;
+    }
+    function resetJobOpportunityPreferencesEdit() {
+      jobOpportunityPreferencesEdit.active = false;
+      jobOpportunityPreferencesEdit.saving = false;
+      jobOpportunityPreferencesEdit.error = '';
+      jobOpportunityPreferencesEdit.draft = JobOpportunityPreferences.createDraft();
+    }
+    function startJobOpportunityPreferencesEdit() {
+      if (!canWrite) return;
+      if (typeof requireTalentWritePermission === 'function' && !requireTalentWritePermission()) return;
+      const prefs = JobOpportunityPreferences.readPreferences(selectedCandidate.value);
+      resetJobOpportunityPreferencesEdit();
+      jobOpportunityPreferencesEdit.active = true;
+      jobOpportunityPreferencesEdit.draft = JobOpportunityPreferences.createDraft(prefs);
+    }
+    function cancelJobOpportunityPreferencesEdit() {
+      if (jobOpportunityPreferencesEdit.saving) return;
+      resetJobOpportunityPreferencesEdit();
+    }
+    async function saveJobOpportunityPreferencesEdit() {
+      if (!selectedCandidate.value || jobOpportunityPreferencesEdit.saving) return;
+      if (typeof requireTalentWritePermission === 'function' && !requireTalentWritePermission()) return;
+      jobOpportunityPreferencesEdit.saving = true;
+      jobOpportunityPreferencesEdit.error = '';
+      const deps = {
+        canWrite,
+        bundle: workbenchV2,
+        updateTalent: WorkbenchV2.updateTalent,
+        persist: saveWorkbenchV2,
+        schedulePush,
+        showToast,
+      };
+      try {
+        await JobOpportunityActions.savePreferences(deps, selectedCandidate.value, jobOpportunityPreferencesEdit.draft);
+        jobOpportunityPreferencesEdit.active = false;
+        showToast('求职判断已保存');
+        if (typeof schedulePush === 'function') schedulePush();
+      } catch (err) {
+        jobOpportunityPreferencesEdit.error = (err && err.message) ? err.message : '保存失败，请重试';
+      } finally {
+        jobOpportunityPreferencesEdit.saving = false;
+      }
+    }
     const selectedApplication = computed(() => applicationById.value.get(workbenchRoute.id) || null);
     const applicationMatchAnalysisActions = window.WorkBuddyApplicationMatchAnalysisActions.createApplicationMatchAnalysisActions({
       getContext: () => ({
@@ -12431,6 +13115,161 @@ const vueAppConfig = {
       selectedCandidateIds.value = [...next];
     }
     function clearCandidateSelection() { selectedCandidateIds.value = []; }
+
+    /* ── 岗位库列表化（P0-2）：状态 / 计算属性 / 操作 ── */
+    const PositionLibrary = window.WorkBuddyPositionLibraryTable;
+    const positionLibraryFilters = reactive({
+      query: '', companyId: 'all', status: 'all', owner: 'all', base: '',
+      tag: 'all', salaryMin: '', salaryMax: '', hasRecommendation: 'all', hasInterview: 'all',
+      created: { preset: 'all' }, updated: { preset: 'all' },
+    });
+    const positionLibrarySelectedId = ref('');
+    const positionDrawerTab = ref('overview');
+    const positionLibraryColumnsOpen = ref(false);
+    const positionLibraryMoreFiltersOpen = ref(false);
+    const positionRowMenuId = ref('');
+    const positionRemarkDraft = ref('');
+    const positionLibraryEditor = reactive({ active: false, id: '', title: '', companyId: '', city: '', salary: '', owner: '', description: '', error: '' });
+    const positionOwnerEditor = reactive({ open: false, id: '', owner: '' });
+    const positionLibraryTagOptions = computed(() => [...new Set((workbenchV2.positions || []).flatMap(position => position.tags || []))]);
+    function openPositionDrawer(id, tab = 'overview') { positionLibrarySelectedId.value = id; positionDrawerTab.value = tab; positionRowMenuId.value = ''; }
+    function closePositionDrawer() { positionLibrarySelectedId.value = ''; positionRowMenuId.value = ''; }
+    const selectedPositionLibrary = computed(() => positionById.value.get(positionLibrarySelectedId.value) || null);
+    const positionDrawerOpen = computed(() => workbenchNav.value === 'positions' && Boolean(selectedPositionLibrary.value));
+    const positionLibraryRows = computed(() => (PositionLibrary ? PositionLibrary.buildRows({
+      positions: workbenchV2.positions,
+      companies: workbenchV2.companies,
+      applications: workbenchV2.applications,
+    }) : []));
+    const filteredPositionLibraryRows = computed(() => (PositionLibrary ? PositionLibrary.filterRows(positionLibraryRows.value, positionLibraryFilters) : []));
+    const positionLibrarySummary = computed(() => (PositionLibrary ? PositionLibrary.summarize(filteredPositionLibraryRows.value) : { total: 0, open: 0, paused: 0, closed: 0, recommended: 0, interviewing: 0 }));
+    const selectedPositionLibraryProgress = computed(() => (PositionLibrary && selectedPositionLibrary.value)
+      ? PositionLibrary.computePositionProgress(PositionLibrary.applicationsForPosition(workbenchV2.applications, selectedPositionLibrary.value.id))
+      : { recommended: 0, clientReview: 0, interviewing: 0, offer: 0, onboarded: 0, total: 0 });
+    const positionLibraryApplications = computed(() => WorkBuddyPositionApplicationFilter.getActivePositionApplications(visibleApplications.value, selectedPositionLibrary.value?.id, SK.CLOSED));
+    const positionLibraryInterviews = computed(() => (positionLibraryApplications.value || []).filter(application => SG.INTERVIEW.includes(application.stage)));
+    const positionLibraryMatches = computed(() => (selectedPositionLibrary.value ? WorkbenchV2.matchCandidates(selectedPositionLibrary.value, workbenchV2.candidates).slice(0, 20) : []));
+    watch(selectedPositionLibrary, position => { positionRemarkDraft.value = position ? (position.remark || '') : ''; });
+
+    function setPositionLibraryStatus(id, status) {
+      if (!canWrite) return;
+      if (!workbenchV2.positions.some(position => position.id === id)) return;
+      WorkbenchV2.setPositionStatus(workbenchV2, id, status);
+      return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast(saved ? `${PositionLibrary.STATUS_LABELS[status]}岗位` : '已暂存到浏览器'); });
+    }
+    function openPositionLibraryEdit(id) {
+      if (!canWrite) return;
+      const position = workbenchV2.positions.find(item => item.id === id);
+      if (!position) return;
+      Object.assign(positionLibraryEditor, {
+        active: true, id, title: position.title || '', companyId: position.companyId || '',
+        city: position.city || '', salary: position.salary || '', owner: position.owner || '',
+        description: position.description || position.jd || '', error: '',
+      });
+    }
+    function savePositionLibraryEdit() {
+      if (!canWrite) return;
+      const position = workbenchV2.positions.find(item => item.id === positionLibraryEditor.id);
+      if (!position) return;
+      const title = String(positionLibraryEditor.title || '').trim();
+      if (!title) { positionLibraryEditor.error = '请填写岗位名称'; return; }
+      position.title = title;
+      position.companyId = positionLibraryEditor.companyId;
+      position.city = String(positionLibraryEditor.city || '').trim();
+      position.salary = String(positionLibraryEditor.salary || '').trim();
+      position.owner = String(positionLibraryEditor.owner || '').trim();
+      position.description = String(positionLibraryEditor.description || '').trim();
+      position.updatedAt = new Date().toISOString();
+      positionLibraryEditor.active = false;
+      return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast(saved ? '岗位已保存' : '已暂存到浏览器'); });
+    }
+    function setPositionLibraryOwner(id, owner) {
+      if (!canWrite) return;
+      const position = workbenchV2.positions.find(item => item.id === id);
+      if (!position) return;
+      position.owner = String(owner || '').trim();
+      position.updatedAt = new Date().toISOString();
+      positionOwnerEditor.open = false;
+      return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast(saved ? '负责人已更新' : '已暂存到浏览器'); });
+    }
+    function deletePositionLibrary(id) {
+      if (!canWrite) return;
+      const position = workbenchV2.positions.find(item => item.id === id);
+      if (!position) return;
+      const count = (workbenchV2.applications || []).filter(item => item.positionId === id && !item.deletedAt && item.status !== 'archived').length;
+      if (count) {
+        if (position.status !== 'closed') {
+          const ok = window.confirm(`“${position.title}”已有 ${count} 条候选人推进记录，不能永久删除。是否关闭岗位并保留全部历史？`);
+          if (ok) {
+            WorkbenchV2.setPositionStatus(workbenchV2, id, 'closed');
+            return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast('岗位已关闭，候选人推进历史已保留'); closePositionDrawer(); });
+          }
+        } else {
+          showToast(`该岗位已有 ${count} 条候选人推进记录，不能永久删除`, 'error');
+        }
+        return;
+      }
+      if (!window.confirm(`确认永久删除岗位“${position.title}”？此操作无法恢复。`)) return;
+      WorkbenchV2.deletePosition(workbenchV2, id);
+      return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast('岗位已永久删除'); closePositionDrawer(); });
+    }
+    function createPositionLibrary() {
+      if (!canWrite) return;
+      Object.assign(positionLibraryEditor, {
+        active: true, id: '', title: '', city: '', salary: '', owner: '', description: '', error: '',
+        companyId: positionLibraryFilters.companyId !== 'all' ? positionLibraryFilters.companyId : (workbenchV2.companies[0]?.id || ''),
+      });
+    }
+    function savePositionLibraryCreate() {
+      if (!canWrite) return;
+      const title = String(positionLibraryEditor.title || '').trim();
+      if (!title) { positionLibraryEditor.error = '请填写岗位名称'; return; }
+      if (!positionLibraryEditor.companyId) { positionLibraryEditor.error = '请选择所属公司'; return; }
+      const position = WorkbenchV2.createPosition({
+        companyId: positionLibraryEditor.companyId,
+        title,
+        city: String(positionLibraryEditor.city || '').trim(),
+        salary: String(positionLibraryEditor.salary || '').trim(),
+        owner: String(positionLibraryEditor.owner || '').trim(),
+        description: String(positionLibraryEditor.description || '').trim(),
+      });
+      workbenchV2.positions.push(position);
+      positionLibraryEditor.active = false;
+      return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast(saved ? '岗位已创建' : '已暂存到浏览器'); openPositionDrawer(position.id); });
+    }
+    function cancelPositionLibraryEdit() { positionLibraryEditor.active = false; }
+    function openPositionOwnerEditor(id) {
+      const position = workbenchV2.positions.find(item => item.id === id);
+      if (!position) return;
+      positionOwnerEditor.open = true;
+      positionOwnerEditor.id = id;
+      positionOwnerEditor.owner = position.owner || '';
+    }
+    function savePositionRemark() {
+      if (!canWrite || !selectedPositionLibrary.value) return;
+      selectedPositionLibrary.value.remark = String(positionRemarkDraft.value || '').trim();
+      selectedPositionLibrary.value.updatedAt = new Date().toISOString();
+      return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast(saved ? '备注已保存' : '已暂存到浏览器'); });
+    }
+    function openPositionBulkImportLibrary() {
+      if (!canWrite) { showToast('当前账号无写入权限', 'error'); return; }
+      showToast('批量导入岗位请在公司详情页操作（岗位库以单条新增为主）', 'error');
+    }
+    function exportPositions() {
+      const rows = filteredPositionLibraryRows.value;
+      const header = ['岗位', '公司', 'Base', '薪资', '负责人', '状态', '已推荐', '面试中', '最近更新'];
+      const escape = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const lines = [header.map(escape).join(',')];
+      rows.forEach(row => lines.push([row.title, row.companyName, row.base, row.salary, row.owner, row.statusLabel, row.recommended, row.interviewing, row.lastUpdated].map(escape).join(',')));
+      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = '岗位库.csv';
+      anchor.click();
+      URL.revokeObjectURL(url);
+      showToast('已导出岗位库');
+    }
     async function bulkDeleteSelectedCandidates() {
       if (!requireTalentWritePermission()) return;
       const ids = selectedCandidateIds.value.filter(id => workbenchV2.candidates.some(candidate => String(candidate.id) === String(id) && !candidate.deletedAt));
@@ -13612,6 +14451,7 @@ const vueAppConfig = {
       showToast(saved ? message : `${message}，已暂存到浏览器`);
     }
     async function toggleWorkbenchPositionStatus() { return workbenchEntityActions.toggleWorkbenchPositionStatus(); }
+    async function closeWorkbenchPosition() { return workbenchEntityActions.closeWorkbenchPosition(); }
     async function requestWorkbenchPositionDelete() { return workbenchEntityActions.requestWorkbenchPositionDelete(); }
     function selectCandidateDetail(id, tab) {
       workbenchNav.value = 'candidates';
@@ -25436,6 +26276,12 @@ ${clipped}`
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,
+      expandedOpportunityId, jobOpportunityEdit, jobOpportunityPreferencesEdit,
+      selectedCandidateExternalOpportunities, selectedCandidateJobOpportunityPreferences, jobOpportunitySummary,
+      startJobOpportunityCreate, startJobOpportunityEdit, cancelJobOpportunityEdit, saveJobOpportunityEdit, removeJobOpportunity, toggleOpportunityExpanded,
+      startJobOpportunityPreferencesEdit, cancelJobOpportunityPreferencesEdit, saveJobOpportunityPreferencesEdit,
+      workBuddyStageOptions, workBuddyIntentionOptions, workBuddyCompanyTypeOptions, workBuddyPreferenceRows,
+      workBuddyStageLabel, workBuddyStageBadgeClass, workBuddyIntentionBadgeClass, workBuddyFormatUpdatedAt,
       resumeAiBatch, openResumeAiBatch, startResumeAiBatch, retryResumeAiBatch, cancelResumeAiBatch,
       candidateResumeView, candidateResumeProcessMenuOpen, candidateResumeEdit, activeCandidateResumeVersion, hasCandidateResumeOriginal, switchCandidateResumeVersion, switchCandidateResumeMode, loadCandidateResumeOriginal,
       startCandidateResumeEdit, saveCandidateResumeEdit, cancelCandidateResumeEdit,
@@ -25445,7 +26291,7 @@ ${clipped}`
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches, applicationBatchScoring,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressPeriod, businessProgressItems,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
-      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
+      showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, closeWorkbenchPosition, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDrawer, openCandidateDetail, closeCandidateDrawer, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
       // 阶段 3.5 批量 / 拖拽入库
       batchUpload, candidateExcelImport, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, openChannelCandidateImport, closeCandidateExcelImport, onCandidateExcelFile, confirmCandidateExcelImport, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,

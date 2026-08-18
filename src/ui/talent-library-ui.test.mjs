@@ -267,7 +267,7 @@ test('candidate drawer uses a softer panel surface and lightweight top actions',
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-candidate-tabs\s*\{[\s\S]*?margin-top:\s*24px[\s\S]*?border-bottom:\s*1px solid #edf1ef/);
 });
 
-test('候选人简历将操作与内容视图分成两层', () => {
+test('候选人简历操作与视图切换位于同一工具栏行', () => {
   const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="border-t border-slate-200 bg-white px-4 pt-3 pb-5">/)?.[0] || '';
   assert.ok(resumeBlock, 'resume content block should exist');
   assert.match(resumeBlock, /class="resume-toolbar[^\"]*px-4 py-0/);
@@ -277,7 +277,9 @@ test('候选人简历将操作与内容视图分成两层', () => {
   assert.doesNotMatch(resumeBlock, /<h2[^>]*>简历<\/h2>/);
   assert.match(resumeBlock, /class="[^\"]*h-8[^\"]*rounded-md[^\"]*border-emerald-700[^\"]*bg-transparent/);
   assert.match(resumeBlock, /重新处理[\s\S]*?<svg[\s\S]*?d="m6 9 6 6 6-6"/);
-  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-4/);
+  // 电子简历/原始文件视图切换与编辑简历、重新处理操作位于同一工具栏行（不再分成两层）
+  assert.doesNotMatch(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-4/);
+  assert.match(resumeBlock, /class="resume-toolbar-actions[^"]*"[\s\S]*?class="candidate-resume-view-tabs/);
   assert.doesNotMatch(resumeBlock, /电子简历[\s\S]*?<span aria-hidden="true">/);
   assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?rounded-md border[\s\S]*?电子简历/);
   assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?rounded-md border[\s\S]*?原始文件/);
