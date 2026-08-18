@@ -1,0 +1,20 @@
+{
+  "name": "workbuddy-spa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:css": "tailwindcss -c tailwind.config.cjs -i ./src/styles/tailwind-input.css -o ./public/assets/workbuddy.css --minify",
+    "build": "npm run build:css && node scripts/build.js",
+    "build:vite": "vite build",
+    "test:modularization": "node --test src/ui/workbench-entity-actions.test.mjs src/ui/workbench-application-actions.test.mjs src/ui/workbench-search-actions.test.mjs src/ui/legacy-job-actions.test.mjs src/ui/legacy-job-parse-actions.test.mjs src/ui/talent-cloud-search-actions.test.mjs src/ui/talent-intake-actions.test.mjs src/ui/resume-reprocess-actions.test.mjs src/ui/candidate-profile-actions.test.mjs src/ui/candidate-pipeline-actions.test.mjs src/ui/candidate-resume-actions.test.mjs src/ui/candidate-original-file-actions.test.mjs src/ui/todo-actions.test.mjs src/ui/member-actions.test.mjs src/ui/ai-config-actions.test.mjs src/ui/column-actions.test.mjs src/ui/inline-ai-analysis-actions.test.mjs src/ui/backup-export-actions.test.mjs src/ui/ocr-input-actions.test.mjs src/ui/shortlist-actions.test.mjs src/ui/ai-note-actions.test.mjs src/ui/network-intro-actions.test.mjs src/ui/timeline-ai-actions.test.mjs src/ui/application-match-analysis-actions.test.mjs src/ui/application-candidate-repair-actions.test.mjs src/ui/talent-funnel-stage-actions.test.mjs",
+    "preview": "vite preview",
+    "test": "node --test src/guest-demo.test.mjs src/guest-demo-ai.test.mjs src/guest-auth-bootstrap.test.mjs src/guest-data-boundary.test.mjs src/ai-app-center-boundary.test.mjs src/ui/guest-demo-ui.test.mjs src/ui/advisor-panel-resize.test.mjs src/workbench-v2.test.mjs src/storage/indexeddb-cache.test.mjs src/batch-upload.test.mjs src/editor-deepseek-settings.test.mjs src/ui/list-performance.test.mjs src/ui/talent-library-table.test.mjs src/ui/talent-library-ui.test.mjs src/ui/candidate-core-editor.test.mjs src/ui/resume-formatted-text-editor.test.mjs src/ui/sidebar-collapse.test.mjs src/ui/resume-file-and-ai-retry.test.mjs src/ui/workbench-entity-actions.test.mjs src/ui/workbench-application-actions.test.mjs src/ui/workbench-search-actions.test.mjs src/ui/application-candidate-repair-actions.test.mjs src/ui/talent-funnel-stage-actions.test.mjs src/services/application-visibility.test.mjs src/services/application-candidate-integrity.test.mjs src/services/save-coordinator.test.mjs src/services/ai-application-center.test.mjs src/services/resume-ai-processing.test.mjs src/services/resume-file-sync.test.mjs src/services/resume-storage-policy.test.mjs src/services/resume-background-save-queue.test.mjs src/services/resume-original-text-loader.test.mjs src/services/resume-original-record-loader.test.mjs src/services/talent-funnel-scope.test.mjs src/services/talent-funnel-analytics.test.mjs src/services/talent-funnel-ai.test.mjs src/services/position-bulk-import.test.mjs src/services/candidate-excel-import.test.mjs src/services/repo/candidate-repo.test.mjs src/services/repo/candidate-read-path.test.mjs src/services/repo/resume-search-repo.test.mjs src/services/repo/candidate-matching-repo.test.mjs src/services/repo/quantum-radar-repo.test.mjs src/services/phase4-contract.test.mjs src/services/repo/workspace-state-boundary.test.mjs src/services/repo/resume-version-repo.test.mjs src/services/repo/resume-version-sync.test.mjs src/services/repo/offline-sync-queue.test.mjs src/services/repo/workbench-entity-read-path.test.mjs src/services/repo/talent-source-channel-repo.test.mjs src/services/repo/talent-funnel-event-repo.test.mjs src/services/ai-gateway.test.mjs src/services/workbench-entity-sync.test.mjs src/services/pipeline-core.test.mjs src/accessibility-static.test.mjs src/production-build.test.mjs src/ui/talent-funnel-dashboard.test.mjs src/ui/position-library-table.test.mjs src/ui/external-opportunities.test.mjs src/ui/job-opportunity-preferences.test.mjs src/ui/candidate-job-opportunity-actions.test.mjs"
+  },
+  "devDependencies": {
+    "parse5": "7.3.0",
+    "tailwindcss": "3.4.17",
+    "vite": "^6.3.0"
+  }
+}

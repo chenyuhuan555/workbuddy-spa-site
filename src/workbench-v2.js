@@ -1,0 +1,1199 @@
+(function (root) {
+  'use strict';
+
+  const VERSION = 2;
+  /* 阶段常量优先取共享模块 src/constants/pipeline-stages.js；
+     Node 测试环境无此模块时回退到内联定义，保证独立可运行。 */
+  const _shared = root.WorkBuddyStages;
+  const KEYS = _shared ? _shared.KEYS : Object.freeze({
+    DISCOVERED: 'discovered', CONTACTED: 'contacted', RESPONDED: 'responded',
+    SCREENING: 'screening', TO_RECOMMEND: 'to_recommend', RECOMMENDED: 'recommended',
+    CLIENT_ACCEPTED: 'client_accepted', INTERVIEW_PENDING: 'interview_pending',
+    INTERVIEWING: 'interviewing', INTERVIEW_PASSED: 'interview_passed',
+    OFFER: 'offer', OFFER_ACCEPTED: 'offer_accepted', PREBOARDING: 'preboarding',
+    ONBOARDED: 'onboarded', PROBATION: 'probation', REGULARIZED: 'regularized',
+    CLOSED: 'closed',
+  });
+  const APPLICATION_STAGES = _shared
+    ? _shared.STAGES.map(s => s.key)
+    : ['discovered', 'contacted', 'responded', 'screening', 'to_recommend', 'recommended', 'client_accepted', 'interview_pending', 'interviewing', 'interview_passed', 'offer', 'offer_accepted', 'preboarding', 'onboarded', 'probation', 'regularized', 'closed'];
+
+  function nowIso() {
+    return new Date().toISOString();
+  }
+
+  function makeId(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+  }
+
+  function copy(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function createEmptyBundle() {
+    return {
+      schemaVersion: VERSION,
+      companies: [],
+      positions: [],
+      candidates: [],
+      applications: [],
+      todos: [],
+      aiArtifacts: [],
+      activities: [],
+      notes: [],
+      aiApplications: [],
+      migrationMeta: {},
+      settings: {},
+    };
+  }
+
+  function stamp(prefix, defaults, input) {
+    const source = copy(input || {});
+    const timestamp = nowIso();
+    return {
+      id: source.id || makeId(prefix),
+      createdAt: source.createdAt || timestamp,
+      updatedAt: source.updatedAt || timestamp,
+      ...defaults,
+      ...source,
+    };
+  }
+
+  function createCompany(input = {}) {
+    return stamp('co', { name: '', status: 'potential', owner: '' }, input);
+  }
+
+  function createPosition(input = {}) {
+    return stamp('pos', { companyId: '', title: '', status: 'open', owner: '' }, input);
+  }
+
+  function findPosition(bundle, positionId) {
+    const position = bundle.positions.find(item => item.id === positionId);
+    if (!position) throw new Error('岗位不存在或已删除');
+    return position;
+  }
+
+  function setPositionStatus(bundle, positionId, status) {
+    if (!['open', 'paused', 'closed'].includes(status)) throw new Error('岗位状态无效');
+    const position = findPosition(bundle, positionId);
+    position.status = status;
+    position.updatedAt = nowIso();
+    return position;
+  }
+
+  function deletePosition(bundle, positionId) {
+    const position = findPosition(bundle, positionId);
+    const applicationCount = bundle.applications.filter(item => item.positionId === positionId).length;
+    if (applicationCount) {
+      throw new Error(`该岗位已有 ${applicationCount} 条候选人推进记录，请关闭岗位以保留业务历史`);
+    }
+    bundle.positions.splice(bundle.positions.indexOf(position), 1);
+    return position;
+  }
+
+  function createCandidate(input = {}) {
+    return stamp('cand', {
+      name: '',
+      // 资产状态（open/active/archived 等），不是 pipeline 阶段；岗位阶段只存在于 application.stage
+      status: 'open',
+      owner: '',
+      tags: [],
+      resumeVersions: [],
+    }, input);
+  }
+
+  function createApplication(bundle, input = {}) {
+    const candidate = bundle.candidates.find(item => item.id === input.candidateId);
+    const position = bundle.positions.find(item => item.id === input.positionId);
+    if (!candidate || !position) throw new Error('候选人或岗位不存在');
+
+    const existing = bundle.applications.find(item => (
+      item.candidateId === candidate.id
+      && item.positionId === position.id
+      && item.status !== 'archived'
+    ));
+    if (existing) throw new Error('该人才已推荐至此岗位');
+
+    const company = bundle.companies.find(item => item.id === position.companyId);
+    const defaultOwner = position.owner || company?.owner || candidate.owner || '';
+
+    const application = stamp('app', {
+      companyId: position.companyId,
+      stage: KEYS.DISCOVERED,
+      stageEnteredAt: nowIso(),
+      pipelineEvents: [],
+      owner: defaultOwner,
+    }, input);
+    bundle.applications.push(application);
+    return application;
+  }
+
+  const TODO_TYPES = ['custom', 'interview', 'jd', 'recommend', 'update', 'followup'];
+  const TODO_LINK_TYPES = ['none', 'candidate', 'position', 'company', 'application'];
+
+  function createTodo(input = {}) {
+    const linkType = TODO_LINK_TYPES.includes(input.linkType) ? input.linkType : 'none';
+    return stamp('todo', {
+      title: '',
+      subtitle: '',
+      type: 'custom',
+      date: '',
+      done: false,
+      linkType,
+      linkId: '',
+      linkLabel: '',
+    }, input);
+  }
+
+  function normalizeCompanyName(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[（(].*?[）)]/g, '')
+      .replace(/有限责任公司|股份有限公司|有限公司|集团|公司/g, '')
+      .replace(/\s+/g, '');
+  }
+
+  function candidateIdentity(resume = {}) {
+    if (resume.sourceResumeId) return { key: `source:${resume.sourceResumeId}`, hard: true };
+    if (resume.phone) return { key: `phone:${String(resume.phone).replace(/\D/g, '')}`, hard: true };
+    if (resume.email) return { key: `email:${String(resume.email).trim().toLowerCase()}`, hard: true };
+    const name = String(resume.name || '').trim();
+    const company = String(resume.currentCompany || '').trim();
+    return { key: name || company ? `soft:${name}|${company}` : `unique:${resume.id || makeId('legacy')}`, hard: false };
+  }
+
+  // 旧版简历文本散落在多个字段，按可读性优先级综合取值，确保迁移时不丢文本
+  function legacyResumeText(resume = {}) {
+    return String(
+      resume.electronicResumeText
+      || resume.bossImportedText
+      || resume.rawText
+      || resume.resumeText
+      || resume.candidateProfileText
+      || resume.candidateSummary
+      || ''
+    ).trim();
+  }
+
+  function candidateFromLegacy(resume, owner) {
+    const rawText = legacyResumeText(resume);
+    // 原始文件（resume.data）为大体积 base64，迁移时若已加载会撑爆 localStorage，
+    // 因此只携带文本；原件仍可在旧版工作台查看。
+    const hasResume = Boolean(rawText || resume.name);
+    return createCandidate({
+      name: resume.name || '未命名候选人',
+      phone: resume.phone || '',
+      email: resume.email || '',
+      currentCompany: resume.currentCompany || '',
+      currentTitle: resume.currentTitle || resume.currentPosition || '',
+      owner: resume.owner || resume.uploaderName || owner || '',
+      sourceResumeId: resume.sourceResumeId || '',
+      summary: resume.candidateSummary || '',
+      keywords: copy(resume.candidateKeywords || []),
+      profileText: resume.candidateProfileText || '',
+      electronicResumeText: resume.electronicResumeText || '',
+      resumeVersions: hasResume ? [{
+        id: resume.id || makeId('resume'),
+        sourceResumeId: resume.id || resume.sourceResumeId || '',
+        fileName: resume.name || '',
+        uploadedAt: resume.uploadedAt || nowIso(),
+        rawText,
+      }] : [],
+    });
+  }
+
+  function applicationFromLegacy(resume, candidate, position, company, owner) {
+    return stamp('app', {
+      candidateId: candidate.id,
+      positionId: position.id,
+      companyId: company.id,
+      owner: resume.owner || resume.uploaderName || owner || '',
+      matchScore: Number.isFinite(Number(resume.aiScore)) ? Number(resume.aiScore) : null,
+      matchReason: resume.evaluationReason || '',
+      stage: resume.pipelineStage || KEYS.DISCOVERED,
+      stageEnteredAt: resume.pipelineStageEnteredAt || resume.uploadedAt || nowIso(),
+      pipelineEvents: copy(resume.pipelineEvents || []),
+      evaluation: resume.evaluation || 'pending',
+      clientReport: resume.clientReport || '',
+      note: resume.note || '',
+    }, {});
+  }
+
+  function legacyPositionDescription(position = {}) {
+    return String(position.description || position.jd || position.detail || '').trim();
+  }
+
+  // 旧版岗位职责使用 detail 字段。已完成迁移的 V2 数据只补齐空职责，
+  // 以 sourceId 精确对应，绝不覆盖顾问后来在新版手工维护的内容。
+  function reconcilePositionDescriptions(bundle, legacy = {}) {
+    const legacyDescriptions = new Map();
+    for (const column of legacy.columns || []) {
+      for (const job of column.jobs || []) {
+        for (const position of job.positions || []) {
+          const sourceId = String(position.id || '').trim();
+          const description = legacyPositionDescription(position);
+          if (sourceId && description) legacyDescriptions.set(sourceId, description);
+        }
+      }
+    }
+
+    const updatedIds = [];
+    for (const position of bundle?.positions || []) {
+      if (String(position.description || '').trim()) continue;
+      const description = legacyDescriptions.get(String(position.sourceId || '').trim());
+      if (!description) continue;
+      position.description = description;
+      position.updatedAt = nowIso();
+      updatedIds.push(position.id);
+    }
+    return updatedIds;
+  }
+
+  function previewMigration(legacy = {}) {
+    const source = copy(legacy);
+    const bundle = createEmptyBundle();
+    const idMap = { companies: {}, positions: {}, candidates: {}, applications: {} };
+    const conflicts = [];
+    const companies = new Map();
+    const hardCandidates = new Map();
+    const softCandidates = new Map();
+    let sourceCompanies = 0;
+    let sourcePositions = 0;
+    let sourceResumes = 0;
+
+    for (const column of source.columns || []) {
+      for (const job of column.jobs || []) {
+        sourceCompanies += 1;
+        const companyName = job.company || job.name || '未命名公司';
+        const companyKey = normalizeCompanyName(companyName) || `legacy:${job.id || sourceCompanies}`;
+        let company = companies.get(companyKey);
+        if (!company) {
+          company = createCompany({
+            name: companyName,
+            owner: column.name || '',
+            profileText: job.companyProfileText || '',
+          });
+          companies.set(companyKey, company);
+          bundle.companies.push(company);
+        }
+        idMap.companies[job.id || `${column.name}:${companyName}`] = company.id;
+
+        for (const legacyPosition of job.positions || []) {
+          sourcePositions += 1;
+          const position = createPosition({
+            companyId: company.id,
+            title: legacyPosition.name || legacyPosition.title || '未命名岗位',
+            owner: legacyPosition.owner || column.name || '',
+            status: legacyPosition.status || 'open',
+            description: legacyPositionDescription(legacyPosition),
+            sourceId: legacyPosition.id || '',
+          });
+          bundle.positions.push(position);
+          idMap.positions[legacyPosition.id || position.id] = position.id;
+
+          for (const resume of legacyPosition.resumes || []) {
+            sourceResumes += 1;
+            const identity = candidateIdentity(resume);
+            let candidate = identity.hard ? hardCandidates.get(identity.key) : null;
+            if (!candidate) {
+              candidate = candidateFromLegacy(resume, column.name);
+              bundle.candidates.push(candidate);
+              if (identity.hard) {
+                hardCandidates.set(identity.key, candidate);
+              } else if (identity.key.startsWith('soft:')) {
+                const first = softCandidates.get(identity.key);
+                if (first) {
+                  conflicts.push({
+                    type: 'candidate-review',
+                    identity: identity.key,
+                    candidateIds: [first.id, candidate.id],
+                    sourceResumeIds: [first.sourceResumeId || '', resume.id || ''],
+                  });
+                } else {
+                  softCandidates.set(identity.key, candidate);
+                }
+              }
+            }
+            idMap.candidates[resume.id || candidate.id] = candidate.id;
+            const application = applicationFromLegacy(resume, candidate, position, company, column.name);
+            bundle.applications.push(application);
+            idMap.applications[`${resume.id || candidate.id}:${legacyPosition.id || position.id}`] = application.id;
+          }
+        }
+      }
+    }
+
+    return {
+      bundle,
+      idMap,
+      conflicts,
+      counts: {
+        sourceCompanies,
+        sourcePositions,
+        sourceResumes,
+        companies: bundle.companies.length,
+        positions: bundle.positions.length,
+        candidates: bundle.candidates.length,
+        applications: bundle.applications.length,
+        conflicts: conflicts.length,
+      },
+    };
+  }
+
+  function executeMigration(legacy, preview) {
+    if (!preview || preview.bundle?.schemaVersion !== VERSION) throw new Error('迁移预检结果无效');
+    return {
+      bundle: copy(preview.bundle),
+      snapshot: copy(legacy),
+      log: {
+        ...copy(preview.counts),
+        executedAt: nowIso(),
+        idMap: copy(preview.idMap),
+      },
+    };
+  }
+
+  function rollbackMigration(snapshot) {
+    return copy(snapshot);
+  }
+
+  function normalizeResumeVersion(version = {}) {
+    const source = copy(version || {});
+    const formattedText = String(source.formattedText || '');
+    const cloudFilePath = String(source.cloudFilePath || '');
+    const originalFileStatus = ['local-only', 'syncing', 'synced', 'sync-failed', 'missing'].includes(source.originalFileStatus)
+      ? source.originalFileStatus
+      : cloudFilePath
+        ? 'synced'
+        : source.fileId || source.fileData || source.sourceResumeId
+          ? 'local-only'
+          : 'missing';
+    const priorStatus = String(source.formatStatus || '');
+    const formatStatus = priorStatus === 'processing'
+      ? 'queued'
+      : ['queued', 'done', 'failed'].includes(priorStatus)
+        ? priorStatus
+        : formattedText.trim() ? 'done' : 'queued';
+    return {
+      ...source,
+      cloudFilePath,
+      originalFileStatus: originalFileStatus === 'syncing' ? 'local-only' : originalFileStatus,
+      originalFileError: String(source.originalFileError || ''),
+      originalFileSyncedAt: String(source.originalFileSyncedAt || ''),
+      rawText: String(source.rawText || ''),
+      formattedText,
+      aiStage: String(source.aiStage || ''),
+      formatStatus,
+      formatErrorCode: String(source.formatErrorCode || ''),
+      formatError: String(source.formatError || ''),
+      formattedAt: String(source.formattedAt || ''),
+    };
+  }
+
+  function validateBundle(input) {
+    if (!input || input.schemaVersion !== VERSION) throw new Error('不支持的数据版本');
+    const clean = createEmptyBundle();
+    Object.keys(clean).forEach(key => {
+      if (Array.isArray(clean[key])) clean[key] = Array.isArray(input[key]) ? copy(input[key]) : [];
+      else if (input[key] && typeof input[key] === 'object') clean[key] = copy(input[key]);
+    });
+    clean.candidates.forEach(candidate => {
+      const electronicText = String(candidate.electronicResumeText || '').trim();
+      if (!Array.isArray(candidate.resumeVersions)) candidate.resumeVersions = [];
+      if (!candidate.resumeVersions.length && electronicText) {
+        candidate.resumeVersions.push({
+          id: makeId('resume'),
+          fileName: `${candidate.name || '候选人'}-电子简历`,
+          uploadedAt: candidate.updatedAt || candidate.createdAt || nowIso(),
+          rawText: electronicText,
+        });
+      } else if (candidate.resumeVersions[0] && !candidate.resumeVersions[0].rawText && electronicText) {
+        candidate.resumeVersions[0].rawText = electronicText;
+      }
+      candidate.resumeVersions = candidate.resumeVersions.map(version => {
+        const normalized = normalizeResumeVersion(version);
+        if (!normalized.sourceResumeId) normalized.sourceResumeId = normalized.id || '';
+        return normalized;
+      });
+    });
+    return clean;
+  }
+
+  function filterCandidates(candidates, filters = {}) {
+    const text = value => String(value || '').trim().toLowerCase();
+    const includes = (value, query) => text(value).includes(text(query));
+    const ownerMatches = (value, owner) => (globalThis.WorkBuddyWorkbenchOwners?.hasOwner || ((actual, wanted) => String(actual || '').split(/[、,，/／|\n;；]+/).map(item => item.trim()).includes(String(wanted || '').trim())))(value, owner);
+    return (candidates || []).filter(candidate => {
+      if (candidate.deletedAt && !filters.includeArchived) return false;
+      if (filters.query) {
+        const haystack = [candidate.name, candidate.currentCompany, candidate.currentTitle, candidate.city]
+          .concat(candidate.skills || [], candidate.tags || [], candidate.directions || [])
+          .concat((candidate.resumeVersions || []).flatMap(version => [version?.fileName, version?.fileHash, version?.rawText]))
+          .join(' ');
+        if (!includes(haystack, filters.query)) return false;
+      }
+      if (filters.direction && filters.direction !== 'all' && !(candidate.directions || []).some(item => includes(item, filters.direction))) return false;
+      if (filters.owner && filters.owner !== 'all' && !ownerMatches(candidate.owner, filters.owner)) return false;
+      if (filters.city && filters.city !== 'all' && !includes(candidate.city, filters.city)) return false;
+      if (filters.company && !includes(candidate.currentCompany, filters.company)) return false;
+      if (filters.title && !includes(candidate.currentTitle, filters.title)) return false;
+      if (filters.education && filters.education !== 'all' && !includes(candidate.education, filters.education)) return false;
+      if (filters.source && filters.source !== 'all' && !includes(candidate.source, filters.source)) return false;
+      if (filters.status && filters.status !== 'all' && candidate.status !== filters.status) return false; // 按人才资产状态过滤（非 pipeline 阶段）
+      if (filters.tag && !(candidate.tags || []).some(item => includes(item, filters.tag))) return false;
+      if (filters.experienceMin && Number(candidate.experienceYears || 0) < Number(filters.experienceMin)) return false;
+      if (filters.experienceMax && Number(candidate.experienceYears || 0) > Number(filters.experienceMax)) return false;
+      return true;
+    });
+  }
+
+  // 人才库 Phase 1：简历完整度，按核心画像字段填充度计算 0-100（不读取/写入存储）
+  function candidateResumeCompleteness(candidate = {}) {
+    const str = value => String(value || '').trim();
+    const checks = [
+      () => str(candidate.name).length > 0,
+      () => str(candidate.currentCompany).length > 0,
+      () => str(candidate.currentTitle).length > 0,
+      () => str(candidate.city).length > 0,
+      () => str(candidate.owner).length > 0,
+      () => Boolean(str(candidate.phone || candidate.email).length > 0),
+      () => (candidate.skills || candidate.keywords || []).length > 0,
+      () => (candidate.directions || []).length > 0,
+      () => str(candidate.education).length > 0,
+      () => Number(candidate.experienceYears || 0) > 0,
+      () => {
+        const text = str(candidate.electronicResumeText)
+          || (candidate.resumeVersions || []).some(version => str(version && version.rawText).length > 0);
+        return Boolean(text);
+      },
+    ];
+    const passed = checks.filter(fn => fn()).length;
+    return Math.round(passed / checks.length * 100);
+  }
+
+  // 人才库 Phase 1：最近更新时间，回退到创建时间（不读取/写入存储）
+  function candidateLastUpdated(candidate = {}) {
+    return candidate.updatedAt || candidate.createdAt || null;
+  }
+
+  // 阶段 3 查重：按可信度排序。硬匹配（直接复用/必须提示）→ hard；需人工确认 → review。
+  // 规则覆盖：①手机号 ②邮箱 ③原始文件哈希 ④姓名+当前公司 ⑤姓名+手机号后四位 ⑥姓名+学历/职位相似。
+  function findDuplicateCandidates(candidates, input = {}) {
+    const normalizePhone = value => String(value || '').replace(/\D/g, '');
+    const normalizeEmail = value => String(value || '').trim().toLowerCase();
+    const name = String(input.name || '').trim();
+    const company = String(input.currentCompany || '').trim();
+    const fileHash = String(input.fileHash || '').trim().toLowerCase();
+    const phoneLast4 = normalizePhone(input.phone || '').slice(-4);
+    const education = String(input.education || '').trim();
+    const title = String(input.currentTitle || input.currentPosition || '').trim();
+    const matches = [];
+    for (const candidate of candidates || []) {
+      const reasons = [];
+      if (input.sourceResumeId && candidate.sourceResumeId === input.sourceResumeId) reasons.push('sourceResumeId一致');
+      if (input.phone && normalizePhone(candidate.phone) === normalizePhone(input.phone)) reasons.push('手机号一致');
+      if (input.email && normalizeEmail(candidate.email) === normalizeEmail(input.email)) reasons.push('邮箱一致');
+      const candHashes = (candidate.resumeVersions || [])
+        .map(v => String(v.fileHash || '').toLowerCase()).filter(Boolean);
+      if (fileHash && candHashes.includes(fileHash)) reasons.push('原始文件哈希一致');
+      if (phoneLast4 && candidate.name === name && normalizePhone(candidate.phone || '').slice(-4) === phoneLast4) {
+        reasons.push('姓名+手机号后四位一致');
+      }
+      if (reasons.length) {
+        matches.push({ candidate, confidence: 'hard', reasons });
+        continue;
+      }
+      const sameEducation = education && String(candidate.education || '').trim() === education;
+      const sameTitle = title && String(candidate.currentTitle || candidate.currentPosition || '').trim() === title;
+      if (name && company && candidate.name === name && candidate.currentCompany === company) {
+        matches.push({ candidate, confidence: 'review', reasons: ['姓名和当前公司一致'] });
+      } else if (name && (sameEducation || sameTitle)) {
+        matches.push({ candidate, confidence: 'review', reasons: ['姓名和学历或职位一致，请人工确认'] });
+      }
+    }
+    return matches.sort((a, b) => (a.confidence === b.confidence ? 0 : a.confidence === 'hard' ? -1 : 1));
+  }
+
+  function changeApplicationStage(application, input = {}) {
+    const toStage = String(input.toStage || '').trim();
+    if (!APPLICATION_STAGES.includes(toStage)) throw new Error('无效推进阶段');
+    if (toStage === KEYS.CLOSED && !input.reasonCode) throw new Error('终止阶段必须选择原因');
+    const occurredAt = input.occurredAt || nowIso();
+    const event = {
+      id: input.id || makeId('evt'),
+      type: 'stage_changed',
+      fromStage: application.stage || '',
+      toStage,
+      reasonCode: input.reasonCode || '',
+      reasonNote: input.reasonNote || '',
+      occurredAt,
+      actor: input.actor || '本机顾问',
+    };
+    if (!Array.isArray(application.pipelineEvents)) application.pipelineEvents = [];
+    application.pipelineEvents.push(event);
+    application.stage = toStage;
+    application.stageEnteredAt = occurredAt;
+    application.updatedAt = occurredAt;
+    return event;
+  }
+
+  function matchPositions(candidate, positions, options = {}) {
+    const normalized = value => String(value || '').trim().toLowerCase();
+    const candidateSkills = new Set((candidate.skills || candidate.keywords || []).map(normalized).filter(Boolean));
+    const directions = (candidate.directions || []).map(normalized);
+    const allowedStatuses = options.includeInactive ? null : new Set(['open', 'hiring', 'active']);
+    return (positions || [])
+      .filter(position => !allowedStatuses || allowedStatuses.has(position.status || 'open'))
+      .map(position => {
+        const positionSkills = (position.skills || []).map(normalized).filter(Boolean);
+        const matchedSkills = positionSkills.filter(skill => candidateSkills.has(skill));
+        const highlights = [];
+        const gaps = positionSkills.filter(skill => !candidateSkills.has(skill));
+        let score = positionSkills.length ? Math.round(matchedSkills.length / positionSkills.length * 60) : 20;
+        if (matchedSkills.length) highlights.push(`匹配技能：${matchedSkills.join('、')}`);
+        if (candidate.city && position.city && normalized(candidate.city) === normalized(position.city)) {
+          score += 20;
+          highlights.push('工作地点一致');
+        }
+        if (position.direction && directions.includes(normalized(position.direction))) {
+          score += 20;
+          highlights.push('人才方向一致');
+        }
+        return {
+          positionId: position.id,
+          companyId: position.companyId,
+          score: Math.min(100, score),
+          highlights,
+          gaps: gaps.map(item => `待确认技能：${item}`),
+          risks: gaps.length > matchedSkills.length ? ['核心技能覆盖不足'] : [],
+          questions: gaps.map(item => `是否具备 ${item} 相关经验？`),
+          reason: highlights.join('；') || '基础信息有限，建议人工确认',
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }
+
+  function matchCandidates(position, candidates, options = {}) {
+    return (candidates || []).map(candidate => {
+      const match = matchPositions(candidate, [{ ...position, status: 'open' }], options)[0];
+      return { ...match, candidateId: candidate.id };
+    }).sort((a, b) => b.score - a.score);
+  }
+
+  function filterApplications(applications, filters = {}) {
+    const ownerMatches = (value, owner) => (globalThis.WorkBuddyWorkbenchOwners?.hasOwner || ((actual, wanted) => String(actual || '').split(/[、,，/／|\n;；]+/).map(item => item.trim()).includes(String(wanted || '').trim())))(value, owner);
+    return (applications || []).filter(application => {
+      if (filters.companyId && filters.companyId !== 'all' && application.companyId !== filters.companyId) return false;
+      if (filters.positionId && filters.positionId !== 'all' && application.positionId !== filters.positionId) return false;
+      if (filters.candidateId && filters.candidateId !== 'all' && application.candidateId !== filters.candidateId) return false;
+      if (filters.owner && filters.owner !== 'all' && !ownerMatches(application.owner, filters.owner)) return false;
+      if (filters.stage && filters.stage !== 'all' && application.stage !== filters.stage) return false;
+      if (filters.scoreMin && Number(application.matchScore || 0) < Number(filters.scoreMin)) return false;
+      return true;
+    });
+  }
+
+  // —— 阶段 2：Talent（人才）× Application（岗位候选关系）统一访问入口 ——
+  // 现有 candidate 即 Talent（长期人才资产），application 即 Talent×Job 的岗位候选关系。
+  // 以下函数仅做语义化封装与护栏，不新增重复模型；阶段 / 面试 / Offer / 入职等状态只存在于 application。
+
+  function getTalentById(bundle, talentId) {
+    return (bundle.candidates || []).find(item => item.id === talentId) || null;
+  }
+
+  // 阶段 3 简历入库的唯一人才写入入口：先用硬身份键去重，命中则复用现有人才并保留其 id，
+  // 不新建平行人才；软冲突（同名 + 同公司）不自动合并，交由上层提示用户。
+  function createTalent(bundle, data = {}, options = {}) {
+    const input = copy(data);
+    if (!options.allowDuplicate) {
+      const hard = (findDuplicateCandidates(bundle.candidates, input) || [])
+        .find(item => item.confidence === 'hard');
+      if (hard) return hard.candidate;
+    }
+    const candidate = createCandidate(input);
+    bundle.candidates.push(candidate);
+    return candidate;
+  }
+
+  // 仅更新人才基础资料；拒绝把岗位阶段类字段写入人才，避免污染 Talent 全局状态。
+  const TALENT_FORBIDDEN_FIELDS = ['stage', 'stageEnteredAt', 'pipelineEvents', 'matchScore', 'matchReason', 'evaluation', 'clientReport', 'note'];
+  function updateTalent(bundle, talentId, patch = {}) {
+    const candidate = getTalentById(bundle, talentId);
+    if (!candidate) throw new Error('人才不存在');
+    const source = copy(patch);
+    Object.keys(source).forEach(key => {
+      if (TALENT_FORBIDDEN_FIELDS.includes(key)) {
+        throw new Error(`字段 ${key} 属于 Application，不应写入人才`);
+      }
+    });
+    Object.assign(candidate, source);
+    candidate.updatedAt = nowIso();
+    return candidate;
+  }
+
+  function softDeleteTalents(bundle, talentIds = []) {
+    const ids = new Set((Array.isArray(talentIds) ? talentIds : [talentIds]).map(id => String(id || '').trim()).filter(Boolean));
+    const deletedAt = nowIso();
+    const candidateIds = [];
+    (bundle.candidates || []).forEach(candidate => {
+      if (!candidate?.id || !ids.has(String(candidate.id)) || candidate.deletedAt) return;
+      candidate.deletedAt = deletedAt;
+      candidate.updatedAt = deletedAt;
+      candidateIds.push(candidate.id);
+    });
+    const candidateIdSet = new Set(candidateIds);
+    const applicationIds = [];
+    (bundle.applications || []).forEach(application => {
+      if (!application?.id || !candidateIdSet.has(application.candidateId) || application.deletedAt) return;
+      application.deletedAt = deletedAt;
+      application.updatedAt = deletedAt;
+      applicationIds.push(application.id);
+    });
+    return { candidateIds, applicationIds };
+  }
+
+  function getTalentApplications(bundle, talentId) {
+    return (bundle.applications || []).filter(item => item.candidateId === talentId);
+  }
+
+  // 人才分类仅属于现有快照 settings；分类选择不建立第二套人才数据。
+  function getTalentCategories(bundle) {
+    return Array.isArray(bundle && bundle.settings && bundle.settings.talentCategories)
+      ? bundle.settings.talentCategories
+      : [];
+  }
+
+  // 仅为尚无分类目录的既有工作台补入 resume-matrix 默认分类；用户已有目录绝不覆盖。
+  const DEFAULT_TALENT_CATEGORIES = [
+    ['quantum-computing', '量子计算', [['quantum-algorithm', '量子算法'], ['quantum-hardware', '量子硬件'], ['quantum-software', '量子软件/编程'], ['quantum-communication', '量子通信']]],
+    ['embodied-intelligence', '具身智能', [['robot-perception', '机器人感知'], ['motion-control', '运动控制'], ['human-robot-interaction', '人机交互'], ['embodied-llm', '具身大模型']]],
+    ['biomedicine', '生物医药', [['ai-drug-discovery', 'AI制药'], ['gene-editing', '基因编辑'], ['medical-devices', '医疗器械'], ['clinical-research', '临床研究']]],
+    ['nuclear-fusion', '核聚变', [['plasma-physics', '等离子体物理'], ['superconducting-magnets', '超导磁体'], ['laser-ignition', '激光点火'], ['fusion-engineering', '聚变工程']]],
+    ['new-energy', '新能源', [['hydrogen-energy', '氢能'], ['energy-storage', '储能'], ['photovoltaics', '光伏'], ['new-energy-vehicles', '新能源汽车']]],
+    ['artificial-intelligence', '人工智能', [['llm', '大模型/LLM'], ['computer-vision', '计算机视觉'], ['autonomous-driving', '自动驾驶'], ['ai-infrastructure', 'AI基础设施']]],
+    ['frontier-technology-other', '前沿科技（其他）', []],
+  ];
+
+  function seedDefaultTalentCategories(bundle) {
+    if (!bundle) throw new Error('工作台数据不存在');
+    if (!bundle.settings || typeof bundle.settings !== 'object') bundle.settings = {};
+    if (Array.isArray(bundle.settings.talentCategories) && bundle.settings.talentCategories.length > 0) return false;
+    bundle.settings.talentCategories = DEFAULT_TALENT_CATEGORIES.map(([id, name, subCategories]) => ({
+      id,
+      name,
+      subCategories: subCategories.map(([subId, subName]) => ({ id: subId, name: subName })),
+    }));
+    return true;
+  }
+
+  function getTalentCategoryPaths(bundle) {
+    return getTalentCategories(bundle).flatMap(category => [
+      { id: category.id, name: category.name, path: category.name, parentId: null },
+      ...(Array.isArray(category.subCategories) ? category.subCategories : []).map(subCategory => ({
+        id: subCategory.id,
+        name: subCategory.name,
+        path: `${category.name} / ${subCategory.name}`,
+        parentId: category.id,
+      })),
+    ]);
+  }
+
+  // 选择主分类时把其直属子分类一并纳入；空值/all 保持不过滤。
+  function filterCandidatesByCategory(candidates, categories, categoryId) {
+    if (!categoryId || categoryId === 'all') return candidates || [];
+    const selected = (categories || []).find(category => category.id === categoryId);
+    const includedIds = new Set(selected
+      ? [selected.id, ...(selected.subCategories || []).map(subCategory => subCategory.id)]
+      : [categoryId]);
+    return (candidates || []).filter(candidate =>
+      (candidate.categoryIds || []).some(id => includedIds.has(id))
+    );
+  }
+
+  function assignTalentCategories(bundle, talentId, categoryIds = []) {
+    const candidate = getTalentById(bundle, talentId);
+    if (!candidate) throw new Error('人才不存在');
+    const validIds = new Set(getTalentCategoryPaths(bundle).map(category => category.id));
+    candidate.categoryIds = [...new Set((categoryIds || []).map(id => String(id || '').trim())
+      .filter(id => id && validIds.has(id)))];
+    candidate.updatedAt = nowIso();
+    return candidate;
+  }
+
+  // 删除主分类会连同其子分类清理人才标记；删除子分类只清理自身标记。
+  // 只处理分类目录与人才分类字段，不触碰人才主档或岗位推进关系。
+  function removeTalentCategory(bundle, categoryId) {
+    const categories = getTalentCategories(bundle);
+    const parentIndex = categories.findIndex(category => category.id === categoryId);
+    let removedIds = [categoryId];
+    let removed = null;
+    if (parentIndex >= 0) {
+      removed = categories[parentIndex];
+      removedIds = [removed.id, ...(removed.subCategories || []).map(subCategory => subCategory.id)];
+      categories.splice(parentIndex, 1);
+    } else {
+      for (const category of categories) {
+        const subCategories = Array.isArray(category.subCategories) ? category.subCategories : [];
+        const subIndex = subCategories.findIndex(subCategory => subCategory.id === categoryId);
+        if (subIndex >= 0) {
+          removed = subCategories[subIndex];
+          subCategories.splice(subIndex, 1);
+          break;
+        }
+      }
+    }
+    if (removed) {
+      const ids = new Set(removedIds);
+      (bundle.candidates || []).forEach(candidate => {
+        if (!Array.isArray(candidate.categoryIds)) return;
+        const categoryIds = candidate.categoryIds.filter(id => !ids.has(id));
+        if (categoryIds.length === candidate.categoryIds.length) return;
+        candidate.categoryIds = categoryIds;
+        candidate.updatedAt = nowIso();
+      });
+    }
+    return removed;
+  }
+
+  // 按 id 定位推进记录并推进阶段；只修改 application，绝不回写人才基础资料。
+  function updateApplicationStage(bundle, applicationId, stage, metadata = {}) {
+    const application = (bundle.applications || []).find(item => item.id === applicationId);
+    if (!application) throw new Error('推荐记录不存在');
+    return changeApplicationStage(application, { toStage: stage, ...metadata });
+  }
+
+  // 阶段 3：向人才追加一份简历版本（仅元数据，二进制存外部）。经 updateTalent 统一入口，受岗位阶段护栏保护。
+  function appendTalentResumeVersion(bundle, talentId, version = {}) {
+    const candidate = getTalentById(bundle, talentId);
+    if (!candidate) throw new Error('人才不存在');
+    const list = Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions.slice() : [];
+    const entry = normalizeResumeVersion({
+      id: version.id || makeId('resume'),
+      sourceResumeId: version.sourceResumeId || version.id || '',
+      fileName: version.fileName || '',
+      fileId: version.fileId || '',        // 外部二进制存储键（RESUME_CACHE_STORE），快照只存元数据
+      fileType: version.fileType || '',
+      fileSize: version.fileSize || 0,
+      fileHash: version.fileHash || '',
+      cloudFilePath: version.cloudFilePath || '',
+      originalFileStatus: version.originalFileStatus || '',
+      originalFileError: version.originalFileError || '',
+      originalFileSyncedAt: version.originalFileSyncedAt || '',
+      uploadedAt: version.uploadedAt || nowIso(),
+      rawText: version.rawText || '',
+      formattedText: version.formattedText || '',
+      aiStage: version.aiStage || '',
+      formatStatus: version.formatStatus || '',
+      formatErrorCode: version.formatErrorCode || '',
+      formatError: version.formatError || '',
+      formattedAt: version.formattedAt || '',
+    });
+    list.push(entry);
+    updateTalent(bundle, talentId, { resumeVersions: list });
+    return entry;
+  }
+
+  // 阶段 3 重新解析：默认只补充空字段；对非空字段生成差异，不直接覆盖顾问已确认字段。
+  function reconcileParsedFields(existing = {}, parsed = {}) {
+    const fields = ['name', 'phone', 'email', 'currentCompany', 'currentTitle', 'city', 'owner', 'education', 'experienceYears', 'skills', 'keywords', 'directions', 'summary', 'profileText'];
+    const isEmpty = value => value === undefined || value === null || value === '' || (Array.isArray(value) && !value.length);
+    const merged = {};
+    const diff = {};
+    for (const f of fields) {
+      const pv = parsed[f];
+      if (isEmpty(pv)) continue;
+      const ev = existing[f];
+      if (isEmpty(ev)) merged[f] = pv;
+      else if (JSON.stringify(ev) !== JSON.stringify(pv)) diff[f] = pv;
+    }
+    return { merged, diff };
+  }
+
+  // 阶段 3：AI 解析结果不足以构成人才时返回 false，避免解析失败/空结果静默创建空人才。
+  function shouldCreateTalentFromParsed(parsed = {}) {
+    const hasIdentity = Boolean(String(parsed.name || '').trim()
+      || String(parsed.phone || '').replace(/\D/g, '').trim()
+      || String(parsed.email || '').trim());
+    return hasIdentity;
+  }
+
+  // —— 阶段 3.5：批量 / 拖拽简历入库引擎（纯函数核心，UI 无关）——
+  // 严格复用上述 createTalent / updateTalent / findDuplicateCandidates /
+  // appendTalentResumeVersion / reconcileParsedFields / shouldCreateTalentFromParsed，
+  // 不复制第二套解析 / 查重 / 保存逻辑；并发默认 2，写入门禁串行。
+  const BATCH_PARSE_LIMIT = 2;
+
+  // 格式分类：支持 PDF / Word / 图片 / 文本；其余拒绝（逐条提示，不拖垮批次）
+  function classifyResumeFile(name, type) {
+    const n = String(name || '').toLowerCase();
+    const t = String(type || '');
+    if (n.endsWith('.pdf') || t === 'application/pdf') return { ok: true, kind: 'pdf' };
+    if (/\.(doc|docx)$/.test(n) || /word/.test(t)) return { ok: true, kind: 'word' };
+    if (/^image\//.test(t) || /\.(png|jpe?g|gif|bmp|webp)$/.test(n)) return { ok: true, kind: 'image' };
+    if (n.endsWith('.txt') || t === 'text/plain') return { ok: true, kind: 'text' };
+    return { ok: false, kind: 'unsupported' };
+  }
+
+  function emptyBatchForm(file) {
+    return {
+      name: '', phone: '', email: '', currentCompany: '', currentTitle: '', city: '', owner: '', status: 'open', categoryIds: [],
+      rawText: '', fileName: file ? file.name : '', fileData: '', fileId: '', fileHash: '', fileSize: file ? file.size || 0 : 0, fileType: file ? file.type || '' : '',
+    };
+  }
+
+  function batchMakeTaskId() {
+    return makeId('btask');
+  }
+
+  function batchMakeTask(file) {
+    return {
+      id: batchMakeTaskId(),
+      file,
+      fileName: file ? file.name : '',
+      fileSize: file ? file.size || 0 : 0,
+      fileType: file ? file.type || '' : '',
+      status: 'queued',        // queued|reading|parsing|needs_review|duplicate|saving|success|skipped|error|cancelled
+      error: '',
+      parsedName: '',
+      fileId: '', fileHash: '', rawText: '',
+      form: emptyBatchForm(file),
+      duplicates: [],
+      createdId: '',
+      cancelled: false,
+      filePersisted: false,
+    };
+  }
+
+  // 把简历版本落成元数据（只存 fileId/哈希，不写 base64）。被单份 buildStandaloneResumeVersion 复用。
+  function buildResumeVersionFromForm(form) {
+    if (!form.fileName && !form.rawText) return null;
+    return normalizeResumeVersion({
+      id: `resume_${Date.now().toString(36)}`,
+      fileName: form.fileName,
+      fileId: form.fileId,
+      fileType: form.fileType,
+      fileSize: form.fileSize,
+      fileHash: form.fileHash,
+      cloudFilePath: '',
+      originalFileStatus: form.fileId ? 'local-only' : 'missing',
+      originalFileError: '',
+      originalFileSyncedAt: '',
+      rawText: form.rawText,
+      formattedText: '',
+      aiStage: '',
+      formatStatus: 'queued',
+      formatErrorCode: '',
+      formatError: '',
+      formattedAt: '',
+      uploadedAt: nowIso(),
+    });
+  }
+
+  // 同批次内相同文件哈希的第一份任务（用于互相查重，避免同一文件被保存两次）
+  function batchSameBatchHashTask(state, task) {
+    if (!task.fileHash) return null;
+    const firstId = state.hashes[task.fileHash];
+    if (!firstId || firstId === task.id) return null;
+    return state.tasks.find((t) => t.id === firstId) || null;
+  }
+
+  // 入队：逐条生成任务；不支持格式直接标记 error（不阻断其他文件）
+  function batchAddFiles(state, files) {
+    const added = [];
+    for (const file of (files || [])) {
+      const task = batchMakeTask(file);
+      task.form.categoryIds = [...new Set((state.defaultCategoryIds || []).filter(Boolean))];
+      const cls = classifyResumeFile(file ? file.name : '', file ? file.type : '');
+      if (!cls.ok) {
+        task.status = 'error';
+        task.error = `不支持的格式：${file ? file.name : '未知文件'}（仅支持 PDF / Word / 图片 / 文本）`;
+      }
+      state.tasks.push(task);
+      added.push(task);
+    }
+    return added;
+  }
+
+  // 写入门禁：串行执行，保证同批次查重 / 创建基于一致状态
+  function batchWithGate(state, fn) {
+    const run = state.gate.then(() => fn(), () => fn());
+    state.gate = run.catch(() => {});
+    return run;
+  }
+
+  // 二进制只在任务确认入库后保存。同批次相同哈希复用首份文件引用，避免重复占用 IndexedDB。
+  async function batchPersistFile(state, task, deps) {
+    if (task.filePersisted) return;
+    const sameTask = batchSameBatchHashTask(state, task);
+    if (sameTask && sameTask.filePersisted) {
+      task.fileId = sameTask.fileId;
+      task.form.fileId = sameTask.fileId;
+      task.filePersisted = true;
+      return;
+    }
+    if (typeof deps.persistFile === 'function') await deps.persistFile(task);
+    task.filePersisted = true;
+  }
+
+  function batchNotifyTalentSaved(deps, candidateId, version) {
+    if (!candidateId || !version?.id || typeof deps.afterTalentSaved !== 'function') return;
+    try {
+      void Promise.resolve(deps.afterTalentSaved({ candidateId, versionId: version.id })).catch(() => {});
+    } catch {}
+  }
+
+  // 单任务处理：读取 → 解析（并发受限，由 batchPump 控制） → 写入门禁（串行）
+  async function batchProcessTask(state, task, deps) {
+    if (task.cancelled) { task.status = 'cancelled'; return; }
+    try {
+      task.status = 'reading';
+      const parsed = await deps.parseFile(task); // 读取 + 文本提取 + 自动补全，可能抛错
+      if (task.cancelled) { task.status = 'cancelled'; return; }
+      const selectedCategoryIds = [...new Set((task.form?.categoryIds || state.defaultCategoryIds || []).filter(Boolean))];
+      Object.assign(task, {
+        form: parsed.form, fileId: parsed.fileId, fileHash: parsed.fileHash,
+        fileSize: parsed.fileSize, fileType: parsed.fileType, rawText: parsed.rawText,
+      });
+      task.form.categoryIds = selectedCategoryIds;
+      task.status = 'parsing';
+      task.parsedName = String(task.form.name || '').trim();
+      if (task.fileHash) state.hashes[task.fileHash] = state.hashes[task.fileHash] || task.id;
+      await batchWithGate(state, () => batchGate(state, task, deps));
+    } catch (e) {
+      if (task.cancelled) { task.status = 'cancelled'; return; }
+      task.status = 'error';
+      task.error = (e && e.message) ? e.message : '处理失败';
+    }
+  }
+
+  // 写入门禁内的核心决策：查重（既有人才 + 同批次哈希）→ 重复暂停 / 无身份待确认 / 创建
+  async function batchGate(state, task, deps) {
+    const bundle = deps.bundle;
+    const form = task.form;
+    let duplicates = findDuplicateCandidates(bundle.candidates, {
+      name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, fileHash: task.fileHash,
+    });
+    const sameTask = batchSameBatchHashTask(state, task);
+    if (sameTask) {
+      if (sameTask.createdId) {
+        const t = getTalentById(bundle, sameTask.createdId);
+        if (t && !duplicates.some((d) => d.candidate.id === t.id)) {
+          duplicates = duplicates.concat([{ candidate: t, reasons: ['本批次已存在相同文件'], confidence: 'hard' }]);
+        }
+      } else {
+        // 同批次相同文件尚未保存完成 → 视为重复，避免重复创建
+        duplicates = duplicates.concat([{ candidate: { id: sameTask.id, name: sameTask.parsedName || sameTask.fileName, _synthetic: true }, reasons: ['本批次已存在相同文件（待处理）'], confidence: 'hard' }]);
+      }
+    }
+    if (duplicates.length) {
+      task.duplicates = duplicates;
+      task.status = 'duplicate'; // 暂停，等待用户选择四选一
+      return;
+    }
+    if (!shouldCreateTalentFromParsed(form)) {
+      task.status = 'needs_review';
+      task.error = '未能从简历识别到姓名 / 电话 / 邮箱，请补全后保存';
+      return;
+    }
+    task.status = 'saving';
+    await batchPersistFile(state, task, deps);
+    const candidate = createTalent(bundle, {
+      name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
+      currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
+      owner: form.owner.trim(), status: form.status, source: '批量上传',
+    }, { allowDuplicate: false });
+    if (form.categoryIds?.length) assignTalentCategories(bundle, candidate.id, [...new Set([...(candidate.categoryIds || []), ...form.categoryIds])]);
+    const version = buildResumeVersionFromForm(form);
+    if (version) appendTalentResumeVersion(bundle, candidate.id, version);
+    task.createdId = candidate.id;
+    await deps.persist();
+    task.status = 'success';
+    batchNotifyTalentSaved(deps, candidate.id, version);
+  }
+
+  // 四选一处理：merge / newVersion / forceCreate / skip（复用 reconcileParsedFields / updateTalent / createTalent / appendTalentResumeVersion）
+  async function batchResolveDuplicate(state, taskId, action, deps) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const bundle = deps.bundle;
+    const form = task.form;
+    try {
+    const dup = (task.duplicates[0] && task.duplicates[0].candidate) || null;
+    const referencedTask = dup && dup._synthetic ? state.tasks.find((item) => item.id === dup.id) : null;
+    const referencedTalent = referencedTask && referencedTask.createdId ? getTalentById(bundle, referencedTask.createdId) : null;
+    const target = dup && !dup._synthetic ? (getTalentById(bundle, dup.id) || dup) : referencedTalent;
+    const baseFields = {
+      name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
+      currentCompany: form.currentCompany.trim(), currentTitle: form.currentTitle.trim(), city: form.city.trim(),
+      owner: form.owner.trim(), status: form.status, source: '批量上传',
+    };
+    let savedVersion = null;
+    const applyVersionAndFinish = (candidateId) => {
+      const version = buildResumeVersionFromForm(form);
+      if (version && candidateId) savedVersion = appendTalentResumeVersion(bundle, candidateId, version);
+      task.createdId = candidateId || '';
+    };
+    if (action === 'skip') { task.status = 'skipped'; return; }
+    if (action === 'forceCreate') {
+      task.status = 'saving';
+      await batchPersistFile(state, task, deps);
+      const candidate = createTalent(bundle, baseFields, { allowDuplicate: true });
+      if (form.categoryIds?.length) assignTalentCategories(bundle, candidate.id, [...new Set([...(candidate.categoryIds || []), ...form.categoryIds])]);
+      applyVersionAndFinish(candidate.id);
+      await deps.persist();
+      task.status = 'success';
+      batchNotifyTalentSaved(deps, task.createdId, savedVersion);
+      return;
+    }
+    if (action === 'merge') {
+      if (dup && dup._synthetic && !target) {
+        task.status = 'duplicate';
+        task.error = '相同文件仍在处理中，请稍后再试';
+        return;
+      }
+      task.status = 'saving';
+      await batchPersistFile(state, task, deps);
+      if (!target) {
+        const candidate = createTalent(bundle, baseFields, { allowDuplicate: false });
+        if (form.categoryIds?.length) assignTalentCategories(bundle, candidate.id, [...new Set([...(candidate.categoryIds || []), ...form.categoryIds])]);
+        applyVersionAndFinish(candidate.id);
+      } else {
+        const parsed = { name: form.name, phone: form.phone, email: form.email, currentCompany: form.currentCompany, currentTitle: form.currentTitle, city: form.city, owner: form.owner };
+        const { merged } = reconcileParsedFields(target, parsed);
+        updateTalent(bundle, target.id, merged);
+        if (form.categoryIds?.length) assignTalentCategories(bundle, target.id, [...new Set([...(target.categoryIds || []), ...form.categoryIds])]);
+        applyVersionAndFinish(target.id);
+      }
+      await deps.persist();
+      task.status = 'success';
+      batchNotifyTalentSaved(deps, task.createdId, savedVersion);
+      return;
+    }
+    if (action === 'newVersion') {
+      if (dup && dup._synthetic && !target) {
+        task.status = 'duplicate';
+        task.error = '相同文件仍在处理中，请稍后再试';
+        return;
+      }
+      task.status = 'saving';
+      await batchPersistFile(state, task, deps);
+      if (!target) {
+        const candidate = createTalent(bundle, baseFields, { allowDuplicate: false });
+        applyVersionAndFinish(candidate.id);
+      } else {
+        applyVersionAndFinish(target.id);
+      }
+      await deps.persist();
+      task.status = 'success';
+      batchNotifyTalentSaved(deps, task.createdId, savedVersion);
+      return;
+    }
+    } catch (e) {
+      task.status = 'error';
+      task.error = (e && e.message) ? e.message : '保存失败';
+    }
+  }
+
+  // 待确认（needs_review）补全姓名后保存：重新走门禁（查重 + 创建）
+  async function batchSaveNeedsReview(state, taskId, name, deps) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (name && String(name).trim()) task.form.name = String(name).trim();
+    if (!shouldCreateTalentFromParsed(task.form)) { task.error = '请填写姓名 / 电话 / 邮箱'; return; }
+    await batchWithGate(state, () => batchGate(state, task, deps));
+  }
+
+  // 调度：解析并发不超过 concurrency；读取/解析阶段才计入并发，等待态（duplicate/needs_review）释放槽位
+  function batchPump(state, deps) {
+    if (!state.open) return;
+    const parsing = state.tasks.filter((t) => t.status === 'reading' || t.status === 'parsing').length;
+    if (parsing >= state.concurrency) return;
+    const next = state.tasks.find((t) => t.status === 'queued' && !t.cancelled);
+    if (!next) {
+      state.running = state.tasks.some((t) => ['reading', 'parsing', 'saving', 'needs_review', 'duplicate'].includes(t.status));
+      return;
+    }
+    next.status = 'reading';
+    batchProcessTask(state, next, deps).finally(() => batchPump(state, deps));
+    batchPump(state, deps);
+  }
+
+  function batchStartAll(state, deps) { state.running = true; batchPump(state, deps); }
+  function batchRetryFailed(state) {
+    state.tasks.forEach((t) => { if (t.status === 'error') { t.status = 'queued'; t.error = ''; t.cancelled = false; } });
+  }
+  function batchClearSucceeded(state) {
+    state.tasks = state.tasks.filter((t) => t.status !== 'success');
+  }
+  function batchCancelQueued(state) {
+    state.tasks.forEach((t) => { if (t.status === 'queued') { t.cancelled = true; t.status = 'cancelled'; } });
+  }
+  function batchCancelTask(state, taskId) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (['queued', 'reading', 'parsing', 'needs_review'].includes(task.status)) {
+      task.cancelled = true;
+      task.status = 'cancelled';
+    }
+  }
+
+  root.WorkbenchV2 = {
+    VERSION,
+    createEmptyBundle,
+    createCompany,
+    createPosition,
+    setPositionStatus,
+    deletePosition,
+    createCandidate,
+    createApplication,
+    createTodo,
+    TODO_LINK_TYPES,
+    normalizeCompanyName,
+    previewMigration,
+    executeMigration,
+    rollbackMigration,
+    reconcilePositionDescriptions,
+    normalizeResumeVersion,
+    validateBundle,
+    filterCandidates,
+    findDuplicateCandidates,
+    candidateResumeCompleteness,
+    candidateLastUpdated,
+    APPLICATION_STAGES,
+    changeApplicationStage,
+    matchPositions,
+    matchCandidates,
+    filterApplications,
+    getTalentById,
+    createTalent,
+    updateTalent,
+    softDeleteTalents,
+    getTalentApplications,
+    getTalentCategories,
+    seedDefaultTalentCategories,
+    getTalentCategoryPaths,
+    filterCandidatesByCategory,
+    assignTalentCategories,
+    removeTalentCategory,
+    updateApplicationStage,
+    appendTalentResumeVersion,
+    reconcileParsedFields,
+    shouldCreateTalentFromParsed,
+    // 阶段 3.5 批量 / 拖拽引擎
+    BATCH_PARSE_LIMIT,
+    classifyResumeFile,
+    buildResumeVersionFromForm,
+    batchAddFiles,
+    batchPump,
+    batchStartAll,
+    batchProcessTask,
+    batchGate,
+    batchResolveDuplicate,
+    batchSaveNeedsReview,
+    batchRetryFailed,
+    batchClearSucceeded,
+    batchCancelQueued,
+    batchCancelTask,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

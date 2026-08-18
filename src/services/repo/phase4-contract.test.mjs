@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const indexHtml = fs.readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
+const talentSearchMessages = fs.readFileSync(new URL('../../ui/talent-search-messages.js', import.meta.url), 'utf8');
+const workbenchSearchActions = fs.readFileSync(new URL('../../ui/workbench-search-actions.js', import.meta.url), 'utf8');
+const sql = fs.readFileSync(new URL('../../../supabase/phase4-search-matching.sql', import.meta.url), 'utf8');
+
+test('Phase 4 搜索与匹配 Repository 已加载且未启用时有明确 RPC 契约', () => {
+  assert.match(indexHtml, /resume-search-repo\.js\?v=/);
+  assert.match(indexHtml, /candidate-matching-repo\.js\?v=/);
+  assert.match(sql, /create or replace function public\.search_resumes/);
+  assert.match(sql, /drop function if exists public\.search_resumes\(text, integer, integer\)/);
+  assert.match(sql, /total_count bigint/);
+  assert.match(sql, /count\(\*\) over/);
+  assert.match(sql, /position\(lower\(search_query\)/);
+  assert.match(sql, /create or replace function public\.match_candidates/);
+  assert.match(sql, /drop function if exists public\.match_candidates\(text, integer, integer\)/);
+  assert.match(sql, /pg_trgm/);
+  assert.match(indexHtml, /WorkBuddyResumeSearchRepo/);
+  assert.match(indexHtml, /talentCloudSearch/);
+  assert.match(indexHtml, /云端全文搜索/);
+  assert.match(indexHtml, /runTalentCloudSearch/);
+  assert.match(indexHtml, /changeTalentCloudSearchPage/);
+  assert.match(`${indexHtml}\n${talentSearchMessages}`, /已保留本地人才列表/);
+  assert.match(indexHtml, /cleanResumeSearchSnippet/);
+  assert.match(`${indexHtml}\n${workbenchSearchActions}`, /搜索完成，共/);
+  assert.match(indexHtml, /topbar-search-results/);
+  assert.match(indexHtml, /openSearchResult\(item\)/);
+  assert.match(indexHtml, /cloud-search-highlight/);
+  assert.match(indexHtml, /extractCloudSearchHighlights/);
+  assert.match(indexHtml, /@submit\.prevent="createWorkbenchCompany\(\)"/);
+  assert.match(indexHtml, /wb-v2-global-search-button/);
+  assert.match(indexHtml, /v-model="globalSearchQuery"/);
+  assert.match(indexHtml, /resetGlobalSearch/);
+  assert.match(indexHtml, /function runWorkbenchGlobalSearch\(\) \{[\s\S]*?workbenchSearchActions\.runGlobalSearch/);
+  assert.match(indexHtml, /globalSearchResults/);
+  assert.match(indexHtml, /openGlobalSearchResult\(item\)/);
+  assert.match(indexHtml, />搜索<\/span>/);
+  assert.match(indexHtml, /\.wb-v2-workspace \.wb-v2-global-search-button span/);
+  assert.match(indexHtml, /color:\s*#fff\s*!important/);
+});

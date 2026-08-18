@@ -1,0 +1,1007 @@
+// Phase 1 回归测试：人才库（由“候选人”模块升级）
+// 覆盖：(1) 数据迁移/持久化 (2) 人才列表筛选 (3) 候选人详情与推进记录回归
+//      (4) 新增：简历完整度 + 最近更新时间
+// 运行：node --test src/workbench-v2.test.mjs
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+// workbench-v2.js 是 UMD 风格 IIFE，无 window 时挂到 globalThis
+await import('./workbench-v2.js');
+const { WorkbenchV2 } = globalThis;
+
+const INDEX_HTML = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const LEGACY_JOB_ACTIONS = fs.readFileSync(new URL('./ui/legacy-job-actions.js', import.meta.url), 'utf8');
+const RESUME_REPROCESS_ACTIONS = fs.readFileSync(new URL('./ui/resume-reprocess-actions.js', import.meta.url), 'utf8');
+
+// ---------------------------------------------------------------------------
+// (1) 数据迁移 / 持久化
+// ---------------------------------------------------------------------------
+
+test('createCandidate 保留既有 id 且 status 默认 open（资产状态，非管道阶段）', () => {
+  const created = WorkbenchV2.createCandidate({ id: 'cand_keep', name: '张三' });
+  assert.equal(created.id, 'cand_keep', '必须保留既有候选人 id，禁止重建');
+  assert.equal(created.status, 'open', 'status 表示人才资产状态，默认 open');
+  assert.ok(created.updatedAt, '必须带 updatedAt 时间戳');
+  assert.ok(created.createdAt, '必须带 createdAt 时间戳');
+});
+
+test('批量软删除人才并同步隐藏关联岗位推进，保留历史数据', () => {
+  const bundle = {
+    candidates: [{ id: 'c1', name: '误传候选人' }, { id: 'c2', name: '保留候选人' }],
+    applications: [{ id: 'a1', candidateId: 'c1', deletedAt: '' }, { id: 'a2', candidateId: 'c2', deletedAt: '' }],
+  };
+  const result = WorkbenchV2.softDeleteTalents(bundle, ['c1']);
+  assert.deepEqual(result, { candidateIds: ['c1'], applicationIds: ['a1'] });
+  assert.ok(bundle.candidates[0].deletedAt);
+  assert.ok(bundle.applications[0].deletedAt);
+  assert.equal(bundle.candidates[1].deletedAt, undefined);
+  assert.equal(bundle.applications[1].deletedAt, '');
+});
+
+test('validateBundle 拒绝错误版本且补全 resumeVersions', () => {
+  assert.throws(() => WorkbenchV2.validateBundle({ schemaVersion: 1, candidates: [] }), /数据版本/);
+
+  const bundle = WorkbenchV2.validateBundle({
+    schemaVersion: 2,
+    candidates: [{ id: 'c1', name: '李四', electronicResumeText: '十年后端经验' }],
+  });
+  assert.equal(bundle.schemaVersion, 2);
+  assert.equal(bundle.candidates.length, 1);
+  assert.equal(bundle.candidates[0].resumeVersions.length, 1, '电子简历文本应被收敛进 resumeVersions');
+  assert.equal(bundle.candidates[0].resumeVersions[0].rawText, '十年后端经验');
+});
+
+test('validateBundle 分离原始文本和排版文本，并恢复中断状态', () => {
+  const bundle = WorkbenchV2.validateBundle({
+    schemaVersion: 2,
+    candidates: [{
+      id: 'c_resume_ai',
+      resumeVersions: [
+        { id: 'raw_only', rawText: '原始文本' },
+        { id: 'formatted', rawText: '保留原文', formattedText: '### 电子简历' },
+        { id: 'interrupted', rawText: '处理中原文', formatStatus: 'processing', formatError: '旧错误' },
+      ],
+    }],
+  });
+  const [rawOnly, formatted, interrupted] = bundle.candidates[0].resumeVersions;
+
+  assert.deepEqual(
+    { rawText: rawOnly.rawText, formattedText: rawOnly.formattedText, formatStatus: rawOnly.formatStatus, formatError: rawOnly.formatError, formattedAt: rawOnly.formattedAt },
+    { rawText: '原始文本', formattedText: '', formatStatus: 'queued', formatError: '', formattedAt: '' },
+  );
+  assert.equal(formatted.rawText, '保留原文');
+  assert.equal(formatted.formattedText, '### 电子简历');
+  assert.equal(formatted.formatStatus, 'done');
+  assert.equal(interrupted.formatStatus, 'queued');
+  assert.equal(interrupted.formatError, '旧错误');
+});
+
+test('新简历版本包含本机原件、云端同步和 AI 阶段默认值', () => {
+  const version = WorkbenchV2.buildResumeVersionFromForm({
+    fileName: 'candidate.pdf',
+    fileId: 'f1',
+    fileType: 'application/pdf',
+    fileSize: 42,
+    fileHash: 'h1',
+    rawText: 'raw text',
+  });
+
+  assert.equal(version.originalFileStatus, 'local-only');
+  assert.equal(version.cloudFilePath, '');
+  assert.equal(version.originalFileError, '');
+  assert.equal(version.originalFileSyncedAt, '');
+  assert.equal(version.aiStage, '');
+  assert.equal(version.formatErrorCode, '');
+});
+
+test('旧版本只有 fileId 时保留引用但不伪装为云端已同步', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push({
+    id: 'c1',
+    name: '候选人',
+    resumeVersions: [{ id: 'r1', fileId: 'f1', rawText: 'raw' }],
+  });
+
+  const clean = WorkbenchV2.validateBundle(bundle);
+  const version = clean.candidates[0].resumeVersions[0];
+
+  assert.equal(version.fileId, 'f1');
+  assert.equal(version.cloudFilePath, '');
+  assert.equal(version.originalFileStatus, 'local-only');
+});
+
+test('人才详情优先展示排版文本并提供可见失败与重新处理入口', () => {
+  assert.match(INDEX_HTML, /v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
+  assert.doesNotMatch(INDEX_HTML, /v-html="renderResumeMarkdown\([^"\n]*rawText/);
+  assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'processing'/);
+  assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'queued'/);
+  assert.match(INDEX_HTML, /activeCandidateResumeVersion\?\.formatStatus === 'failed'/);
+  assert.match(INDEX_HTML, /role="alert"[^>]*>[\s\S]*?activeCandidateResumeVersion\.formatError/);
+  assert.match(INDEX_HTML, />原始提取文本</);
+  assert.match(INDEX_HTML, /\{\{ activeCandidateResumeVersion\.rawText \}\}/);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="[^\"]*reprocessCandidateResumeFromText/);
+  assert.match(INDEX_HTML, /type="button"[^>]*@click="[^\"]*reextractCandidateResumeFromOriginal/);
+  assert.match(INDEX_HTML, /使用现有文本重新处理/);
+  assert.match(INDEX_HTML, /从原始文件重新提取并处理/);
+  assert.match(INDEX_HTML, /v-if="activeCandidateResumeVersion\?\.formattedText"[^>]*v-html="renderResumeMarkdown\(activeCandidateResumeVersion\.formattedText\)"/);
+  assert.match(INDEX_HTML, /<section v-if="!activeCandidateResumeVersion\?\.formattedText && activeCandidateResumeVersion\?\.formatStatus === 'failed' && activeCandidateResumeVersion\?\.rawText"[\s\S]*?<h3[^>]*>原始提取文本</);
+  assert.match(RESUME_REPROCESS_ACTIONS, /refreshRawText:\s*false/);
+  assert.match(RESUME_REPROCESS_ACTIONS, /refreshRawText:\s*true/);
+});
+
+test('迁移旧岗位时保留 detail 岗位职责，并只为既有空职责安全回填', () => {
+  const legacy = {
+    columns: [{
+      name: '顾问A',
+      jobs: [{
+        id: 'company_legacy_1',
+        company: '测试科技',
+        positions: [{ id: 'position_legacy_1', name: '算法工程师', detail: '负责模型训练与部署。' }],
+      }],
+    }],
+  };
+  const preview = WorkbenchV2.previewMigration(legacy);
+  assert.equal(preview.bundle.positions[0].description, '负责模型训练与部署。', '新迁移必须读取旧版 detail');
+
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.positions.push(
+    WorkbenchV2.createPosition({ id: 'pos_empty', sourceId: 'position_legacy_1', title: '算法工程师', description: '' }),
+    WorkbenchV2.createPosition({ id: 'pos_written', sourceId: 'position_legacy_1', title: '算法工程师', description: '顾问已更新的职责' }),
+  );
+  const updatedIds = WorkbenchV2.reconcilePositionDescriptions(bundle, legacy);
+  assert.deepEqual(updatedIds, ['pos_empty'], '仅应回填空职责的对应岗位');
+  assert.equal(bundle.positions[0].description, '负责模型训练与部署。');
+  assert.equal(bundle.positions[1].description, '顾问已更新的职责', '不得覆盖已填写的新职责');
+});
+
+test('工作台启动时会持久化回填既有迁移岗位的空职责', () => {
+  assert.match(INDEX_HTML, /async function reconcileMigratedPositionDescriptions\(\)/);
+  assert.match(INDEX_HTML, /WorkbenchV2\.reconcilePositionDescriptions\(workbenchV2, \{\s*columns:/);
+  assert.match(INDEX_HTML, /await reconcileMigratedPositionDescriptions\(\);/);
+});
+
+test('旧版岗位编辑会立即保存并安排云端同步，避免薪资刷新后丢失', () => {
+  assert.match(`${INDEX_HTML}\n${LEGACY_JOB_ACTIONS}`, /touchEntity\(pos\);\s*touchEntity\(job\);\s*localSave\(\);\s*if \(cloudReady\) schedulePush\(\);/);
+});
+
+test('云端初始化不会用旧快照覆盖已有本地岗位资料', () => {
+  assert.match(INDEX_HTML, /const localPacked = packWorkspaceState\(\);\s*const remoteHasData = hasWorkspaceBusinessData\(remote\.data\);\s*const localHasData = hasWorkspaceBusinessData\(localPacked\);/);
+  // 云端有、本地无时采用云端
+  assert.match(INDEX_HTML, /if \(remoteHasData && !localHasData\)/);
+  assert.match(INDEX_HTML, /await applyWorkspaceState\(remote\.data\);/);
+  // 双方都有数据时通过时间戳比较决定策略，不再无条件用本地覆盖云端
+  assert.match(INDEX_HTML, /hasUnpushedEdits/, '应追踪本地未推送编辑');
+  assert.match(INDEX_HTML, /cloudChangedSinceLastPush/, '应检测云端是否被他人更新');
+  assert.match(INDEX_HTML, /mergeWorkspaceStates\(localPacked, remote\.data\)/, '双方都有新变更时应执行记录级合并');
+  // 云端被他人更新且本地无未推送编辑时，云端优先
+  assert.match(INDEX_HTML, /!hasUnpushedEdits && cloudChangedSinceLastPush/, '应存在云端优先分支');
+});
+
+test('岗位详情提供基础信息编辑与 AI 匹配关键词提取入口', () => {
+  assert.match(INDEX_HTML, /编辑岗位信息与职责/, '岗位详情应提供完整的基础信息编辑入口');
+  assert.match(INDEX_HTML, /v-model="positionDescriptionEdit\.salary"/, '编辑表单应允许填写薪资');
+  assert.match(INDEX_HTML, /v-model="positionDescriptionEdit\.skills"/, '编辑表单应允许维护匹配关键词');
+  assert.match(INDEX_HTML, /extractPositionSkillsWithDeepSeek/, '岗位详情应提供 AI 关键词提取动作');
+  assert.match(INDEX_HTML, /task: 'position-match-skill-extraction'/, 'AI 提取应使用独立任务标识');
+});
+
+test('公司看板提供全部岗位关键词重新提取并展示进度', () => {
+  assert.match(INDEX_HTML, /AI提取关键词/, '应提供全部重新提取入口');
+  assert.match(INDEX_HTML, /runBulkPositionSkillsExtraction/, '应存在批量重提取处理函数');
+  assert.match(INDEX_HTML, /positionSkillsBatch\.completed/, '批量操作应展示完成进度');
+  assert.match(INDEX_HTML, /extractPositionSkillsForPosition\(position\)/, '批量操作应复用单岗位提取逻辑');
+  assert.match(INDEX_HTML, /task: 'company-industry-detection'/, '批量提取应同时识别公司行业');
+  assert.match(INDEX_HTML, /company\.industry = await extractCompanyIndustryForCompany/, '识别结果应回写公司行业');
+  assert.match(INDEX_HTML, /const allPositions = workbenchV2\.positions/, '公司行业识别不应依赖岗位 JD 已填写');
+});
+
+test('createApplication 建立 talent×position 推进且仅允许一条活跃推进', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '王五' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: '后端工程师' }));
+
+  const app = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1', stage: 'discovered' });
+  assert.equal(bundle.applications.length, 1);
+  assert.equal(app.stage, 'discovered');
+
+  assert.throws(
+    () => WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' }),
+    /已推荐至此岗位/,
+    '同一人才在同一岗位只允许一条活跃推荐（防止重复）'
+  );
+});
+
+test('createApplication 默认按岗位负责人、公司负责人、候选人负责人顺序分配推进负责人且不覆盖显式值', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.companies.push(WorkbenchV2.createCompany({ id: 'co1', name: '公司', owner: '公司负责人' }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '候选人', owner: '候选人负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', companyId: 'co1', title: '岗位', owner: '岗位负责人' }));
+
+  const inherited = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+  assert.equal(inherited.owner, '岗位负责人');
+
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c2', name: '候选人2', owner: '候选人2负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p2', companyId: 'co1', title: '岗位2', owner: '' }));
+  const companyFallback = WorkbenchV2.createApplication(bundle, { candidateId: 'c2', positionId: 'p2' });
+  assert.equal(companyFallback.owner, '公司负责人');
+
+  bundle.companies[0].owner = '';
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c3', name: '候选人3', owner: '候选人3负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p3', companyId: 'co1', title: '岗位3', owner: '' }));
+  const candidateFallback = WorkbenchV2.createApplication(bundle, { candidateId: 'c3', positionId: 'p3' });
+  assert.equal(candidateFallback.owner, '候选人3负责人');
+
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c4', name: '候选人4', owner: '候选人4负责人' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p4', companyId: 'co1', title: '岗位4', owner: '岗位4负责人' }));
+  const explicit = WorkbenchV2.createApplication(bundle, { candidateId: 'c4', positionId: 'p4', owner: '手动负责人' });
+  assert.equal(explicit.owner, '手动负责人');
+});
+
+test('changeApplicationStage 推进阶段并写入 updatedAt（阶段属于推进关系，不属于人才全局）', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '赵六' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: '前端' }));
+  const app = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+
+  WorkbenchV2.changeApplicationStage(app, { toStage: 'interviewing' });
+  assert.equal(app.stage, 'interviewing');
+  assert.ok(app.updatedAt, '推进阶段变更应更新 updatedAt');
+  assert.ok(Array.isArray(app.pipelineEvents) && app.pipelineEvents.length === 1);
+});
+
+// ---------------------------------------------------------------------------
+// (2) 人才列表筛选
+// ---------------------------------------------------------------------------
+
+test('filterCandidates 支持 关键词/方向/负责人/状态 过滤', () => {
+  const candidates = [
+    WorkbenchV2.createCandidate({ name: 'Anna', currentCompany: '腾讯', directions: ['后端'], owner: '顾问A', status: 'open' }),
+    WorkbenchV2.createCandidate({ name: 'Bob', currentCompany: '字节', directions: ['前端'], owner: '顾问B', status: 'passive' }),
+    WorkbenchV2.createCandidate({ name: 'Cara', currentCompany: '阿里', directions: ['后端'], owner: '顾问A', status: 'onboarded' }),
+  ];
+
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { query: '腾讯' }).length, 1);
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { direction: '后端' }).length, 2);
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { owner: '顾问A' }).length, 2);
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { status: 'onboarded' }).length, 1);
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { status: 'all' }).length, 3);
+});
+
+test('filterCandidates 关键词可命中简历文件名', () => {
+  const candidate = WorkbenchV2.createCandidate({
+    name: '未提取姓名',
+    resumeVersions: [{ id: 'rv1', fileName: '贝壳产品经理.pdf' }],
+  });
+  assert.equal(WorkbenchV2.filterCandidates([candidate], { query: '贝壳' }).length, 1);
+});
+
+test('findDuplicateCandidates 命中硬冲突（手机/邮箱）与待复核冲突（姓名+公司）', () => {
+  const existing = [
+    WorkbenchV2.createCandidate({ name: 'Anna', currentCompany: '腾讯', phone: '13800000000', email: 'a@x.com' }),
+    WorkbenchV2.createCandidate({ name: 'Anna', currentCompany: '腾讯', phone: '', email: '' }),
+  ];
+  const byPhone = WorkbenchV2.findDuplicateCandidates(existing, { name: 'Anna2', phone: '13800000000' });
+  assert.equal(byPhone[0].confidence, 'hard');
+  assert.match(byPhone[0].reasons[0], /手机号一致/);
+
+  const byName = WorkbenchV2.findDuplicateCandidates(existing, { name: 'Anna', currentCompany: '腾讯' });
+  assert.equal(byName[0].confidence, 'review');
+  assert.match(byName[0].reasons[0], /姓名和当前公司一致/);
+});
+
+// ---------------------------------------------------------------------------
+// (3) 候选人详情与推进记录回归（源码级，确认路由与推进中心未被改动）
+// ---------------------------------------------------------------------------
+
+test('候选人详情路由与推进中心在 Phase 1 保持不变', () => {
+  assert.match(INDEX_HTML, /openCandidateDetail\(/, '详情路由函数必须存在');
+  assert.match(INDEX_HTML, /openApplicationDetail\(/, '推进记录详情路由必须存在');
+  assert.match(INDEX_HTML, /changeWorkbenchApplicationStage\(/, '推进阶段变更函数必须存在');
+  // 推进中心标题与页签未被改名
+  assert.match(INDEX_HTML, /<h1 class="text-2xl font-bold">推进中心<\/h1>/, '推进中心标题应保持');
+  assert.match(INDEX_HTML, /workbenchRoute\.tab === 'applications'[\s\S]*?推荐记录/, '推进中心“推荐记录”列表语义保留');
+  assert.match(INDEX_HTML, /v-else-if="workbenchRoute\.tab === 'applications'".*推荐记录/, '公司推荐记录列表保留');
+});
+
+test('推进详情提供负责人编辑入口并支持清空', () => {
+  assert.match(INDEX_HTML, /aria-label="推进负责人"[^>]*v-model="selectedApplication\.owner"/, '推进详情应允许编辑负责人');
+  assert.match(INDEX_HTML, /list="application-owner-options"/, '负责人输入应支持已有负责人提示');
+  assert.match(INDEX_HTML, /@click="selectedApplication\.owner = ''"/, '推进负责人应支持清空');
+  assert.match(INDEX_HTML, /:disabled="!canWrite"[^>]*class="px-5 py-2\.5/, '无写权限时不能保存推进详情');
+});
+
+test('导航项 key 仍为 candidates（仅 label 改为人才库，路由键不变）', () => {
+  assert.match(INDEX_HTML, /\{ key: 'candidates', label: '人才库'/, '导航 key 保持 candidates，label 改为人才库');
+});
+
+test('人才库支持批量设置归属顾问：菜单入口、弹窗与落库函数齐备', () => {
+  assert.match(INDEX_HTML, /openBulkSetCandidateOwner\(\)/, '人才库「···」菜单应提供批量设置归属顾问入口');
+  assert.match(INDEX_HTML, /id="bulk-candidate-owner-title"[^>]*>批量设置归属顾问/, '应存在批量设置归属顾问弹窗');
+  assert.match(INDEX_HTML, /@click="confirmBulkSetCandidateOwner"/, '弹窗应绑定确认设置处理函数');
+  assert.match(INDEX_HTML, /async function confirmBulkSetCandidateOwner\(\)/, '应存在批量设置归属顾问的落库函数');
+  assert.match(INDEX_HTML, /bulkOwnerEditor\.open = true/, '打开弹窗应切换 bulkOwnerEditor 状态');
+  assert.match(INDEX_HTML, /WorkbenchV2\.updateTalent\(workbenchV2, id, \{ owner \}\)/, '批量设置应通过 updateTalent 写入 owner');
+});
+
+test('支持删除离职顾问：菜单入口、管理弹窗与移除逻辑齐备', () => {
+  assert.match(INDEX_HTML, /openAdvisorManager\(\)/, '人才库「···」菜单应提供顾问管理入口');
+  assert.match(INDEX_HTML, /id="advisor-manager-title"[^>]*>删除离职顾问/, '应存在删除离职顾问弹窗');
+  assert.match(INDEX_HTML, /@click="deleteAdvisor\(owner\)"/, '弹窗应绑定删除顾问处理函数');
+  assert.match(INDEX_HTML, /async function deleteAdvisor\(owner\)/, '应存在删除顾问的落库函数');
+  assert.match(INDEX_HTML, /WorkBuddyWorkbenchOwners\.removeOwner\(/, '删除应从 owner 字段移除该顾问名字');
+  assert.match(INDEX_HTML, /homeFunnelOwnerId\.value === target.*homeFunnelOwnerId\.value = 'all'/, '删除后应重置正选中的顾问筛选器');
+});
+
+// ---------------------------------------------------------------------------
+// (4) 新增：简历完整度 + 最近更新时间
+// ---------------------------------------------------------------------------
+
+test('candidateResumeCompleteness 随画像字段填充度从 0 到 100', () => {
+  assert.equal(WorkbenchV2.candidateResumeCompleteness({}), 0, '空画像完整度为 0');
+
+  const full = {
+    name: '张三', currentCompany: '腾讯', currentTitle: '工程师', city: '深圳',
+    owner: '顾问A', phone: '13800000000', skills: ['Go'], directions: ['后端'],
+    education: '本科', experienceYears: 8, electronicResumeText: '完整简历文本',
+  };
+  assert.equal(WorkbenchV2.candidateResumeCompleteness(full), 100, '字段全填应为 100');
+
+  const partial = { name: '李四', currentCompany: '字节', skills: ['Vue'], resumeVersions: [{ rawText: '有文本' }] };
+  const score = WorkbenchV2.candidateResumeCompleteness(partial);
+  assert.ok(score > 0 && score < 100, `部分字段应为 0-100 之间，实际 ${score}`);
+});
+
+test('candidateLastUpdated 优先 updatedAt 并回退 createdAt', () => {
+  assert.equal(WorkbenchV2.candidateLastUpdated({}), null, '无时间戳返回 null');
+  assert.equal(WorkbenchV2.candidateLastUpdated({ createdAt: '2026-01-01' }), '2026-01-01', '缺 updatedAt 应回退 createdAt');
+  assert.equal(
+    WorkbenchV2.candidateLastUpdated({ createdAt: '2026-01-01', updatedAt: '2026-06-01' }),
+    '2026-06-01',
+    '优先 updatedAt'
+  );
+});
+
+test('人才密集表提供可配置的更新时间列并安全格式化候选人时间', () => {
+  assert.match(INDEX_HTML, /<th v-if="talentLibraryColumnSet\.has\('updatedAt'\)">更新时间<\/th>/);
+  assert.match(INDEX_HTML, /<td v-if="talentLibraryColumnSet\.has\('updatedAt'\)">\{\{ candidate\.updatedAt && candidate\.updatedAt !== '-' \? formatBeijingDateTime\(candidate\.updatedAt\) : '-' \}\}<\/td>/);
+  assert.doesNotMatch(INDEX_HTML, /<th[^>]*>简历完整度<\/th>/, '批准后的可配置列不再包含简历完整度');
+});
+
+test('人才库支持当前页多选并批量软删除关联推进', () => {
+  assert.match(INDEX_HTML, /全选当前页候选人/);
+  assert.match(INDEX_HTML, /toggleCandidateSelection/);
+  assert.match(INDEX_HTML, /批量删除/);
+  assert.match(INDEX_HTML, /bulkDeleteSelectedCandidates/);
+  assert.match(INDEX_HTML, /WorkBenchV2\.softDeleteTalents|WorkbenchV2\.softDeleteTalents/);
+  assert.match(INDEX_HTML, /关联岗位推进会被隐藏/);
+});
+
+test('人才库当前结果汇总来自筛选后的候选人行', () => {
+  assert.match(INDEX_HTML, /当前结果[\s\S]*?\{\{ talentLibrarySummary\.total \}\}/);
+  assert.match(INDEX_HTML, /const talentLibrarySummary = computed\(\(\) => TalentLibrary\.summarizeRows\(filteredWorkbenchCandidates\.value\)\);/);
+  assert.match(INDEX_HTML, /const candidateSourceRows = computed\(\(\) => WorkbenchV2\.filterCandidatesByCategory\(\s*WorkbenchV2\.filterCandidates\(workbenchV2\.candidates,/);
+});
+
+test('批量删除候选人后会立即安排云端推送，避免刷新恢复', () => {
+  const start = INDEX_HTML.indexOf('async function bulkDeleteSelectedCandidates');
+  const end = INDEX_HTML.indexOf('function talentCloudSearchErrorMessage', start);
+  const code = INDEX_HTML.slice(start, end);
+  assert.match(code, /await saveWorkbenchV2\(\)/);
+  assert.match(code, /if \(cloudReady\) \{/);
+  assert.match(code, /if \(!await doPush\(\)\)/);
+});
+
+test('批量删除必须等待同步空闲并确认云端与候选人表均保存成功', () => {
+  const start = INDEX_HTML.indexOf('async function bulkDeleteSelectedCandidates');
+  const end = INDEX_HTML.indexOf('function talentCloudSearchErrorMessage', start);
+  const code = INDEX_HTML.slice(start, end);
+  assert.match(code, /await waitForCloudSyncIdle\(\)/);
+  assert.match(code, /if \(!await doPush\(\)\)/);
+  assert.match(code, /await syncCandidatesWithCloud\(\)/);
+  assert.match(INDEX_HTML, /async function waitForCloudSyncIdle\(timeoutMs = 30000\)/);
+});
+
+test('候选人同步指纹包含 deletedAt，删除标记会触发云端写入', () => {
+  assert.match(INDEX_HTML, /function candidateSyncFingerprint\(cand\)/);
+  assert.match(INDEX_HTML, /fingerprint: candidateSyncFingerprint\(candidate\)/);
+  assert.match(INDEX_HTML, /__deleted:\$\{String\(cand\?\.deletedAt \|\| ''\)\}/);
+});
+
+// ---------------------------------------------------------------------------
+// (5) 阶段 2：人才(Talent) × 岗位候选关系(Application) 对齐
+// ---------------------------------------------------------------------------
+
+test('getTalentById / getTalentApplications 正确按人才聚合其岗位推进', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: 'A岗' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p2', title: 'B岗' }));
+  WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1', stage: 'discovered' });
+  WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p2', stage: 'screening' });
+
+  assert.equal(WorkbenchV2.getTalentById(bundle, 'c1').id, 'c1');
+  assert.equal(WorkbenchV2.getTalentById(bundle, 'nope'), null);
+  assert.equal(WorkbenchV2.getTalentApplications(bundle, 'c1').length, 2, '同一人才可同时推进多个岗位');
+});
+
+test('同一人才关联两个岗位，阶段互不覆盖', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: 'A岗' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p2', title: 'B岗' }));
+  const a1 = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+  const a2 = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p2' });
+  WorkbenchV2.changeApplicationStage(a1, { toStage: 'interviewing' });
+  WorkbenchV2.changeApplicationStage(a2, { toStage: 'offer' });
+  const byPos = Object.fromEntries(WorkbenchV2.getTalentApplications(bundle, 'c1').map(a => [a.positionId, a.stage]));
+  assert.equal(byPos.p1, 'interviewing');
+  assert.equal(byPos.p2, 'offer', '两个岗位的阶段相互独立，不互相覆盖');
+});
+
+test('createTalent 是唯一人才写入入口：硬身份命中则复用既有人才 ID，不新建平行人才', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  const first = WorkbenchV2.createTalent(bundle, { name: '李四', phone: '13800000000', email: 'l@x.com' });
+  assert.equal(bundle.candidates.length, 1);
+  const second = WorkbenchV2.createTalent(bundle, { name: '李四(再传)', phone: '13800000000' });
+  assert.equal(bundle.candidates.length, 1, '硬身份（手机号）命中应复用，不新增人才');
+  assert.equal(second.id, first.id, '必须保留既有稳定 id，禁止重建');
+});
+
+test('updateTalent 修改人才基础资料，不触碰岗位推进阶段', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', currentTitle: '旧职位' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: 'A岗' }));
+  const app = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1', stage: 'screening' });
+  app.matchScore = 88;
+  app.note = '原始备注';
+
+  WorkbenchV2.updateTalent(bundle, 'c1', { currentTitle: '新职位', city: '上海' });
+  assert.equal(bundle.candidates[0].currentTitle, '新职位');
+  assert.equal(bundle.candidates[0].city, '上海');
+  assert.equal(app.stage, 'screening', '改人才资料不应改动其岗位推进阶段');
+  assert.equal(app.matchScore, 88, '改人才资料不应改动推进的匹配分');
+  assert.equal(app.note, '原始备注', '改人才资料不应改动推进备注');
+});
+
+test('updateTalent 拒绝把阶段类字段写入人才（护栏）', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+  assert.throws(
+    () => WorkbenchV2.updateTalent(bundle, 'c1', { stage: 'interviewing' }),
+    /属于 Application/,
+    '阶段字段不应写入人才全局状态'
+  );
+  assert.throws(
+    () => WorkbenchV2.updateTalent(bundle, 'c1', { pipelineEvents: [] }),
+    /属于 Application/
+  );
+});
+
+test('updateApplicationStage 仅推进阶段，不覆盖人才基础资料', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', currentTitle: '工程师' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: 'A岗' }));
+  const app = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1', stage: 'discovered' });
+
+  WorkbenchV2.updateApplicationStage(bundle, app.id, 'offer', { reasonCode: '', reasonNote: '推进到Offer' });
+  assert.equal(app.stage, 'offer');
+  assert.equal(bundle.candidates[0].currentTitle, '工程师', '推进阶段变更不应覆盖人才基础资料');
+  assert.equal(bundle.candidates[0].name, '张三');
+});
+
+test('加载(validateBundle)后人才数量、ID 与岗位 ID 均保持不变', () => {
+  // 构造含多人才 / 多岗位 / 一人双岗的代表性存量数据
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'cust_99', name: '存量人才' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: 'A岗' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'pos_99', title: '存量岗位' }));
+  WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+  WorkbenchV2.createApplication(bundle, { candidateId: 'cust_99', positionId: 'pos_99' });
+
+  const loaded = WorkbenchV2.validateBundle(JSON.parse(JSON.stringify(bundle)));
+  assert.equal(loaded.candidates.length, 2, '人才数量不变');
+  assert.deepEqual(loaded.candidates.map(c => c.id).sort(), ['c1', 'cust_99'], '人才 ID 不变');
+  assert.deepEqual(loaded.positions.map(p => p.id).sort(), ['p1', 'pos_99'], '岗位 ID 不变');
+  assert.equal(loaded.applications.length, 2);
+  assert.ok(loaded.applications.every(a => a.candidateId && a.positionId), '推进关系关联键完整');
+});
+
+// ---------------------------------------------------------------------------
+// (6) 阶段 3：简历入库与人才详情整合
+// ---------------------------------------------------------------------------
+
+test('findDuplicateCandidates 命中原始文件哈希（硬冲突）', () => {
+  const existing = [WorkbenchV2.createCandidate({ name: 'Anna', resumeVersions: [{ fileHash: 'abc123' }] })];
+  const hits = WorkbenchV2.findDuplicateCandidates(existing, { name: 'Anna2', fileHash: 'abc123' });
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].confidence, 'hard');
+  assert.match(hits[0].reasons[0], /原始文件哈希一致/);
+});
+
+test('findDuplicateCandidates 命中姓名+手机号后四位（硬冲突）', () => {
+  const existing = [WorkbenchV2.createCandidate({ name: 'Anna', phone: '13800000099' })];
+  const hits = WorkbenchV2.findDuplicateCandidates(existing, { name: 'Anna', phone: '13999900099' });
+  assert.equal(hits[0].confidence, 'hard');
+  assert.match(hits[0].reasons[0], /手机号后四位一致/);
+});
+
+test('findDuplicateCandidates 姓名+学历/职位相似进入待复核（不自动合并）', () => {
+  const existing = [WorkbenchV2.createCandidate({ name: 'Anna', education: '本科', currentTitle: '后端工程师' })];
+  const byEdu = WorkbenchV2.findDuplicateCandidates(existing, { name: 'Anna', education: '本科' });
+  assert.equal(byEdu[0].confidence, 'review');
+  const byTitle = WorkbenchV2.findDuplicateCandidates(existing, { name: 'Anna', currentTitle: '后端工程师' });
+  assert.equal(byTitle[0].confidence, 'review');
+});
+
+test('appendTalentResumeVersion 经统一入口追加简历版本且只存元数据（二进制存外部）', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  const t = WorkbenchV2.createTalent(bundle, { name: '张三', phone: '13800000000' });
+  const v = WorkbenchV2.appendTalentResumeVersion(bundle, t.id, {
+    fileName: '张三-简历.pdf', fileId: 'fid_1', fileType: 'application/pdf', fileSize: 12345, fileHash: 'h1', rawText: '简历文本',
+  });
+  assert.equal(bundle.candidates[0].resumeVersions.length, 1);
+  assert.equal(v.fileId, 'fid_1');
+  assert.equal(v.fileName, '张三-简历.pdf');
+  assert.ok(!('stage' in v), '简历版本不应携带岗位阶段字段');
+  // 同一人才再次追加应累计，不覆盖
+  WorkbenchV2.appendTalentResumeVersion(bundle, t.id, { fileName: 'v2.docx', fileId: 'fid_2' });
+  assert.equal(bundle.candidates[0].resumeVersions.length, 2, '多次上传应累计版本');
+});
+
+test('reconcileParsedFields 只补充空字段，非空字段生成差异不覆盖', () => {
+  const existing = { name: '张三', phone: '', city: '深圳', skills: ['Go'] };
+  const parsed = { name: '李四', phone: '13900000000', city: '北京', education: '硕士' };
+  const { merged, diff } = WorkbenchV2.reconcileParsedFields(existing, parsed);
+  assert.equal(merged.phone, '13900000000', '空字段应被补充');
+  assert.equal(merged.education, '硕士', '空字段应被补充');
+  assert.equal(merged.name, undefined, '非空字段不应被覆盖');
+  assert.equal(diff.name, '李四', '非空差异应进入 diff 供人工确认');
+  assert.equal(diff.city, '北京', '非空差异应进入 diff');
+});
+
+test('shouldCreateTalentFromParsed 空解析结果不创建人才（防 AI 失败静默建空人）', () => {
+  assert.equal(WorkbenchV2.shouldCreateTalentFromParsed({}), false, '无任何身份信息不应建人');
+  assert.equal(WorkbenchV2.shouldCreateTalentFromParsed({ rawText: '一大段文本但无姓名电话邮箱' }), false, '仅有文本无身份不应建人');
+  assert.equal(WorkbenchV2.shouldCreateTalentFromParsed({ name: '王五' }), true, '有姓名应建人');
+  assert.equal(WorkbenchV2.shouldCreateTalentFromParsed({ phone: '13900000000' }), true, '有手机号应建人');
+});
+
+test('合并(updateTalent 追加简历版本) 不覆盖顾问手工字段', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  const t = WorkbenchV2.createTalent(bundle, { name: '张三', currentTitle: '资深后端', owner: '顾问A' });
+  // 顾问手工改了职位
+  WorkbenchV2.updateTalent(bundle, t.id, { currentTitle: '架构师（手工）' });
+  // 合并：把新简历版本挂到既有人才
+  WorkbenchV2.appendTalentResumeVersion(bundle, t.id, { fileName: '新简历.pdf', fileId: 'fid_x' });
+  assert.equal(bundle.candidates[0].currentTitle, '架构师（手工）', '合并新简历不应覆盖顾问手工职位');
+  assert.equal(bundle.candidates[0].owner, '顾问A');
+  assert.equal(bundle.candidates[0].resumeVersions.length, 1);
+});
+
+test('validateBundle 保留简历版本元数据(fileId/fileHash)且人才数量不变', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.candidates.push(WorkbenchV2.createCandidate({
+    id: 'c1', name: '张三',
+    resumeVersions: [{ id: 'r1', fileName: 'a.pdf', fileId: 'fid_1', fileHash: 'h1', fileSize: 99, rawText: 'txt' }],
+  }));
+  const loaded = WorkbenchV2.validateBundle(JSON.parse(JSON.stringify(bundle)));
+  assert.equal(loaded.candidates.length, 1, '人才数量不变');
+  const v = loaded.candidates[0].resumeVersions[0];
+  assert.equal(v.fileId, 'fid_1', '外部文件引用元数据应保留');
+  assert.equal(v.fileHash, 'h1', '文件哈希应保留');
+  assert.equal(v.rawText, 'txt');
+});
+
+// ---------------------------------------------------------------------------
+// (7) 人才分类目录与分类筛选
+// ---------------------------------------------------------------------------
+
+test('getTalentCategories / getTalentCategoryPaths 只读取 settings 中有序的主分类与子分类', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+
+  assert.equal(WorkbenchV2.getTalentCategories(bundle), bundle.settings.talentCategories);
+  assert.deepEqual(WorkbenchV2.getTalentCategoryPaths(bundle), [
+    { id: 'tech', name: '技术', path: '技术', parentId: null },
+    { id: 'backend', name: '后端', path: '技术 / 后端', parentId: 'tech' },
+    { id: 'product', name: '产品', path: '产品', parentId: null },
+  ]);
+  assert.deepEqual(WorkbenchV2.getTalentCategories(WorkbenchV2.createEmptyBundle()), []);
+});
+
+test('seedDefaultTalentCategories 仅在分类目录为空时迁移人才简历库默认分类，且可重复执行', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+
+  assert.equal(WorkbenchV2.seedDefaultTalentCategories(bundle), true);
+  assert.deepEqual(bundle.settings.talentCategories.map(category => ({
+    name: category.name,
+    subCategories: category.subCategories.map(subCategory => subCategory.name),
+  })), [
+    { name: '量子计算', subCategories: ['量子算法', '量子硬件', '量子软件/编程', '量子通信'] },
+    { name: '具身智能', subCategories: ['机器人感知', '运动控制', '人机交互', '具身大模型'] },
+    { name: '生物医药', subCategories: ['AI制药', '基因编辑', '医疗器械', '临床研究'] },
+    { name: '核聚变', subCategories: ['等离子体物理', '超导磁体', '激光点火', '聚变工程'] },
+    { name: '新能源', subCategories: ['氢能', '储能', '光伏', '新能源汽车'] },
+    { name: '人工智能', subCategories: ['大模型/LLM', '计算机视觉', '自动驾驶', 'AI基础设施'] },
+    { name: '前沿科技（其他）', subCategories: [] },
+  ]);
+  assert.equal(WorkbenchV2.seedDefaultTalentCategories(bundle), false, '重复执行不应重复写入');
+});
+
+test('seedDefaultTalentCategories 不覆盖已有的用户分类目录', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [{ id: 'custom', name: '自定义', subCategories: [] }];
+
+  assert.equal(WorkbenchV2.seedDefaultTalentCategories(bundle), false);
+  assert.deepEqual(bundle.settings.talentCategories, [{ id: 'custom', name: '自定义', subCategories: [] }]);
+});
+
+test('filterCandidatesByCategory 选择主分类时包含其子分类，选择子分类时只匹配自身', () => {
+  const categories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }, { id: 'frontend', name: '前端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  const candidates = [
+    { id: 'c1', categoryIds: ['tech'] },
+    { id: 'c2', categoryIds: ['backend'] },
+    { id: 'c3', categoryIds: ['frontend', 'product'] },
+    { id: 'c4', categoryIds: [] },
+  ];
+
+  assert.deepEqual(WorkbenchV2.filterCandidatesByCategory(candidates, categories, 'tech').map(item => item.id), ['c1', 'c2', 'c3']);
+  assert.deepEqual(WorkbenchV2.filterCandidatesByCategory(candidates, categories, 'backend').map(item => item.id), ['c2']);
+  assert.deepEqual(WorkbenchV2.filterCandidatesByCategory(candidates, categories, 'all').map(item => item.id), ['c1', 'c2', 'c3', 'c4']);
+});
+
+test('assignTalentCategories 以去重后的分类 ID 更新人才，且不改动岗位推进', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [{ id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] }];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: '后端工程师' }));
+  const application = WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1', stage: 'screening' });
+
+  const talent = WorkbenchV2.assignTalentCategories(bundle, 'c1', ['backend', 'backend', 'tech']);
+  assert.deepEqual(talent.categoryIds, ['backend', 'tech']);
+  assert.equal(application.stage, 'screening');
+});
+
+test('removeTalentCategory 删除主分类及子分类标记，不删除人才或岗位推进', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', categoryIds: ['tech', 'backend', 'product'] }));
+  bundle.positions.push(WorkbenchV2.createPosition({ id: 'p1', title: '后端工程师' }));
+  WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' });
+
+  WorkbenchV2.removeTalentCategory(bundle, 'tech');
+  assert.deepEqual(bundle.settings.talentCategories.map(item => item.id), ['product']);
+  assert.deepEqual(bundle.candidates[0].categoryIds, ['product']);
+  assert.equal(bundle.candidates.length, 1, '删除分类不得删除人才');
+  assert.equal(bundle.applications.length, 1, '删除分类不得删除岗位推进');
+});
+
+test('assignTalentCategories 仅保留分类目录中存在的 ID', () => {
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [{ id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] }];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三' }));
+
+  const talent = WorkbenchV2.assignTalentCategories(bundle, 'c1', ['backend', 'missing', 'tech', 'missing']);
+  assert.deepEqual(talent.categoryIds, ['backend', 'tech']);
+});
+
+test('removeTalentCategory 仅更新时间发生分类变化的人才，删除不存在分类无副作用', () => {
+  const unchangedAt = '2026-01-01T00:00:00.000Z';
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', categoryIds: ['backend'], updatedAt: unchangedAt }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c2', name: '李四', categoryIds: ['product'], updatedAt: unchangedAt }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c3', name: '王五', categoryIds: [], updatedAt: unchangedAt }));
+
+  WorkbenchV2.removeTalentCategory(bundle, 'backend');
+  assert.notEqual(bundle.candidates[0].updatedAt, unchangedAt, '子分类标记被清理的人才应更新时间');
+  assert.equal(bundle.candidates[1].updatedAt, unchangedAt, '未关联子分类的人才不应更新时间');
+  assert.equal(bundle.candidates[2].updatedAt, unchangedAt, '未分类人才不应更新时间');
+
+  const updatedAfterChildRemoval = bundle.candidates.map(candidate => candidate.updatedAt);
+  WorkbenchV2.removeTalentCategory(bundle, 'missing');
+  assert.deepEqual(bundle.candidates.map(candidate => candidate.updatedAt), updatedAfterChildRemoval, '删除不存在分类不应更新时间');
+});
+
+test('removeTalentCategory 删除主分类时只更新时间发生分类变化的人才', () => {
+  const unchangedAt = '2026-01-01T00:00:00.000Z';
+  const bundle = WorkbenchV2.createEmptyBundle();
+  bundle.settings.talentCategories = [
+    { id: 'tech', name: '技术', subCategories: [{ id: 'backend', name: '后端' }] },
+    { id: 'product', name: '产品', subCategories: [] },
+  ];
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c1', name: '张三', categoryIds: ['tech', 'backend'], updatedAt: unchangedAt }));
+  bundle.candidates.push(WorkbenchV2.createCandidate({ id: 'c2', name: '李四', categoryIds: ['product'], updatedAt: unchangedAt }));
+
+  WorkbenchV2.removeTalentCategory(bundle, 'tech');
+  assert.notEqual(bundle.candidates[0].updatedAt, unchangedAt);
+  assert.equal(bundle.candidates[1].updatedAt, unchangedAt);
+});
+
+test('人才库分类界面提供筛选、目录管理和人才分类编辑入口', () => {
+  assert.match(INDEX_HTML, /candidateFilters\.category/, '人才库筛选状态应包含分类');
+  assert.match(INDEX_HTML, /filterCandidatesByCategory\([\s\S]*candidateFilters\.category/, '列表筛选应委托分类筛选 helper');
+  assert.match(INDEX_HTML, /openTalentCategoryManager/, '人才库应有分类管理入口');
+  assert.match(INDEX_HTML, /assignTalentCategories\(workbenchV2/, '人才分类编辑应委托统一 helper');
+  assert.match(INDEX_HTML, /removeTalentCategory\(workbenchV2/, '删除分类应委托统一 helper');
+});
+
+test('工作台加载后仅在空分类目录时写入 resume-matrix 默认分类并持久化', () => {
+  const loadBlock = INDEX_HTML.match(/function loadWorkbenchV2\(\) \{[\s\S]*?\r?\n    \}\r?\n\r?\n    async function saveWorkbenchV2/);
+  assert.ok(loadBlock, '应能定位工作台加载函数');
+  assert.match(loadBlock[0], /const categoriesSeeded = WorkbenchV2\.seedDefaultTalentCategories\(workbenchV2\);/, '加载并校验工作台数据后应尝试补齐默认分类');
+  assert.match(loadBlock[0], /const aiAppsSeeded = AiAppCenter\.seedDefaultAiApplications\(workbenchV2\);/, '加载后应尝试补齐 AI 应用中心默认应用');
+  assert.match(loadBlock[0], /if \(categoriesSeeded \|\| aiAppsSeeded\) await saveWorkbenchV2\(\);/, '仅实际补齐种子数据后才应持久化快照');
+});
+
+test('旧版云端迁移工具面板默认隐藏，备份与恢复保留显示', () => {
+  assert.match(INDEX_HTML, /const showLegacyMigrationTools = false;/, '旧版迁移工具开关默认关闭');
+  const from = INDEX_HTML.indexOf('<template v-if="showLegacyMigrationTools">');
+  const to = INDEX_HTML.indexOf('<h2 class="font-bold text-slate-800">备份与恢复</h2>');
+  assert.ok(from >= 0, '迁移工具卡片组应被开关包裹');
+  assert.ok(to > from, '备份与恢复应在隐藏区块之后');
+  const gated = INDEX_HTML.slice(from, to);
+  for (const label of ['新版业务数据迁移', '简历文本云端迁移', '候选人云端迁移', '简历版本云端双写', '业务实体云端双写', '候选人增量同步']) {
+    assert.ok(gated.includes(label), `应隐藏：${label}`);
+  }
+});
+
+test('人才库岗位匹配工作区支持已有岗位或临时 JD，且仅已有岗位可创建推进', () => {
+  assert.match(INDEX_HTML, /openTalentJobMatch/, '人才库需要提供岗位匹配入口');
+  assert.match(INDEX_HTML, /talentJobMatch\.mode === 'existing'/, '需要区分已有岗位与临时 JD 模式');
+  assert.match(INDEX_HTML, /WorkbenchV2\.matchCandidates\(.*talentJobMatch/, '匹配结果必须复用 WorkbenchV2.matchCandidates');
+  assert.match(INDEX_HTML, /talentJobMatch\.mode === 'existing'.*createApplicationFromMatch/s, '仅已有岗位结果可创建推进');
+  assert.match(INDEX_HTML, /filterCandidatesByCategory\(.*talentJobMatch\.categoryId/s, '匹配范围需要支持按分类限定');
+});
+
+test('多人负责人筛选支持任一负责人命中', () => {
+  const candidates = [WorkbenchV2.createCandidate({ name: '贝壳候选人', owner: '陈雨欢、史磊' })];
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { owner: '陈雨欢' }).length, 1);
+  assert.equal(WorkbenchV2.filterCandidates(candidates, { owner: '史磊' }).length, 1);
+});
+
+test('推进中心提供批量 AI 评分并回写匹配分', () => {
+  assert.match(INDEX_HTML, /一键AI评分/);
+  assert.match(INDEX_HTML, /runBulkApplicationAiScoring/);
+  assert.match(INDEX_HTML, /applicationBatchScoring\.completed/);
+  assert.match(INDEX_HTML, /applicationMatchAnalysisActions\.analyzeApplication/);
+});
+
+test('候选人岗位匹配采用轻量列表并展示匹配状态与标签', () => {
+  assert.match(INDEX_HTML, /candidate-matching-panel[^\"]*pt-6/, '岗位匹配应使用轻量列表容器');
+  assert.match(INDEX_HTML, /positions\.find\(item => item\.id === match\.positionId\)\?\.skills/, '岗位匹配应展示岗位技能标签');
+  assert.match(INDEX_HTML, /match\.score >= 70[\s\S]*?匹配较低/, '岗位匹配应展示轻量匹配状态');
+  assert.match(INDEX_HTML, /\.slice\(0, 3\)/, '岗位匹配默认只展示少量标签');
+  assert.match(INDEX_HTML, />创建推荐<\/button>/, '岗位匹配应提供创建推荐操作');
+});
+
+test('人才库目标公司挖掘仅分析当前分类范围，结果不自动创建公司', () => {
+  assert.match(INDEX_HTML, /openTalentCompanyResearch/, '人才库需要提供目标公司挖掘入口');
+  assert.match(INDEX_HTML, /filterCandidatesByCategory\(.*talentCompanyResearch\.categoryId/s, '挖掘范围需要支持按分类限定');
+  assert.match(INDEX_HTML, /target-company-research/, '目标公司挖掘需要使用独立 AI 任务');
+  assert.match(INDEX_HTML, /existingCompanyNames/, '提示词需要排除人才当前公司');
+  assert.match(INDEX_HTML, /createCompanyFromTalentResearch/, '仅用户主动点击时才允许创建公司');
+  assert.match(INDEX_HTML, /find\(company => normalizeCompanyName\(company\.name\) === normalizedName\)/, '创建前需要检查同名公司');
+  assert.match(INDEX_HTML, /generateTalentCompanyBdPlan/, '目标公司结果需要支持生成 BD 方案');
+});
+
+test('目标公司挖掘会废弃过期 AI 响应并按规范化公司名去重', () => {
+  assert.match(INDEX_HTML, /requestGeneration:\s*0/, '目标公司挖掘需要维护请求代次');
+  assert.match(INDEX_HTML, /\+\+talentCompanyResearch\.requestGeneration/, '打开、关闭或重新挖掘应使旧请求失效');
+  assert.match(INDEX_HTML, /if \(requestGeneration !== talentCompanyResearch\.requestGeneration\) return/, '异步完成前必须确认仍是最新请求');
+  assert.match(INDEX_HTML, /const seenCompanyNames = new Set\(\)/, '结果归一化需要维护已见公司名');
+  assert.match(INDEX_HTML, /seenCompanyNames\.has\(normalizedName\)/, '同名公司只能保留一个结果卡片');
+});
+
+test('新的目标公司挖掘会取消进行中的 BD 方案生成', () => {
+  assert.match(INDEX_HTML, /bdRequestGeneration:\s*0/, 'BD 方案需要有独立请求代次');
+  assert.match(INDEX_HTML, /\+\+talentCompanyResearch\.bdRequestGeneration;\s*\n\s*talentCompanyResearch\.bdLoadingCompanyName = '';/, '重新挖掘时必须取消并清除 BD 加载状态');
+  assert.match(INDEX_HTML, /bdRequestGeneration !== talentCompanyResearch\.bdRequestGeneration/, 'BD 返回前必须确认仍是最新 BD 请求');
+});
+
+// ---------------------------------------------------------------------------
+// (7) 多端同步安全：云端权威 + 记录级合并
+// ---------------------------------------------------------------------------
+
+test('initCloud 双方都有数据时不再无条件用本地覆盖云端', () => {
+  // 旧代码特征（无条件 saveWorkspace 推送本地）不应存在
+  const oldPattern = /remoteHasData && localHasData[\s\S]{0,80}saveWorkspace\(\{ expectedVersion: cloudWorkspaceVersion, data: localPacked \}\)/;
+  assert.ok(!oldPattern.test(INDEX_HTML), '不应存在无条件用 localPacked 覆盖云端的旧逻辑');
+});
+
+test('同步系统追踪本地快照时间和推送时间', () => {
+  assert.match(INDEX_HTML, /SYNC_SNAPSHOT_KEY/, '应定义快照时间戳 key');
+  assert.match(INDEX_HTML, /SYNC_PUSH_KEY/, '应定义推送时间戳 key');
+  assert.match(INDEX_HTML, /markLocalSnapshotSaved\(\)/, 'saveWorkbenchV2 成功后应记录快照时间');
+  assert.match(INDEX_HTML, /markLocalPushed\(\)/, 'doPush 成功后应记录推送时间');
+});
+
+test('doPush 版本冲突时自动合并重试而非仅报错', () => {
+  assert.match(INDEX_HTML, /WORKSPACE_VERSION_CONFLICT[\s\S]{0,600}mergeWorkspaceStates/, '冲突后应执行合并');
+  assert.match(INDEX_HTML, /已自动合并其他成员的/, '合并成功应通知用户');
+});
+
+test('mergeCollectionById 按 id 合并且 updatedAt 较新者胜出', async () => {
+  // 从独立模块导入（IIFE 挂载到 globalThis.WorkBuddySyncMerge）
+  await import('./services/sync-merge.js');
+  const { mergeCollectionById } = globalThis.WorkBuddySyncMerge;
+  assert.ok(mergeCollectionById, 'sync-merge.js 应导出 mergeCollectionById');
+
+  const local = [
+    { id: 'a', name: '公司A-本地新', updatedAt: '2026-07-28T10:00:00Z' },
+    { id: 'b', name: '公司B-本地旧', updatedAt: '2026-07-20T08:00:00Z' },
+    { id: 'c', name: '公司C-仅本地', updatedAt: '2026-07-25T09:00:00Z' },
+  ];
+  const remote = [
+    { id: 'a', name: '公司A-云端旧', updatedAt: '2026-07-27T09:00:00Z' },
+    { id: 'b', name: '公司B-云端新', updatedAt: '2026-07-26T12:00:00Z' },
+    { id: 'd', name: '公司D-仅云端', updatedAt: '2026-07-26T10:00:00Z' },
+  ];
+  const { result, fromCloud } = mergeCollectionById(local, remote);
+
+  assert.equal(result.length, 4, '合并后应有 4 条记录（a/b/c/d）');
+  const a = result.find(r => r.id === 'a');
+  assert.equal(a.name, '公司A-本地新', 'id=a 本地更新，应取本地');
+  const b = result.find(r => r.id === 'b');
+  assert.equal(b.name, '公司B-云端新', 'id=b 云端更新，应取云端');
+  assert.ok(result.find(r => r.id === 'c'), '仅本地记录应保留');
+  assert.ok(result.find(r => r.id === 'd'), '仅云端记录应保留');
+  assert.equal(fromCloud, 2, 'fromCloud 应统计云端胜出 + 仅云端的记录数');
+});
+
+test('mergeWorkspaceStates 合并完整工作区（workbenchV2 + kb + 看板）', async () => {
+  await import('./services/sync-merge.js');
+  const { mergeWorkspaceStates } = globalThis.WorkBuddySyncMerge;
+  assert.ok(mergeWorkspaceStates, 'sync-merge.js 应导出 mergeWorkspaceStates');
+
+  const local = {
+    workbenchV2: {
+      companies: [{ id: 'c1', name: '本地公司', updatedAt: '2026-07-28T10:00:00Z' }],
+      positions: [{ id: 'p1', name: '本地岗位', updatedAt: '2026-07-28T09:00:00Z' }],
+      candidates: [],
+      applications: [],
+    },
+    kb: [{ id: 'kb1', title: '本地笔记', updatedAt: '2026-07-28T08:00:00Z' }],
+    jobs: [[{ id: 'j1', name: '本地看板岗位' }]],
+  };
+  const remote = {
+    workbenchV2: {
+      companies: [{ id: 'c1', name: '云端公司', updatedAt: '2026-07-27T10:00:00Z' }, { id: 'c2', name: '云端新公司', updatedAt: '2026-07-28T11:00:00Z' }],
+      positions: [{ id: 'p1', name: '云端岗位-新', updatedAt: '2026-07-28T12:00:00Z' }],
+      candidates: [{ id: 't1', name: '云端人才', updatedAt: '2026-07-28T07:00:00Z' }],
+      applications: [],
+    },
+    kb: [{ id: 'kb1', title: '云端笔记-新', updatedAt: '2026-07-28T09:00:00Z' }, { id: 'kb2', title: '云端新笔记', updatedAt: '2026-07-28T10:00:00Z' }],
+    deletedRecords: { jobs: [{ id: 'j9' }] },
+  };
+
+  const merged = mergeWorkspaceStates(local, remote);
+
+  // companies: c1 本地更新胜出, c2 仅云端保留
+  assert.equal(merged.workbenchV2.companies.length, 2);
+  assert.equal(merged.workbenchV2.companies.find(c => c.id === 'c1').name, '本地公司');
+  assert.ok(merged.workbenchV2.companies.find(c => c.id === 'c2'));
+  // positions: p1 云端更新胜出
+  assert.equal(merged.workbenchV2.positions.find(p => p.id === 'p1').name, '云端岗位-新');
+  // candidates: 仅云端
+  assert.equal(merged.workbenchV2.candidates.length, 1);
+  // kb: kb1 云端更新, kb2 仅云端
+  assert.equal(merged.kb.length, 2);
+  assert.equal(merged.kb.find(k => k.id === 'kb1').title, '云端笔记-新');
+  // deletedRecords 取远端
+  assert.deepEqual(merged.deletedRecords, { jobs: [{ id: 'j9' }] });
+  // 看板：本地有数据，不被远端覆盖
+  assert.equal(merged.jobs[0][0].name, '本地看板岗位');
+  // 不修改入参
+  assert.equal(local.workbenchV2.companies.length, 1, '入参 local 不应被修改');
+  // _mergeStats 存在
+  assert.ok(merged._mergeStats.fromCloud >= 0);
+});
+
+test('旧电脑首次登录（无推送记录）不能覆盖云端新数据', () => {
+  // 当 lastPushedAt 为 null 时，cloudChangedSinceLastPush 应为 true（只要 remoteUpdatedAt 存在）
+  // 验证逻辑模式：!lastPushedAt || remoteUpdatedAt > lastPushedAt
+  assert.match(INDEX_HTML, /!lastPushedAt \|\| remoteUpdatedAt > lastPushedAt/, '无推送记录时应视为云端已变化');
+  // 且此时 hasUnpushedEdits 为 false（因为 snapshotSavedAt 也为 null 或 <= lastPushedAt）
+  assert.match(INDEX_HTML, /snapshotSavedAt && \(!lastPushedAt \|\| snapshotSavedAt > lastPushedAt\)/, '无快照记录时不应视为有未推送编辑');
+});
+
+test('工作台三个主列表使用分页结果和预构建索引', () => {
+  const section = (start, end) => INDEX_HTML.slice(INDEX_HTML.indexOf(start), INDEX_HTML.indexOf(end));
+  const mainLists = [
+    section("workbenchNav === 'companies' && workbenchRoute.type === 'list'", "workbenchNav === 'companies' && workbenchRoute.type === 'company'"),
+    section("workbenchNav === 'candidates' && workbenchRoute.type === 'list'", "workbenchNav === 'candidates' && workbenchRoute.type === 'candidate'"),
+    section("workbenchNav === 'applications' && workbenchRoute.type === 'list'", "workbenchNav === 'ai' && workbenchRoute.type === 'list'"),
+  ].join('\n');
+
+  assert.match(INDEX_HTML, /<script src="\.\/src\/ui\/list-performance\.js\?v=20260730-sort1"><\/script>/);
+  assert.match(INDEX_HTML, /v-for="company in pagedWorkbenchCompanies\.items"/);
+  assert.match(INDEX_HTML, /v-for="candidate in pagedWorkbenchCandidates\.items"/);
+  assert.match(INDEX_HTML, /v-for="application in pagedApplications\.items"/);
+  assert.match(INDEX_HTML, /v-for="group in pagedApplicationStageGroups"/);
+  assert.doesNotMatch(mainLists, /workbenchV2\.(candidates|companies|positions|applications)\.(find|filter)\(/);
+  assert.doesNotMatch(mainLists, /filteredApplications\.filter\(/);
+});
+
+test('filterCandidates 默认隐藏已归档候选人，显式 includeArchived 才展示', () => {
+  const candidates = [
+    { id: 'active', name: '正常候选人' },
+    { id: 'archived', name: '历史候选人', deletedAt: '2026-08-03T00:00:00Z' },
+  ];
+  assert.deepEqual(WorkbenchV2.filterCandidates(candidates).map(item => item.id), ['active']);
+  assert.deepEqual(WorkbenchV2.filterCandidates(candidates, { includeArchived: true }).map(item => item.id), ['active', 'archived']);
+});
+
+test('人才库环形图不会重复计算无推进记录的人才', () => {
+  const start = INDEX_HTML.indexOf('const talentPoolChart = computed(() => {');
+  const end = INDEX_HTML.indexOf('// ── 仪表盘：业务进展条', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /if \(!s\) \{ buckets\[5\]\+\+; return; \}/);
+  assert.doesNotMatch(source, /buckets\[5\]\s*\+=\s*totalCands\s*-\s*Object\.keys\(candidateStages\)/);
+});
+
+test('业务进展筛选接入全部岗位与本月新增范围', () => {
+  assert.match(INDEX_HTML, /v-model="businessProgressPeriod"/);
+  assert.match(INDEX_HTML, /const businessProgressPeriod = ref\('all'\)/);
+  const start = INDEX_HTML.indexOf('const businessProgressItems = computed(() => {');
+  const end = INDEX_HTML.indexOf('function showWorkbench()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = INDEX_HTML.slice(start, end);
+  assert.match(source, /position\.createdAt/);
+  assert.match(source, /scopedPositionIds/);
+  assert.match(source, /application\.positionId/);
+});
+
+test('顶部新建按钮具备不依赖 Tailwind 的高对比度样式', () => {
+  const start = INDEX_HTML.indexOf('wb-v2-create-button');
+  assert.ok(start >= 0);
+  const source = INDEX_HTML.slice(start, INDEX_HTML.indexOf('</button>', start));
+  assert.match(source, /background:#226647!important/);
+  assert.match(source, /color:#fff!important/);
+});
+
+test('人才列表在筛选后、分页前按最近更新时间降序排列', () => {
+  assert.match(INDEX_HTML, /const \{ PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate \} = window\.WorkBuddyListPerformance/);
+  assert.match(INDEX_HTML, /const filteredWorkbenchCandidates = computed\(\(\) => sortByRecentUpdate\(TalentLibrary\.filterRows\(/);
+  assert.match(INDEX_HTML, /paginate\(filteredWorkbenchCandidates\.value, candidatePage\.value, PAGE_SIZE\)/);
+});
+
+test('深度监听只标记脏域并展示本地保存状态', () => {
+  const watcherStart = INDEX_HTML.indexOf('watch(columns');
+  const watcherEnd = INDEX_HTML.indexOf('// 切换候选人时重置简历内联查看状态', watcherStart);
+  const watchers = INDEX_HTML.slice(watcherStart, watcherEnd);
+
+  assert.match(INDEX_HTML, /<script src="\.\/src\/services\/save-coordinator\.js"><\/script>/);
+  assert.match(watchers, /markDirty\('legacy'\)/);
+  assert.match(watchers, /markDirty\('workbench'\)/);
+  assert.doesNotMatch(watchers, /\blocalSave\(\)|\bsaveWorkbenchV2\(\)|\bschedulePush\(/);
+  assert.match(INDEX_HTML, /role="status"[^>]*aria-live="polite"/);
+  assert.match(INDEX_HTML, /正在保存…/);
+  assert.match(INDEX_HTML, /已保存/);
+  assert.match(INDEX_HTML, /保存失败，点击重试/);
+});
+
+test('时间线分析结果通过串行保存队列持久化', () => {
+  const match = INDEX_HTML.match(/function persistTimelineResult\(field, data\) \{([\s\S]*?)\n    \}/);
+  assert.ok(match, '应保留时间线分析结果持久化入口');
+  assert.match(match[1], /markDirty\('legacy'\)/, '时间线结果应标记旧版工作区为脏数据');
+  assert.doesNotMatch(match[1], /\bsaveState\s*\(/, '不得把保存状态对象当作函数调用');
+  assert.doesNotMatch(match[1], /\bschedulePush\s*\(/, '云端推送应由串行保存队列统一调度');
+});
+
