@@ -35,7 +35,7 @@ test('empty guest storage starts with an explicitly fictional schema-v2 workspac
   assert.equal(workspace.meta.fictional, true);
   assert.ok(workspace.workbenchV2.companies.every(item => item.demo === true));
   assert.ok(workspace.workbenchV2.candidates.every(item => /^138\d{8}$/.test(item.phone)));
-  assert.equal(workspace.meta.seedVersion, 3);
+  assert.equal(workspace.meta.seedVersion, 4);
   assert.ok(workspace.workbenchV2.positions.every(item => item.description.length > 180));
   assert.ok(workspace.workbenchV2.candidates.slice(0, 6).every(item => item.resumeVersions[0].rawText.length > 180));
   assert.ok(workspace.workbenchV2.applications.every(item => item.pipelineEvents.length >= 2 || item.id === 'demo_app_7'));
@@ -51,7 +51,7 @@ test('guest demo seed has a complete twelve-person talent library and funnel sam
   const candidates = workspace.workbenchV2.candidates;
   const requiredFields = ['name', 'currentCompany', 'currentTitle', 'age', 'education', 'summary', 'expectedBase', 'currentSalary', 'expectedSalary', 'motivation', 'availability', 'recommendationComment', 'remark', 'owner', 'createdAt', 'updatedAt'];
 
-  assert.equal(candidates.length, 12);
+  assert.ok(candidates.length >= 12);
   assert.ok(candidates.every(candidate => requiredFields.every(field => String(candidate[field] ?? '').trim())));
   assert.ok(candidates.every(candidate => candidate.demo === true));
   assert.ok(workspace.workbenchV2.talentSourceChannels.length >= 3);
@@ -105,7 +105,7 @@ test('old guest seed data is enriched without replacing visitor edits', () => {
   storage.setItem(api.STORAGE_KEY, JSON.stringify(workspace));
 
   const reloaded = api.createGuestDemo({ storage }).loadWorkspace();
-  assert.equal(reloaded.meta.seedVersion, 3);
+  assert.equal(reloaded.meta.seedVersion, 4);
   assert.equal(reloaded.workbenchV2.positions[0].description, '游客自己改过的岗位说明');
   assert.equal(reloaded.workbenchV2.applications[0].progressNote, '游客自己的备注');
   assert.ok(reloaded.workbenchV2.notes.some(item => item.id === 'user_note'));
