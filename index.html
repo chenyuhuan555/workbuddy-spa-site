@@ -5045,7 +5045,7 @@
           <div v-if="workbenchRoute.tab === 'overview'" class="wb-v2-candidate-overview grid">
             <section class="wb-v2-candidate-card">
               <h2 class="wb-v2-candidate-card-title font-bold flex flex-wrap items-center justify-between gap-2">
-                <span class="flex items-center gap-2"><span class="wb-v2-candidate-card-icon flex items-center justify-center">◎</span>核心信息</span>
+                <span class="flex items-center gap-2"><span class="wb-v2-candidate-card-icon flex items-center justify-center"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/></svg></span>核心信息</span>
                 <span v-if="candidateCoreEdit.active" class="flex items-center gap-2">
                   <button type="button" @click="cancelCandidateCoreEdit" :disabled="candidateCoreEdit.saving" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">取消</button>
                   <button type="button" @click="saveCandidateCoreEdit" :disabled="candidateCoreEdit.saving" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 disabled:opacity-50">{{ candidateCoreEdit.saving ? '保存中…' : '保存' }}</button>
@@ -5091,7 +5091,7 @@
               <section class="wb-v2-candidate-card lg:col-span-3">
                 <header class="flex flex-wrap items-center justify-between gap-3">
                   <h2 class="wb-v2-candidate-card-title font-bold flex items-center gap-2">
-                    <span class="wb-v2-candidate-card-icon flex items-center justify-center">▤</span>
+                    <span class="wb-v2-candidate-card-icon flex items-center justify-center"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M3 12.5h18"/></svg></span>
                     求职进展（多公司机会）
                   </h2>
                   <div class="flex items-center gap-3 text-sm text-slate-500">
@@ -5246,7 +5246,7 @@
               </section>
               <aside class="wb-v2-candidate-card lg:col-span-1">
                 <h2 class="wb-v2-candidate-card-title font-bold flex items-center gap-2">
-                  <span class="wb-v2-candidate-card-icon flex items-center justify-center">▦</span>
+                  <span class="wb-v2-candidate-card-icon flex items-center justify-center"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg></span>
                   求职摘要
                 </h2>
                 <dl class="mt-4 text-sm">
@@ -5288,7 +5288,7 @@
             <section class="wb-v2-candidate-card">
               <header class="flex flex-wrap items-center justify-between gap-3">
                 <h2 class="wb-v2-candidate-card-title font-bold flex items-center gap-2">
-                  <span class="wb-v2-candidate-card-icon flex items-center justify-center">◇</span>
+                  <span class="wb-v2-candidate-card-icon flex items-center justify-center"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/><path d="m9.5 13 2 2 3.5-4"/></svg></span>
                   求职判断
                 </h2>
                 <button v-if="canWrite && !jobOpportunityPreferencesEdit.active" type="button" @click="startJobOpportunityPreferencesEdit" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">编辑</button>
@@ -5390,7 +5390,7 @@
             <p v-if="!selectedCandidateResumeVersions.length" class="text-sm text-slate-400 mt-4">暂无简历版本</p>
             </div>
           </div>
-          <div v-else-if="workbenchRoute.tab === 'applications'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="text-lg font-bold">推荐记录</h2><div v-for="application in selectedCandidateApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 border-b border-slate-100 p-4 text-base flex justify-between items-center cursor-pointer hover:bg-slate-50 transition"><span><b class="block">{{ companyById.get(application.companyId)?.name || '公司已删除' }} · {{ positionById.get(application.positionId)?.title || '岗位已删除' }}</b><small class="mt-1 block text-slate-500">推荐日期 {{ application.recommendedAt || application.createdAt || '—' }} · 负责人 {{ application.owner || '—' }} · 最近更新 {{ application.updatedAt || application.stageEnteredAt || '—' }}</small></span><span class="flex items-center gap-3"><b class="text-sm">{{ application.status || candidatePipelineLabel(application.stage) }}</b><span class="text-sm text-emerald-700">{{ candidatePipelineLabel(application.stage) }}</span></span></div><p v-if="!selectedCandidateApplications.length" class="text-base text-slate-400 mt-4">暂无推荐记录</p></div>
+          <div v-else-if="workbenchRoute.tab === 'applications'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="text-lg font-bold">推荐记录</h2><div v-for="application in selectedCandidateApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 border-b border-slate-100 p-4 text-base flex justify-between items-center cursor-pointer hover:bg-slate-50 transition"><span><b class="block">{{ companyById.get(application.companyId)?.name || '公司已删除' }} · {{ positionById.get(application.positionId)?.title || '岗位已删除' }}</b><small class="mt-1 block text-slate-500">推荐日期 {{ formatBeijingDateTime(application.recommendedAt || application.createdAt || '') || '—' }} · 负责人 {{ application.owner || '—' }} · 最近更新 {{ formatBeijingDateTime(application.updatedAt || application.stageEnteredAt || '') || '—' }}</small></span><span class="flex items-center gap-3"><b class="text-sm">{{ application.status || candidatePipelineLabel(application.stage) }}</b><span class="text-sm text-emerald-700">{{ candidatePipelineLabel(application.stage) }}</span></span></div><p v-if="!selectedCandidateApplications.length" class="text-base text-slate-400 mt-4">暂无推荐记录</p></div>
           <div v-else-if="workbenchRoute.tab === 'interviews'" class="rounded-xl border border-slate-200 bg-white p-5">
             <h2 class="text-lg font-bold">面试进度</h2>
             <button v-for="application in selectedCandidateInterviewApplications" :key="application.id" type="button" @click="openApplicationDetail(application.id)" class="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 p-4 text-left transition hover:border-emerald-300 hover:bg-slate-50">
