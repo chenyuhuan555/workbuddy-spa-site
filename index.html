@@ -18,6 +18,9 @@
   <script src="./src/guest-demo-ai.js?v=20260805-guestdemoai1"></script>
   <script src="./src/search-filters.js"></script>
   <script src="./src/constants/pipeline-stages.js?v=20260728-phase0"></script>
+  <script src="./src/services/todo-rule-engine.js?v=20260818-todorule1"></script>
+  <script src="./src/services/todo-reconciler.js?v=20260818-todoreconciler1"></script>
+  <script src="./src/ui/application-progress-table.js?v=20260818-progress1"></script>
   <script src="./src/workbench-v2.js?v=20260807-aiappcenter1"></script>
   <script src="./src/services/sync-merge.js?v=20260807-aiappcenter1"></script>
   <script src="./src/services/save-coordinator.js"></script>
@@ -4539,6 +4542,21 @@
               </div>
             </section>
           </div>
+          <section v-if="companyTodos.length" aria-label="公司待办" class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-sm font-bold text-slate-900">待办 <span class="ml-1 text-xs font-normal text-slate-400">{{ companyTodos.length }}</span></h2>
+              <button type="button" @click="openTodoListView" class="text-xs text-emerald-700 hover:text-emerald-800">查看全部</button>
+            </div>
+            <ul class="mt-2 divide-y divide-slate-100">
+              <li v-for="todo in companyTodos" :key="todo.id" class="flex items-center justify-between gap-3 py-2">
+                <button type="button" @click="openTodoDetail(todo)" class="min-w-0 text-left">
+                  <p class="text-sm font-medium text-slate-700 truncate">{{ todo.title }}</p>
+                  <p class="text-xs text-slate-400 truncate">{{ todo.subtitle || (todo.date === '—' ? '' : todo.date) }}</p>
+                </button>
+                <button type="button" @click="toggleTodoDone(todo)" class="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">完成</button>
+              </li>
+            </ul>
+          </section>
           <div v-if="workbenchRoute.tab === 'overview'" class="space-y-4">
             <section aria-labelledby="talent-funnel-title" class="bg-white border border-slate-200 rounded-xl p-5">
               <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
@@ -4677,6 +4695,21 @@
               </template>
             </nav>
           </div>
+          <section v-if="positionTodos.length" aria-label="岗位待办" class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-sm font-bold text-slate-900">待办 <span class="ml-1 text-xs font-normal text-slate-400">{{ positionTodos.length }}</span></h2>
+              <button type="button" @click="openTodoListView" class="text-xs text-emerald-700 hover:text-emerald-800">查看全部</button>
+            </div>
+            <ul class="mt-2 divide-y divide-slate-100">
+              <li v-for="todo in positionTodos" :key="todo.id" class="flex items-center justify-between gap-3 py-2">
+                <button type="button" @click="openTodoDetail(todo)" class="min-w-0 text-left">
+                  <p class="text-sm font-medium text-slate-700 truncate">{{ todo.title }}</p>
+                  <p class="text-xs text-slate-400 truncate">{{ todo.subtitle || (todo.date === '—' ? '' : todo.date) }}</p>
+                </button>
+                <button type="button" @click="toggleTodoDone(todo)" class="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">完成</button>
+              </li>
+            </ul>
+          </section>
           <div v-if="workbenchRoute.tab === 'overview' && canWrite" class="flex justify-end gap-2"><button @click="openPositionDescriptionEdit" class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold" type="button">编辑岗位信息与职责</button><button v-if="canConfigureAi" @click="extractPositionSkillsWithDeepSeek" :disabled="positionSkillsExtracting" class="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold disabled:text-slate-400" type="button">{{ positionSkillsExtracting ? 'AI 提取中…' : 'AI 提取匹配关键词' }}</button></div>
           <div v-if="workbenchRoute.tab === 'candidates' && canWrite" class="flex justify-end"><button @click="uploadCandidateForSelectedPosition" class="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold" type="button">上传候选人简历</button></div>
           <form v-if="workbenchRoute.tab === 'overview' && positionDescriptionEdit.open && canWrite" @submit.prevent="savePositionDescription" class="bg-white border border-emerald-200 rounded-xl p-4"><div class="grid sm:grid-cols-2 gap-3"><label for="wb-position-city" class="text-sm text-slate-600">工作地点<input id="wb-position-city" v-model="positionDescriptionEdit.city" placeholder="例如：北京" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-salary" class="text-sm text-slate-600">薪资范围<input id="wb-position-salary" v-model="positionDescriptionEdit.salary" placeholder="例如：25-30K · 16薪" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-owner" class="text-sm text-slate-600">负责人<input id="wb-position-owner" v-model="positionDescriptionEdit.owner" placeholder="负责人姓名" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-skills" class="text-sm text-slate-600">匹配关键词<input id="wb-position-skills" v-model="positionDescriptionEdit.skills" placeholder="逗号分隔，例如：供应链、销售管理、物流" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-description" class="sm:col-span-2 text-sm text-slate-600">岗位职责与要求<textarea id="wb-position-description" v-model="positionDescriptionEdit.value" rows="12" placeholder="填写岗位职责、任职要求、优先条件等" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm leading-relaxed"></textarea></label></div><div class="mt-3 flex gap-2"><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">保存</button><button type="button" @click="positionDescriptionEdit.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div></form>
@@ -4725,6 +4758,21 @@
             </div>
             <datalist id="application-owner-options"><option v-for="owner in workbenchOwners" :key="owner" :value="owner"></option></datalist>
           </section>
+          <section v-if="applicationTodos.length" aria-label="推进待办" class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-sm font-bold text-slate-900">待办 <span class="ml-1 text-xs font-normal text-slate-400">{{ applicationTodos.length }}</span></h2>
+              <button type="button" @click="openTodoListView" class="text-xs text-emerald-700 hover:text-emerald-800">查看全部</button>
+            </div>
+            <ul class="mt-2 divide-y divide-slate-100">
+              <li v-for="todo in applicationTodos" :key="todo.id" class="flex items-center justify-between gap-3 py-2">
+                <button type="button" @click="openTodoDetail(todo)" class="min-w-0 text-left">
+                  <p class="text-sm font-medium text-slate-700 truncate">{{ todo.title }}</p>
+                  <p class="text-xs text-slate-400 truncate">{{ todo.subtitle || (todo.date === '—' ? '' : todo.date) }}</p>
+                </button>
+                <button type="button" @click="toggleTodoDone(todo)" class="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">完成</button>
+              </li>
+            </ul>
+          </section>
           <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -4759,6 +4807,17 @@
               </aside>
             </div>
           </div>
+          <section class="bg-white border border-slate-200 rounded-xl p-5">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div><h2 class="font-bold">面试安排</h2><p class="text-sm text-slate-500 mt-1">填写面试时间后，系统会在面试前一天自动生成「明日面试」提醒，面试结束后提示补充反馈。</p></div>
+              <span v-if="selectedApplication.interviewAt" class="px-3 py-1.5 rounded-full border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">已安排面试</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <input aria-label="面试时间" type="datetime-local" v-model="applicationInterviewAtLocal" :disabled="!canWrite" @change="saveInterviewAt" class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-400 disabled:bg-slate-50 disabled:text-slate-400">
+              <button v-if="canWrite && selectedApplication.interviewAt" type="button" @click="clearInterviewAt" class="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">清除</button>
+              <span v-if="selectedApplication.interviewAt" class="text-xs text-slate-400">将按规则生成面试相关自动待办</span>
+            </div>
+          </section>
           <section class="bg-white border border-indigo-100 rounded-xl p-5">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div><h2 class="font-bold">AI 匹配分析</h2><p class="text-sm text-slate-500 mt-1">分析当前候选人与该岗位的匹配度、优势、风险和推进建议。</p></div>
@@ -5042,6 +5101,21 @@
                 <i v-if="index !== candidateDetailTabs.length - 1" aria-hidden="true" class="wb-v2-candidate-tab-separator"></i>
               </template>
             </nav>
+          </section>
+          <section v-if="candidateTodos.length" aria-label="候选人待办" class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-sm font-bold text-slate-900">待办 <span class="ml-1 text-xs font-normal text-slate-400">{{ candidateTodos.length }}</span></h2>
+              <button type="button" @click="openTodoListView" class="text-xs text-emerald-700 hover:text-emerald-800">查看全部</button>
+            </div>
+            <ul class="mt-2 divide-y divide-slate-100">
+              <li v-for="todo in candidateTodos" :key="todo.id" class="flex items-center justify-between gap-3 py-2">
+                <button type="button" @click="openTodoDetail(todo)" class="min-w-0 text-left">
+                  <p class="text-sm font-medium text-slate-700 truncate">{{ todo.title }}</p>
+                  <p class="text-xs text-slate-400 truncate">{{ todo.subtitle || (todo.date === '—' ? '' : todo.date) }}</p>
+                </button>
+                <button type="button" @click="toggleTodoDone(todo)" class="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">完成</button>
+              </li>
+            </ul>
           </section>
           <div v-if="workbenchRoute.tab === 'overview'" class="wb-v2-candidate-overview grid">
             <section class="wb-v2-candidate-card">
@@ -5767,6 +5841,71 @@
           <div v-if="applicationViewMode === 'table'" class="bg-white border border-slate-200 rounded-xl overflow-hidden"><div class="hidden lg:grid grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>候选人</span><span>公司 / 岗位</span><span>负责人</span><span>匹配</span><span>阶段</span><span>更新时间</span></div><div v-for="application in pagedApplications.items" :key="application.id" class="grid grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_.6fr_1fr_.8fr] gap-3 px-4 py-4 border-t border-slate-100 items-center"><button @click="openCandidateDetail(application.candidateId)" class="text-left font-semibold hover:text-emerald-700" type="button">{{ candidateById.get(application.candidateId)?.name || '人才关联失效' }}</button><div class="text-sm"><button @click="openCompanyDetail(application.companyId)" class="font-medium hover:text-emerald-700 text-left" type="button">{{ companyById.get(application.companyId)?.name || '公司已删除' }}</button><button @click="openPositionDetail(application.positionId)" class="block text-slate-400 hover:text-emerald-700 text-left mt-0.5" type="button">{{ positionById.get(application.positionId)?.title || '岗位已删除' }}</button></div><button v-if="application.owner" @click="filterApplicationsByOwner(application.owner)" class="text-sm hover:text-emerald-700 text-left" type="button">{{ application.owner }}</button><span v-else class="text-sm text-slate-400">未分配</span><b>{{ application.matchScore ?? '—' }}</b><select aria-label="修改候选人推进阶段" :value="application.stage" @change="changeWorkbenchApplicationStage(application, $event.target.value)" class="px-2 py-1.5 rounded-lg border border-slate-200 text-xs"><option v-for="stage in workbenchApplicationStages" :key="stage" :value="stage">{{ candidatePipelineLabel(stage) }}</option></select><span class="text-xs text-slate-400">{{ application.updatedAt?.slice(0,10) }}</span></div><p v-if="!filteredApplications.length" class="p-12 text-center text-sm text-slate-400">暂无推荐记录</p></div>
           <div v-else class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"><div v-for="group in pagedApplicationStageGroups" :key="group.key" class="bg-slate-200/70 rounded-xl p-3"><div class="flex justify-between text-sm font-bold"><span>{{ group.label }}</span><span>{{ group.items.length }}</span></div><button v-for="application in group.items" :key="application.id" @click="openCandidateDetail(application.candidateId)" class="w-full bg-white border border-slate-200 rounded-lg p-3 mt-2 text-left hover:border-emerald-300" type="button"><b class="text-sm">{{ candidateById.get(application.candidateId)?.name || '人才关联失效' }}</b><p class="text-xs text-slate-500 mt-1">{{ positionById.get(application.positionId)?.title || '岗位已删除' }}</p><p class="text-xs text-emerald-700 mt-2">{{ candidatePipelineLabel(application.stage) }} · {{ application.matchScore ?? '未评分' }}</p></button></div></div>
           <nav v-if="pagedApplications.total" aria-label="推进列表分页" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-600"><span>第 {{ pagedApplications.start }}–{{ pagedApplications.end }} 条，共 {{ pagedApplications.total }} 条</span><div class="flex flex-wrap items-center gap-2"><button type="button" :disabled="pagedApplications.page === 1" @click="applicationPage = 1" class="px-2 py-1 rounded border disabled:opacity-40">首页</button><button type="button" :disabled="pagedApplications.page === 1" @click="applicationPage -= 1" class="px-2 py-1 rounded border disabled:opacity-40">上一页</button><span aria-live="polite">第 {{ pagedApplications.page }} / {{ pagedApplications.totalPages }} 页</span><button type="button" :disabled="pagedApplications.page === pagedApplications.totalPages" @click="applicationPage += 1" class="px-2 py-1 rounded border disabled:opacity-40">下一页</button><button type="button" :disabled="pagedApplications.page === pagedApplications.totalPages" @click="applicationPage = pagedApplications.totalPages" class="px-2 py-1 rounded border disabled:opacity-40">末页</button></div></nav>
+        </div>
+
+        <div v-else-if="workbenchNav === 'progress' && workbenchRoute.type === 'list'" class="wb-v2-progress-page max-w-[1400px] mx-auto space-y-4">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-2xl font-bold">面试 / 推进工作区</h1>
+              <p class="text-sm text-slate-500 mt-1">{{ progressSummary.total }} 条推进记录</p>
+            </div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-2">
+            <input aria-label="搜索推进记录" v-model="progressFilters.query" placeholder="搜索候选人 / 公司 / 岗位" class="min-w-52 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-400">
+            <select aria-label="按负责人筛选" v-model="progressFilters.owner" class="min-w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm">
+              <option value="all">全部负责人</option>
+              <option value="__me__">我负责的</option>
+              <option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option>
+            </select>
+            <select aria-label="按阶段筛选" v-model="progressFilters.stageGroup" class="min-w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm">
+              <option v-for="(label, key) in progressStageFilterOptions" :key="key" :value="key">{{ label }}</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="快捷筛选">
+            <button v-for="chip in progressQuickFilters" :key="chip.key" type="button" @click="progressFilters.quick = chip.key"
+              :class="['px-3 py-1.5 rounded-full text-xs font-medium border transition', progressFilters.quick === chip.key ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300']">
+              {{ chip.label }}<span class="ml-1 opacity-70">{{ progressSummary.counts[chip.key] ?? 0 }}</span>
+            </button>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+            <table class="w-full text-left text-sm min-w-[980px]">
+              <thead class="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th class="px-4 py-2.5">候选人</th>
+                  <th class="px-4 py-2.5">公司</th>
+                  <th class="px-4 py-2.5">岗位</th>
+                  <th class="px-4 py-2.5">当前阶段</th>
+                  <th class="px-4 py-2.5">面试时间</th>
+                  <th class="px-4 py-2.5">下一步</th>
+                  <th class="px-4 py-2.5">负责人</th>
+                  <th class="px-4 py-2.5 text-right">待办</th>
+                  <th class="px-4 py-2.5">最近更新</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in progressSortedRows" :key="row.applicationId" @click="openProgressApplication(row)" class="border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer">
+                  <td class="px-4 py-2.5">
+                    <button @click.stop="openCandidateDetail(row.candidateId)" class="font-semibold text-slate-800 hover:text-emerald-700 text-left" type="button">{{ row.candidateName }}</button>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ row.candidateHeadline || '—' }}</p>
+                  </td>
+                  <td class="px-4 py-2.5 text-slate-700">{{ row.companyName }}</td>
+                  <td class="px-4 py-2.5 text-slate-700">{{ row.positionTitle }}</td>
+                  <td class="px-4 py-2.5 text-slate-700 whitespace-nowrap">{{ row.stageLabel }}</td>
+                  <td class="px-4 py-2.5 whitespace-nowrap" :class="row.interviewMs ? 'text-emerald-700 font-medium' : 'text-slate-400'">{{ row.interviewLabel }}</td>
+                  <td class="px-4 py-2.5" :class="row.nextTodo ? 'text-slate-700' : 'text-slate-300'">{{ row.nextTodo ? row.nextTodoTitle : '—' }}</td>
+                  <td class="px-4 py-2.5 text-slate-600">{{ row.owner || '未分配' }}</td>
+                  <td class="px-4 py-2.5 text-right">
+                    <button v-if="row.todoCount" type="button" @click.stop="openTodoListView" class="inline-flex items-center justify-center min-w-6 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold hover:bg-emerald-200">{{ row.todoCount }}</button>
+                    <span v-else class="text-slate-300">—</span>
+                  </td>
+                  <td class="px-4 py-2.5 text-xs text-slate-400 whitespace-nowrap">{{ row.updatedLabel }}</td>
+                </tr>
+                <tr v-if="!progressSortedRows.length">
+                  <td colspan="9" class="px-4 py-12 text-center text-sm text-slate-400">暂无推进记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div v-else-if="workbenchNav === 'ai' && workbenchRoute.type === 'list'" class="wb-toolbox-page max-w-7xl mx-auto space-y-4 border border-slate-200 rounded-2xl p-6">
@@ -7157,12 +7296,15 @@
         </div>
         <div class="px-6 py-4 border-t border-slate-100 flex flex-wrap justify-end gap-2">
           <button @click="todoDetail.open = false" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold" type="button">关闭</button>
-          <template v-if="todoDetail.todo.source === 'manual'">
+          <template v-if="(todoDetail.todo.source || 'manual') !== 'system'">
             <button @click="toggleTodoDone(todoDetail.todo)" class="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50" type="button">{{ todoDetail.todo.done ? '恢复待办' : '标记完成' }}</button>
             <button @click="openTodoForm(todoDetail.todo)" class="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50" type="button">编辑</button>
             <button @click="deleteTodo(todoDetail.todo)" class="px-4 py-2 rounded-lg bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100" type="button">删除</button>
           </template>
-          <button v-else @click="openTodoForm(todoDetail.todo)" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700" type="button">转为手动待办</button>
+          <template v-else>
+            <button @click="toggleTodoDone(todoDetail.todo)" class="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50" type="button">{{ todoDetail.todo.done ? '恢复待办' : '标记完成' }}</button>
+            <button @click="openTodoForm(todoDetail.todo)" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700" type="button">转为手动待办</button>
+          </template>
         </div>
       </div>
     </div>
@@ -12196,6 +12338,7 @@ const vueAppConfig = {
       { key: 'companies', label: '公司', icon: '司' },
       { key: 'positions', label: '岗位库', icon: '岗' },
       { key: 'candidates', label: '人才库', icon: '人' },
+      { key: 'progress', label: '面试进度', icon: '面' },
       { key: 'applications', label: '推进中心', icon: '进' },
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
       { key: 'aiApps', label: 'AI应用中心', icon: '应' },
@@ -13942,18 +14085,110 @@ const vueAppConfig = {
       metricsBaseline.value,
     ));
 
-    // ── 仪表盘：我的待办（仅展示手动新增，不再自动生成占位待办）──
+    // ── 仪表盘：我的待办（Manual + System 同一数据源，source/status 原样透传）──
     const dashboardTodos = computed(() => {
       const todos = privateTodos.map(t => ({
-        id: t.id, source: 'manual', type: t.type || 'custom', done: !!t.done,
+        id: t.id,
+        source: t.source || 'manual',
+        status: t.status || (t.done ? 'done' : 'pending'),
+        type: t.type || 'custom',
+        done: !!t.done,
         linkType: t.linkType || 'none', linkId: t.linkId || '', linkLabel: t.linkLabel || '',
-        title: t.title || '未命名待办', subtitle: t.subtitle || '', date: (t.date || '').slice(0,10) || '—', _raw: t
+        title: t.title || '未命名待办', subtitle: t.subtitle || '', date: (t.date || '').slice(0,10) || '—',
+        dueAt: t.dueAt || '', owner: t.owner || '', dedupeKey: t.dedupeKey || '',
+        candidateId: t.candidateId || '', companyId: t.companyId || '',
+        positionId: t.positionId || '', applicationId: t.applicationId || '',
+        _raw: t
       }));
       return todos.sort((a, b) => {
         if (!!a.done !== !!b.done) return a.done ? 1 : -1;
         return (b.date > a.date ? 1 : -1);
       });
     });
+
+    // ── 自动待办：统一数据源派生（同一份 Todo 多页面展示，不复制数据）──
+    const pendingTodoFilter = todo => todo.status === 'pending' && !todo.done;
+    const candidateTodos = computed(() => dashboardTodos.value.filter(t => t.candidateId === workbenchRoute.id && pendingTodoFilter(t)));
+    const companyTodos = computed(() => dashboardTodos.value.filter(t => t.companyId === workbenchRoute.id && pendingTodoFilter(t)));
+    const positionTodos = computed(() => dashboardTodos.value.filter(t => t.positionId === workbenchRoute.id && pendingTodoFilter(t)));
+    const applicationTodos = computed(() => dashboardTodos.value.filter(t => t.applicationId === workbenchRoute.id && pendingTodoFilter(t)));
+    // 首页待办：user_todos 本身按账号隔离，天然只含当前用户；额外按 owner 过滤保持后续"顾问看自己"语义
+    const currentUserTodoName = window.WorkBuddyAccess?.profile?.name || '';
+    const myTodos = computed(() => dashboardTodos.value.filter(t =>
+      pendingTodoFilter(t) && (!currentUserTodoName || !t.owner || t.owner === currentUserTodoName)
+    ));
+
+    // ── 自动待办对账：比较规则输出与现有 System Todo，执行创建/更新/取消 ──
+    async function reconcileBusinessTodos() {
+      if (typeof window.WorkBuddyTodoRuleEngine !== 'object' || typeof window.WorkBuddyTodoReconciler !== 'object') return;
+      try {
+        const derived = window.WorkBuddyTodoRuleEngine.deriveSystemTodos({
+          candidates: workbenchV2.candidates || [],
+          companies: workbenchV2.companies || [],
+          positions: workbenchV2.positions || [],
+          applications: workbenchV2.applications || [],
+          now: new Date().toISOString(),
+        });
+        const result = window.WorkBuddyTodoReconciler.reconcileSystemTodos({
+          todos: cloneData(privateTodos),
+          derived,
+          now: new Date().toISOString(),
+        });
+        const prevById = new Map(privateTodos.map(item => [item.id, item]));
+        const toSave = result.todos.filter(todo => {
+          const prev = prevById.get(todo.id);
+          if (!prev) return true;
+          return prev.status !== todo.status
+            || prev.title !== todo.title
+            || prev.subtitle !== todo.subtitle
+            || prev.dueAt !== todo.dueAt
+            || prev.owner !== todo.owner
+            || prev.linkId !== todo.linkId;
+        });
+        const totalChanges = result.changes.created + result.changes.updated + result.changes.cancelled;
+        if (!totalChanges) return;
+        const client = getPrivateTodoClient();
+        if (typeof client.saveMany === 'function') {
+          await client.saveMany(toSave);
+        } else {
+          await Promise.all(toSave.map(todo => client.save(todo)));
+        }
+        replacePrivateTodos(result.todos);
+        console.info(`[todo] 自动待办对账完成：创建 ${result.changes.created} / 更新 ${result.changes.updated} / 关闭 ${result.changes.cancelled}`);
+      } catch (error) {
+        console.warn('[todo] 自动待办对账失败:', error?.message || error);
+      }
+    }
+
+    // ── 面试 / 推进工作区：Application 推进主表（纯函数模块驱动，一行 = 一条 Application）──
+    const ProgressTable = window.WorkBuddyApplicationProgressTable;
+    const progressFilters = reactive({ query: '', owner: 'all', stageGroup: 'all', quick: 'all' });
+    const progressRows = computed(() => ProgressTable.buildRows({
+      applications: workbenchV2.applications || [],
+      candidates: workbenchV2.candidates || [],
+      companies: workbenchV2.companies || [],
+      positions: workbenchV2.positions || [],
+      todos: privateTodos,
+      now: new Date().toISOString(),
+    }));
+    const progressFilteredRows = computed(() => ProgressTable.filterRows(
+      progressRows.value,
+      {
+        query: progressFilters.query,
+        owner: progressFilters.owner === '__me__' ? currentUserTodoName : progressFilters.owner,
+        stageGroup: progressFilters.stageGroup,
+        quick: progressFilters.quick,
+      },
+      new Date(),
+    ));
+    const progressSortedRows = computed(() => ProgressTable.sortRows(progressFilteredRows.value));
+    const progressSummary = computed(() => ProgressTable.summarize(progressRows.value, new Date()));
+    const progressQuickFilters = ProgressTable.QUICK_FILTERS;
+    const progressStageFilterOptions = ProgressTable.STAGE_FILTER_LABELS;
+    function openProgressApplication(row) {
+      if (!row || !row.applicationId) return;
+      openApplicationDetail(row.applicationId);
+    }
 
     // ── 待办：弹窗状态与方法 ──
     const todoForm = reactive({
@@ -13987,6 +14222,8 @@ const vueAppConfig = {
       openCandidateDetail: id => openCandidateDetail(id),
       openPositionDetail: id => openPositionDetail(id),
       openCompanyDetail: id => openCompanyDetail(id),
+      openApplicationDetail: id => openApplicationDetail(id),
+      onTodoToggled: () => { void reconcileBusinessTodos(); },
     });
     const todoTypeOptions = [
       { value: 'custom', label: '自定义' },
@@ -14597,6 +14834,33 @@ const vueAppConfig = {
     }
     function openApplicationDetail(id) { return workbenchApplicationActions.openApplicationDetail(id); }
     async function saveApplicationDetail() { return workbenchApplicationActions.saveApplicationDetail(); }
+    // ── 面试时间（interviewAt）：datetime-local ↔ ISO 转换 + 保存后触发自动待办对账 ──
+    function toDatetimeLocalValue(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+    const applicationInterviewAtLocal = computed({
+      get: () => toDatetimeLocalValue(selectedApplication.value?.interviewAt || ''),
+      set: value => {
+        if (!selectedApplication.value || !canWrite) return;
+        selectedApplication.value.interviewAt = value ? new Date(value).toISOString() : '';
+      },
+    });
+    async function saveInterviewAt() {
+      if (!selectedApplication.value || !canWrite) return;
+      const saved = await saveWorkbenchV2();
+      if (saved && cloudReady) schedulePush();
+      void reconcileBusinessTodos(); // 面试时间更新后对账自动待办（Rule 3/4）
+      showToast(saved ? '面试时间已保存' : '已暂存到浏览器');
+    }
+    function clearInterviewAt() {
+      if (!selectedApplication.value || !canWrite) return;
+      selectedApplication.value.interviewAt = '';
+      void saveInterviewAt();
+    }
     async function analyzeSelectedApplicationMatch() {
       if (!canConfigureAi || !requireTalentWritePermission()) return;
       applicationMatchAnalysis.running = true;
@@ -15205,10 +15469,14 @@ const vueAppConfig = {
       if (created && await saveWorkbenchV2()) showToast(`已创建 ${created} 条推荐记录`);
     }
     async function createApplicationFromMatch(candidateId, positionId, match = {}) {
-      return workbenchApplicationActions.createApplicationFromMatch(candidateId, positionId, match);
+      const application = await workbenchApplicationActions.createApplicationFromMatch(candidateId, positionId, match);
+      if (application) void reconcileBusinessTodos(); // 创建推荐后对账自动待办
+      return application;
     }
     function changeWorkbenchApplicationStage(application, toStage) {
-      return workbenchApplicationActions.changeWorkbenchApplicationStage(application, toStage);
+      const result = workbenchApplicationActions.changeWorkbenchApplicationStage(application, toStage);
+      void reconcileBusinessTodos(); // 阶段变化后对账自动待办（旧 Todo 自动关闭/新 Todo 生成）
+      return result;
     }
     function formatBeijingDateTime(value) { return window.WorkBuddyApplicationDisplay.formatBeijingDateTime(value); }
     function getApplicationStageStatus(application) {
@@ -18763,6 +19031,7 @@ ${ocrText}`
       if (isGuestMode) {
         loadAiConfig();
         await loadGuestWorkspace();
+        void reconcileBusinessTodos(); // 游客演示数据也可体验自动待办
         appHydrating = false;
         updateActiveNavFromScroll();
         window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });
@@ -18777,6 +19046,7 @@ ${ocrText}`
       await loadWorkbenchV2(); // 加载独立公司、候选人和推进记录
       await reconcileMigratedPositionDescriptions();
       await initializePrivateTodos(); // 加载当前账号私有待办，并由管理员认领旧共享待办
+      void reconcileBusinessTodos(); // 数据初始化完成后对账自动待办
       console.log('[diag] onMounted: loadWorkbenchV2 完成后 workbenchV2 =', {
         companies: workbenchV2.companies.length,
         candidates: workbenchV2.candidates.length,
@@ -18792,6 +19062,7 @@ ${ocrText}`
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
+      void reconcileBusinessTodos(); // 云端数据同步完成后对账自动待办
       await loadQuantumRadarFromCloud(); // Sprint 2：登录用户读取独立量子雷达表，失败回退演示数据
       startWorkbenchEntityPolling();
       startCandidatePolling();
@@ -19650,7 +19921,11 @@ ${ocrText}`
     function saveCandidateStageTransition() { return candidatePipelineActions.saveStageChange(); }
     function saveCandidateBusinessMeta(resume) { return candidatePipelineActions.saveBusinessMeta(resume); }
     function recordCandidateFollowup(resume, action = '') { return candidatePipelineActions.recordFollowup(resume, action); }
-    function saveCandidateFollowupMeta(resume) { return candidatePipelineActions.saveBusinessMeta(resume, '跟进信息已保存'); }
+    function saveCandidateFollowupMeta(resume) {
+      const result = candidatePipelineActions.saveBusinessMeta(resume, '跟进信息已保存');
+      void reconcileBusinessTodos(); // 跟进时间更新后对账自动待办
+      return result;
+    }
 
     function startEditCandidateFollowup(resume, followup) { return candidatePipelineActions.startFollowupEdit(resume, followup); }
     function cancelCandidateFollowupEdit(resume) { return candidatePipelineActions.cancelFollowupEdit(resume); }
@@ -26380,9 +26655,12 @@ ${clipped}`
       selectedApplicationCandidate, selectedApplicationCandidateResumes, candidateDirections,
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches, applicationBatchScoring,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressPeriod, businessProgressItems,
+      candidateTodos, companyTodos, positionTodos, applicationTodos, myTodos, reconcileBusinessTodos,
+      progressFilters, progressRows, progressFilteredRows, progressSortedRows, progressSummary, progressQuickFilters, progressStageFilterOptions, openProgressApplication,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, closeWorkbenchPosition, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
       openCandidateDrawer, openCandidateDetail, closeCandidateDrawer, openApplicationDetail, uploadCandidateStandalone, uploadCandidateForSelectedPosition, onStandaloneResumeFile, autoFillCandidateInfoFromResume, saveCandidateOnly, mergeCandidateToExisting, saveAsNewResumeVersion, createApplicationsFromUpload,
+      applicationInterviewAtLocal, saveInterviewAt, clearInterviewAt,
       // 阶段 3.5 批量 / 拖拽入库
       batchUpload, candidateExcelImport, batchDragOver, batchCategorySelectorOpen, batchStatusLabel, openBatchUpload, openTalentIntake, openChannelCandidateImport, closeCandidateExcelImport, onCandidateExcelFile, confirmCandidateExcelImport, toggleBatchCategory, talentIntakeDirectEntryOpen, talentIntakeDirectForm, talentIntakeDirectExtracting, talentIntakeDirectError, autoFillTalentIntakeDirectInfo, saveTalentIntakeDirectEntry, addBatchFiles, startBatchAll, retryBatchFailed, retryBatchTask, clearBatchSucceeded, cancelBatchQueued, cancelBatchTask, removeBatchTask, resolveBatchDuplicate, saveBatchNeedsReview, skipBatchTask, onBatchDrop, onBatchDragOver, onBatchDragLeave, onCancelDedup,
       createApplicationFromMatch, changeWorkbenchApplicationStage, formatBeijingDateTime, getApplicationStageStatus, filterApplicationsByOwner, saveApplicationDetail, analyzeSelectedApplicationMatch, runBulkApplicationAiScoring, applicationMatchAnalysis, deletePipelineEvent,
