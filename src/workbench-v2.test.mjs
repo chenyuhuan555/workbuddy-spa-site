@@ -316,6 +316,15 @@ test('导航项 key 仍为 candidates（仅 label 改为人才库，路由键不
   assert.match(INDEX_HTML, /\{ key: 'candidates', label: '人才库'/, '导航 key 保持 candidates，label 改为人才库');
 });
 
+test('人才库支持批量设置归属顾问：菜单入口、弹窗与落库函数齐备', () => {
+  assert.match(INDEX_HTML, /openBulkSetCandidateOwner\(\)/, '人才库「···」菜单应提供批量设置归属顾问入口');
+  assert.match(INDEX_HTML, /id="bulk-candidate-owner-title"[^>]*>批量设置归属顾问/, '应存在批量设置归属顾问弹窗');
+  assert.match(INDEX_HTML, /@click="confirmBulkSetCandidateOwner"/, '弹窗应绑定确认设置处理函数');
+  assert.match(INDEX_HTML, /async function confirmBulkSetCandidateOwner\(\)/, '应存在批量设置归属顾问的落库函数');
+  assert.match(INDEX_HTML, /bulkOwnerEditor\.open = true/, '打开弹窗应切换 bulkOwnerEditor 状态');
+  assert.match(INDEX_HTML, /WorkbenchV2\.updateTalent\(workbenchV2, id, \{ owner \}\)/, '批量设置应通过 updateTalent 写入 owner');
+});
+
 // ---------------------------------------------------------------------------
 // (4) 新增：简历完整度 + 最近更新时间
 // ---------------------------------------------------------------------------

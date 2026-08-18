@@ -172,6 +172,26 @@
     return `${subject}读取失败：${code || '请检查登录状态和网络连接'}。`;
   }
 
+  function buildCandidateOwnerById(candidates) {
+    const map = {};
+    (Array.isArray(candidates) ? candidates : []).forEach(c => {
+      const cid = normalizeString(c?.id);
+      const owner = normalizeString(c?.owner);
+      if (cid && owner) map[cid] = owner;
+    });
+    return map;
+  }
+
+  function buildApplicationCandidateById(applications) {
+    const map = {};
+    (Array.isArray(applications) ? applications : []).forEach(a => {
+      const aid = normalizeString(a?.id);
+      const cid = normalizeString(a?.candidateId);
+      if (aid && cid) map[aid] = cid;
+    });
+    return map;
+  }
+
   function createTalentFunnelDashboardController({
     state = createState(),
     analytics,
@@ -179,6 +199,8 @@
     getEventsByCompany,
     getScope,
     getCompanyName,
+    getCandidates,
+    getApplications,
   } = {}) {
     let requestId = 0;
 
@@ -195,11 +217,10 @@
       });
     }
 
-    async function loadCompany(companyId) {
+    async function loadCompany(companyId, { owner = '' } = {}) {
       const id = normalizeString(companyId);
       const currentRequestId = ++requestId;
       reset(id);
-      if (!id) return state;
       try {
         const [channelResult, eventResult] = await Promise.allSettled([
           typeof getChannels === 'function' ? getChannels() : [],
@@ -214,11 +235,16 @@
           return state;
         }
         const scope = typeof getScope === 'function' ? getScope() : {};
+        const candidateOwnerById = buildCandidateOwnerById(typeof getCandidates === 'function' ? getCandidates() : []);
+        const applicationCandidateById = buildApplicationCandidateById(typeof getApplications === 'function' ? getApplications() : []);
         const result = analytics.buildTalentFunnelAnalytics({
           events: Array.isArray(events) ? events : [],
           channels: Array.isArray(channels) ? channels : [],
           companyId: id,
           baselineAt: scope?.baselineAt || '',
+          owner: normalizeString(owner),
+          candidateOwnerById,
+          applicationCandidateById,
         });
         Object.assign(state, {
           loading: false,

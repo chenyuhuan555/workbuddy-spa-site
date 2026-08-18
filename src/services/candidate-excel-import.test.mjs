@@ -65,6 +65,12 @@ test('候选人 Excel 行可以转换为人才基础字段', () => {
   assert.equal(buildCandidateFields({ name: 'A' }, { channelName: '自定义渠道' }).sourceChannelName, '自定义渠道');
 });
 
+test('buildCandidateFields 支持默认归属顾问(owner)，缺省为空字符串', () => {
+  assert.equal(buildCandidateFields({ name: 'A' }).owner, '');
+  assert.equal(buildCandidateFields({ name: 'A' }, { owner: '李芷婷' }).owner, '李芷婷');
+  assert.equal(buildCandidateFields({ name: 'A' }, { owner: '  王顾问  ' }).owner, '王顾问');
+});
+
 test('候选人 Excel 适配器提供 AI 整理契约并保留原始字段回退', () => {
   const rows = normalizeCandidateExcelRows([['姓名', '公开联系方式'], ['A', 'a@example.com'], ['B', 'b@example.com']]);
   const messages = buildCandidateExcelAiMessages({ rows, channelName: '倍罗' });

@@ -74,7 +74,8 @@
 
   function isFilteredEvent(event, companyId, baselineAtMs) {
     if (event?.isPilot !== true) return false;
-    if (normalizeString(event?.companyId) !== companyId) return false;
+    // companyId 为空表示「全部公司」：跨公司通配，不再按公司过滤
+    if (companyId && normalizeString(event?.companyId) !== companyId) return false;
     const occurredAtMs = Date.parse(event?.occurredAt || '');
     if (!Number.isFinite(occurredAtMs)) return false;
     return occurredAtMs >= baselineAtMs;
@@ -130,11 +131,21 @@
     };
   }
 
+  function resolveEventOwner(event, candidateOwnerById, applicationCandidateById) {
+    const candidateId = normalizeString(event?.candidateId)
+      || normalizeString((applicationCandidateById || {})[normalizeString(event?.applicationId)]);
+    if (!candidateId || !candidateOwnerById) return '';
+    return normalizeString(candidateOwnerById[candidateId]);
+  }
+
   function buildTalentFunnelAnalytics({
     events = [],
     channels = [],
     companyId,
     baselineAt,
+    owner = '',
+    candidateOwnerById = null,
+    applicationCandidateById = null,
   } = {}) {
     const normalizedCompanyId = normalizeString(companyId);
     const baselineAtMs = Date.parse(baselineAt || '');
@@ -146,7 +157,7 @@
     const failureTotals = emptyCounts();
     const stageFacts = new Map(STAGES.map(stage => [stage, createStageFact()]));
 
-    if (!normalizedCompanyId || !Number.isFinite(baselineAtMs)) {
+    if (!Number.isFinite(baselineAtMs)) {
       return {
         channels: normalizedChannels.map(channel => ({
           ...channel,
@@ -163,6 +174,11 @@
     const canonicalEvents = pickCanonicalEvents(filteredEvents, knownChannelIds);
 
     canonicalEvents.forEach(event => {
+      // 顾问维度过滤：解析事件归属顾问，不匹配则跳过计数（含成功与失败）
+      if (owner) {
+        const eventOwner = resolveEventOwner(event, candidateOwnerById, applicationCandidateById);
+        if (eventOwner !== normalizeString(owner)) return;
+      }
       const stage = normalizeString(event?.stage);
       const result = normalizeString(event?.result);
       const channelId = normalizeString(event?.channelId);

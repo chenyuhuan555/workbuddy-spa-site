@@ -355,3 +355,42 @@ test('package.json 的 npm test 显式包含 talent funnel analytics Task 4 测�
   const pkg = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
   assert.match(pkg.scripts.test, /src\/services\/talent-funnel-analytics\.test\.mjs/);
 });
+
+test('companyId 为空时跨公司通配：聚合多家公司的 pilot 事件', () => {
+  const analytics = buildTalentFunnelAnalytics({
+    events: [
+      { applicationId: 'a1', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { applicationId: 'a2', companyId: 'co_B', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { applicationId: 'a3', companyId: 'co_A', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { applicationId: 'a4', companyId: 'co_B', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+    ],
+    channels: [{ id: 'referral', name: '内推' }],
+    companyId: '',
+    baselineAt: '2026-08-01T00:00:00.000Z',
+  });
+  const item = analytics.channels[0];
+  assert.equal(item.counts.imported, 2);
+  assert.equal(item.counts.contacted, 2);
+});
+
+test('按归属顾问(owner)过滤：仅统计该顾问跟进候选人的漏斗事件', () => {
+  const candidateOwnerById = { cand_1: '李芷婷', cand_2: '王顾问' };
+  const applicationCandidateById = { app_1: 'cand_1', app_2: 'cand_2' };
+  const analytics = buildTalentFunnelAnalytics({
+    events: [
+      { candidateId: 'cand_1', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { candidateId: 'cand_2', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { applicationId: 'app_1', companyId: 'co_A', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T09:00:00.000Z' },
+      { applicationId: 'app_2', companyId: 'co_A', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T09:00:00.000Z' },
+    ],
+    channels: [{ id: 'referral', name: '内推' }],
+    companyId: 'co_A',
+    baselineAt: '2026-08-01T00:00:00.000Z',
+    owner: '李芷婷',
+    candidateOwnerById,
+    applicationCandidateById,
+  });
+  const item = analytics.channels[0];
+  assert.equal(item.counts.imported, 1);
+  assert.equal(item.counts.contacted, 1);
+});

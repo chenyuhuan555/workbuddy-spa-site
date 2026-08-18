@@ -77,5 +77,5 @@ test('talent library uses one unified search input for local and cloud resume se
 
 test('guest home funnel reads fictional local channels and events without cloud repositories', () => {
   assert.match(html, /if \(isGuestMode\) return Array\.isArray\(workbenchV2\.talentSourceChannels\)/);
-  assert.match(html, /if \(isGuestMode\) return \(workbenchV2\.talentFunnelEvents \|\| \[\]\)\.filter\(event => event\.companyId === companyId\)/);
+  assert.match(html, /if \(isGuestMode\) \{\s*const all = Array\.isArray\(workbenchV2\.talentFunnelEvents\)[\s\S]*?return companyId \? all\.filter\(event => event\.companyId === companyId\) : all;/);
 });
