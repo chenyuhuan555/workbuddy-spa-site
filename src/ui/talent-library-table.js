@@ -149,10 +149,14 @@
 
   function filterRows(rows = [], filters = {}, now = new Date()) {
     const query = text(filters.query).toLowerCase();
+    const sourceCompanyId = text(filters.sourceCompanyId);
+    const sourceChannelId = text(filters.sourceChannelId);
     return rows.filter(row => {
       if (query && !text(row.searchText).toLowerCase().includes(query)) return false;
       if (filters.owner && filters.owner !== 'all' && !text(row.owner).split(/[、,，/／|\n;；]+/).map(text).includes(text(filters.owner))) return false;
       if (filters.status && filters.status !== 'all' && row.status !== filters.status) return false;
+      if (sourceCompanyId && sourceCompanyId !== 'all' && text(row.sourceCompanyId) !== sourceCompanyId) return false;
+      if (sourceChannelId && sourceChannelId !== 'all' && text(row.sourceChannelId) !== sourceChannelId) return false;
       if (filters.base && filters.base !== 'all' && !`${text(row.currentBase)} ${text(row.expectedBase)}`.toLowerCase().includes(text(filters.base).toLowerCase())) return false;
       if (filters.education && filters.education !== 'all' && !text(row.education).toLowerCase().includes(text(filters.education).toLowerCase())) return false;
       if (filters.stage && filters.stage !== 'all' && !(row.flows || []).some(flow => flow.stage === filters.stage)) return false;

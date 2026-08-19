@@ -15,7 +15,7 @@ test('loads the talent library adapter and aliases it inside Vue setup', () => {
 
 test('derives filtered talent rows from visible Applications without writing workflow state to Candidates', () => {
   assert.match(INDEX_HTML, /const candidateSourceRows = computed\(\(\) => WorkbenchV2\.filterCandidatesByCategory\([\s\S]*?query:\s*''[\s\S]*?candidateFilters\.category[\s\S]*?\)\);/);
-  assert.match(INDEX_HTML, /TalentLibrary\.buildRows\(\{[\s\S]*?candidates:\s*candidateSourceRows\.value,[\s\S]*?applications:\s*visibleApplications\.value,[\s\S]*?positions:\s*workbenchV2\.positions,[\s\S]*?companies:\s*workbenchV2\.companies,[\s\S]*?stageLabel:\s*candidatePipelineLabel,[\s\S]*?\}\)/);
+  assert.match(INDEX_HTML, /TalentLibrary\.buildRows\(\{[\s\S]*?candidates:\s*candidateSourceRows\.value(?:\.filter\([\s\S]*?\))?,[\s\S]*?applications:\s*visibleApplications\.value,[\s\S]*?positions:\s*workbenchV2\.positions,[\s\S]*?companies:\s*workbenchV2\.companies,[\s\S]*?stageLabel:\s*candidatePipelineLabel,[\s\S]*?\}\)/);
   assert.match(INDEX_HTML, /TalentLibrary\.filterRows\(talentLibraryRows\.value,\s*\{[\s\S]*?query:\s*candidateFilters\.query,[\s\S]*?owner:\s*candidateFilters\.owner,[\s\S]*?status:\s*candidateFilters\.status[\s\S]*?\}\)/);
   assert.doesNotMatch(INDEX_HTML, /candidate\.(?:stage|pipelineStage)\s*=(?!=)/);
 });
@@ -267,7 +267,7 @@ test('candidate drawer uses a softer panel surface and lightweight top actions',
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-v2-candidate-tabs\s*\{[\s\S]*?margin-top:\s*24px[\s\S]*?border-bottom:\s*1px solid #edf1ef/);
 });
 
-test('候选人简历将操作与内容视图分成两层', () => {
+test('候选人简历操作与视图切换位于同一工具栏行', () => {
   const resumeBlock = INDEX_HTML.match(/<div v-else-if="workbenchRoute\.tab === 'resume'"[\s\S]*?<div class="border-t border-slate-200 bg-white px-4 pt-3 pb-5">/)?.[0] || '';
   assert.ok(resumeBlock, 'resume content block should exist');
   assert.match(resumeBlock, /class="resume-toolbar[^\"]*px-4 py-0/);
@@ -277,7 +277,9 @@ test('候选人简历将操作与内容视图分成两层', () => {
   assert.doesNotMatch(resumeBlock, /<h2[^>]*>简历<\/h2>/);
   assert.match(resumeBlock, /class="[^\"]*h-8[^\"]*rounded-md[^\"]*border-emerald-700[^\"]*bg-transparent/);
   assert.match(resumeBlock, /重新处理[\s\S]*?<svg[\s\S]*?d="m6 9 6 6 6-6"/);
-  assert.match(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-4/);
+  // 电子简历/原始文件视图切换与编辑简历、重新处理操作位于同一工具栏行（不再分成两层）
+  assert.doesNotMatch(resumeBlock, /class="candidate-resume-view-tabs[^\"]*mt-4/);
+  assert.match(resumeBlock, /class="resume-toolbar-actions[^"]*"[\s\S]*?class="candidate-resume-view-tabs/);
   assert.doesNotMatch(resumeBlock, /电子简历[\s\S]*?<span aria-hidden="true">/);
   assert.match(resumeBlock, /candidateResumeView\.mode === 'text'[\s\S]*?rounded-md border[\s\S]*?电子简历/);
   assert.match(resumeBlock, /candidateResumeView\.mode === 'original'[\s\S]*?rounded-md border[\s\S]*?原始文件/);
@@ -363,16 +365,14 @@ test('首页渠道漏斗不重复显示页面级和模块级说明标题', () =>
 test('首页渠道漏斗保留大标题字号并放大其余信息文字', () => {
   const dashboardBlock = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<\/div>\s*<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
   assert.ok(dashboardBlock, 'dashboard block should exist');
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel h2 \{ font-size: 30px; \}/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel h2 \{ font-size: 24px; \}/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-funnel \.wb-home-control \{ font-size: 15px; \}/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-stage-button strong \{ font-size: 28px;/);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-stage-rate \{[^}]*font-size: 14px;/);
-  assert.match(dashboardBlock, /工作台[^<]*<\/p><h2 id="home-talent-funnel-title"/);
-  assert.match(dashboardBlock, /class="text-base font-medium text-slate-600">\{\{ stage\.label \}\}/);
-  assert.match(dashboardBlock, /class="text-lg font-semibold text-slate-900">渠道来源<\/h3>/);
-  assert.match(dashboardBlock, /class="truncate text-base font-medium text-slate-700">\{\{ channel\.channelName \}\}/);
-  assert.match(dashboardBlock, /class="block text-sm text-slate-400">新增/);
-  assert.match(dashboardBlock, /class="text-sm font-semibold text-emerald-700">导入<\/button>/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-stage strong \{[^}]*font-size: 32px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-pipeline-label \{[^}]*font-size: 14px;/);
+  assert.match(dashboardBlock, /class="wb-home-pipeline-label">\{\{ stage\.label \}\}/);
+  assert.doesNotMatch(dashboardBlock, /渠道来源<\/span>/);
+  assert.match(dashboardBlock, /v-for="channel in homeFunnelChannelOptions"/);
+  assert.match(dashboardBlock, /openHomeFunnelChannelImport\(selectedHomeFunnelChannelRow\)/);
 });
 
 test('人才上传归类展开控件使用 SVG 下箭头', () => {

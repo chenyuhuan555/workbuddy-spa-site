@@ -156,13 +156,14 @@ export function markDuplicateCandidateRows(rows, existingCandidates = []) {
     });
   }
 
-export function buildCandidateFields(row, { channelName = '倍罗' } = {}) {
+export function buildCandidateFields(row, { channelName = '倍罗', owner = '' } = {}) {
     const extraFields = row.extraFields && typeof row.extraFields === 'object' ? row.extraFields : {};
     const extraParts = Object.entries(extraFields).map(([label, value]) => `${label}：${value}`).filter(Boolean);
     const profileParts = [row.summary, row.background, row.education && `学历：${row.education}`, row.contactType && `联系方式：${row.contactType}`, row.verificationStatus && `核验：${row.verificationStatus}`, row.personalProfileUrl && `个人职业主页：${row.personalProfileUrl}`, row.sourceUrl && `联系方式来源：${row.sourceUrl}`, row.note, ...extraParts].filter(Boolean);
     return {
       name: text(row.name), phone: text(row.phone), email: text(row.email), currentCompany: text(row.currentCompany), currentTitle: text(row.currentTitle), city: text(row.city),
       education: text(row.education), summary: text(row.summary), profileText: text(row.profileText) || profileParts.join('；'), source: text(channelName) || '倍罗', sourceChannelName: text(channelName) || '倍罗', sourceUrl: text(row.sourceUrl), personalProfileUrl: text(row.personalProfileUrl), extraFields, matchScore: row.matchScore,
+      owner: text(owner),
     };
   }
 

@@ -12,6 +12,14 @@
     return String(value || '').trim();
   }
 
+  // 拆分多人共有的归属字段（如「李芷婷、王顾问」），与 workbench-owners 的 splitOwners 语义保持一致。
+  function splitOwners(value) {
+    return String(value || '')
+      .split(/[、,，/／|\n;；]+/)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
   function emptyCounts() {
     return {
       imported: 0,
@@ -74,7 +82,8 @@
 
   function isFilteredEvent(event, companyId, baselineAtMs) {
     if (event?.isPilot !== true) return false;
-    if (normalizeString(event?.companyId) !== companyId) return false;
+    // companyId 为空表示「全部公司」：跨公司通配，不再按公司过滤
+    if (companyId && normalizeString(event?.companyId) !== companyId) return false;
     const occurredAtMs = Date.parse(event?.occurredAt || '');
     if (!Number.isFinite(occurredAtMs)) return false;
     return occurredAtMs >= baselineAtMs;
@@ -130,11 +139,22 @@
     };
   }
 
+  function resolveEventOwner(event, candidateOwnerById, applicationCandidateById) {
+    const candidateId = normalizeString(event?.candidateId)
+      || normalizeString((applicationCandidateById || {})[normalizeString(event?.applicationId)]);
+    if (!candidateId || !candidateOwnerById) return '';
+    return normalizeString(candidateOwnerById[candidateId]);
+  }
+
   function buildTalentFunnelAnalytics({
     events = [],
     channels = [],
     companyId,
     baselineAt,
+    owner = '',
+    positionId = '',
+    candidateOwnerById = null,
+    applicationCandidateById = null,
   } = {}) {
     const normalizedCompanyId = normalizeString(companyId);
     const baselineAtMs = Date.parse(baselineAt || '');
@@ -146,7 +166,7 @@
     const failureTotals = emptyCounts();
     const stageFacts = new Map(STAGES.map(stage => [stage, createStageFact()]));
 
-    if (!normalizedCompanyId || !Number.isFinite(baselineAtMs)) {
+    if (!Number.isFinite(baselineAtMs)) {
       return {
         channels: normalizedChannels.map(channel => ({
           ...channel,
@@ -163,6 +183,16 @@
     const canonicalEvents = pickCanonicalEvents(filteredEvents, knownChannelIds);
 
     canonicalEvents.forEach(event => {
+      // 顾问维度过滤：解析事件归属顾问（支持多人共有归属，任一顾问命中即计入）。
+      // owner 为空或为哨兵值 'all' 时表示「全部顾问」，不做过滤（通配）。
+      if (owner && owner !== 'all') {
+        const eventOwners = splitOwners(resolveEventOwner(event, candidateOwnerById, applicationCandidateById));
+        if (!eventOwners.includes(normalizeString(owner))) return;
+      }
+      // 岗位维度过滤：positionId 为空或为哨兵值 'all' 时表示「全部岗位」，不做过滤（通配）。
+      if (positionId && positionId !== 'all') {
+        if (normalizeString(event?.positionId) !== normalizeString(positionId)) return;
+      }
       const stage = normalizeString(event?.stage);
       const result = normalizeString(event?.result);
       const channelId = normalizeString(event?.channelId);

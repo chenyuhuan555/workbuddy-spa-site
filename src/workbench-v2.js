@@ -60,11 +60,11 @@
   }
 
   function createCompany(input = {}) {
-    return stamp('co', { name: '', status: 'potential', owner: '' }, input);
+    return stamp('co', { name: '', status: 'potential', owner: '', ownerUserId: '' }, input);
   }
 
   function createPosition(input = {}) {
-    return stamp('pos', { companyId: '', title: '', status: 'open', owner: '' }, input);
+    return stamp('pos', { companyId: '', title: '', status: 'open', owner: '', ownerUserId: '' }, input);
   }
 
   function findPosition(bundle, positionId) {
@@ -74,7 +74,7 @@
   }
 
   function setPositionStatus(bundle, positionId, status) {
-    if (!['open', 'closed'].includes(status)) throw new Error('岗位状态无效');
+    if (!['open', 'paused', 'closed'].includes(status)) throw new Error('岗位状态无效');
     const position = findPosition(bundle, positionId);
     position.status = status;
     position.updatedAt = nowIso();
@@ -97,6 +97,7 @@
       // 资产状态（open/active/archived 等），不是 pipeline 阶段；岗位阶段只存在于 application.stage
       status: 'open',
       owner: '',
+      ownerUserId: '',
       tags: [],
       resumeVersions: [],
     }, input);
@@ -112,7 +113,7 @@
       && item.positionId === position.id
       && item.status !== 'archived'
     ));
-    if (existing) throw new Error('该候选人已存在此岗位推进');
+    if (existing) throw new Error('该人才已推荐至此岗位');
 
     const company = bundle.companies.find(item => item.id === position.companyId);
     const defaultOwner = position.owner || company?.owner || candidate.owner || '';
@@ -123,6 +124,8 @@
       stageEnteredAt: nowIso(),
       pipelineEvents: [],
       owner: defaultOwner,
+      // 与 defaultOwner 同一归属链，保证 owner（姓名）与 ownerUserId（账号 id）指向同一人
+      ownerUserId: input.ownerUserId || position.ownerUserId || (company ? company.ownerUserId : '') || candidate.ownerUserId || '',
     }, input);
     bundle.applications.push(application);
     return application;
@@ -759,7 +762,7 @@
   // 按 id 定位推进记录并推进阶段；只修改 application，绝不回写人才基础资料。
   function updateApplicationStage(bundle, applicationId, stage, metadata = {}) {
     const application = (bundle.applications || []).find(item => item.id === applicationId);
-    if (!application) throw new Error('推进记录不存在');
+    if (!application) throw new Error('推荐记录不存在');
     return changeApplicationStage(application, { toStage: stage, ...metadata });
   }
 

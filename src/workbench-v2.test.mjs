@@ -208,8 +208,8 @@ test('createApplication 建立 talent×position 推进且仅允许一条活跃�
 
   assert.throws(
     () => WorkbenchV2.createApplication(bundle, { candidateId: 'c1', positionId: 'p1' }),
-    /已存在此岗位推进/,
-    '同一人才在同一岗位只允许一条活跃推进（防止重复）'
+    /已推荐至此岗位/,
+    '同一人才在同一岗位只允许一条活跃推荐（防止重复）'
   );
 });
 
@@ -301,8 +301,8 @@ test('候选人详情路由与推进中心在 Phase 1 保持不变', () => {
   assert.match(INDEX_HTML, /changeWorkbenchApplicationStage\(/, '推进阶段变更函数必须存在');
   // 推进中心标题与页签未被改名
   assert.match(INDEX_HTML, /<h1 class="text-2xl font-bold">推进中心<\/h1>/, '推进中心标题应保持');
-  assert.match(INDEX_HTML, /候选人推进/, '推进中心“候选人推进”关系语义保留');
-  assert.match(INDEX_HTML, /v-else-if="workbenchRoute\.tab === 'applications'".*推进记录/, '候选人详情“推进记录”页签保留');
+  assert.match(INDEX_HTML, /workbenchRoute\.tab === 'applications'[\s\S]*?推荐记录/, '推进中心“推荐记录”列表语义保留');
+  assert.match(INDEX_HTML, /v-else-if="workbenchRoute\.tab === 'applications'".*推荐记录/, '公司推荐记录列表保留');
 });
 
 test('推进详情提供负责人编辑入口并支持清空', () => {
@@ -314,6 +314,15 @@ test('推进详情提供负责人编辑入口并支持清空', () => {
 
 test('导航项 key 仍为 candidates（仅 label 改为人才库，路由键不变）', () => {
   assert.match(INDEX_HTML, /\{ key: 'candidates', label: '人才库'/, '导航 key 保持 candidates，label 改为人才库');
+});
+
+test('人才库支持批量设置归属顾问：菜单入口、弹窗与落库函数齐备', () => {
+  assert.match(INDEX_HTML, /openBulkSetCandidateOwner\(\)/, '人才库「···」菜单应提供批量设置归属顾问入口');
+  assert.match(INDEX_HTML, /id="bulk-candidate-owner-title"[^>]*>批量设置归属顾问/, '应存在批量设置归属顾问弹窗');
+  assert.match(INDEX_HTML, /@click="confirmBulkSetCandidateOwner"/, '弹窗应绑定确认设置处理函数');
+  assert.match(INDEX_HTML, /async function confirmBulkSetCandidateOwner\(\)/, '应存在批量设置归属顾问的落库函数');
+  assert.match(INDEX_HTML, /bulkOwnerEditor\.open = true/, '打开弹窗应切换 bulkOwnerEditor 状态');
+  assert.match(INDEX_HTML, /WorkbenchV2\.updateTalent\(workbenchV2, id, \{ owner \}\)/, '批量设置应通过 updateTalent 写入 owner');
 });
 
 // ---------------------------------------------------------------------------

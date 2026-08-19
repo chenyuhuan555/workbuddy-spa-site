@@ -77,9 +77,16 @@ function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCrea
   }
   async function toggleWorkbenchPositionStatus() {
     if (!canWrite || !selectedPosition.value) return;
-    const nextStatus = selectedPosition.value.status === 'closed' ? 'open' : 'closed';
+    const status = selectedPosition.value.status;
+    const nextStatus = status === 'open' ? 'paused' : 'open';
     WorkbenchV2.setPositionStatus(state, selectedPosition.value.id, nextStatus);
-    return persist(nextStatus === 'closed' ? '岗位已关闭' : '岗位已重新开放');
+    return persist(nextStatus === 'paused' ? '岗位已暂停' : '岗位已重新开放');
+  }
+  async function closeWorkbenchPosition() {
+    if (!canWrite || !selectedPosition.value) return;
+    if (selectedPosition.value.status === 'closed') return;
+    WorkbenchV2.setPositionStatus(state, selectedPosition.value.id, 'closed');
+    return persist('岗位已关闭');
   }
   async function requestWorkbenchPositionDelete() {
     if (!canWrite || !selectedPosition.value) return;
@@ -100,7 +107,7 @@ function createWorkbenchEntityActions({ canWrite, state, route, nav, companyCrea
     route.tab = 'positions';
     showToast('岗位已永久删除');
   }
-  return { openCompanyCreate: openCompanyCreateAction, createWorkbenchCompany, openCompanyPositionCreate: openCompanyPositionCreateAction, createCompanyPosition, openCompanyProfileEdit: openCompanyProfileEditAction, cancelCompanyProfileEdit: cancelCompanyProfileEditAction, saveCompanyProfileEdit: saveCompanyProfileEditAction, openCompanyDetail: openCompanyDetailAction, openPositionDetail: openPositionDetailAction, toggleWorkbenchPositionStatus, requestWorkbenchPositionDelete, persistWorkbenchPosition: persist };
+  return { openCompanyCreate: openCompanyCreateAction, createWorkbenchCompany, openCompanyPositionCreate: openCompanyPositionCreateAction, createCompanyPosition, openCompanyProfileEdit: openCompanyProfileEditAction, cancelCompanyProfileEdit: cancelCompanyProfileEditAction, saveCompanyProfileEdit: saveCompanyProfileEditAction, openCompanyDetail: openCompanyDetailAction, openPositionDetail: openPositionDetailAction, toggleWorkbenchPositionStatus, closeWorkbenchPosition, requestWorkbenchPositionDelete, persistWorkbenchPosition: persist };
 }
 
 if (typeof window !== 'undefined') window.WorkBuddyWorkbenchEntityActions = { createWorkbenchEntityActions };

@@ -154,6 +154,14 @@ test('custom end date includes the whole selected day', () => {
   assert.deepEqual(Table.filterRows([row], { intake: { preset: 'custom', from: '2026-08-12', to: '2026-08-12' } }, new Date('2026-08-13T12:00:00+08:00')), [row]);
 });
 
+test('source company and channel filters narrow to first-source attribution', () => {
+  const row = { id: 'cand-1', searchText: '马悦驰', sourceCompanyId: 'co-1', sourceChannelId: 'ch-1', flows: [] };
+  assert.deepEqual(Table.filterRows([row], { sourceCompanyId: 'co-1', sourceChannelId: 'ch-1' }), [row]);
+  assert.deepEqual(Table.filterRows([row], { sourceCompanyId: 'co-2' }), []);
+  assert.deepEqual(Table.filterRows([row], { sourceChannelId: 'ch-2' }), []);
+  assert.deepEqual(Table.filterRows([row], { sourceCompanyId: 'all', sourceChannelId: 'all' }), [row]);
+});
+
 test('impossible custom dates are invalid instead of overflowing into another month', () => {
   const filter = { preset: 'custom', from: '2026-02-31', to: '2026-02-31' };
   const row = { intakeAt: '2026-03-03T02:00:00.000Z', flows: [], searchText: '' };
