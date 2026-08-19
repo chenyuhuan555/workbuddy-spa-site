@@ -94,6 +94,18 @@
       return (Array.isArray(data) ? data : []).map(fromRow);
     }
 
+    // 管理员读团队 Todo：不带 user_id 过滤，由 RLS 决定可见范围
+    // （admin 可读全部；顾问调用时 RLS 只返回自己，自然降级）
+    async function loadAll() {
+      requireProfile(getProfile);
+      const { data, error } = await supabase.from('user_todos')
+        .select('id, data, created_at, updated_at')
+        .eq('workspace_id', 'main')
+        .order('updated_at', { ascending: false });
+      if (error) throw appError('PRIVATE_TODOS_REQUEST_FAILED', error);
+      return (Array.isArray(data) ? data : []).map(fromRow);
+    }
+
     async function save(todo) {
       const profile = requireProfile(getProfile);
       const { data, error } = await supabase.from('user_todos')

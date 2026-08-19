@@ -60,11 +60,11 @@
   }
 
   function createCompany(input = {}) {
-    return stamp('co', { name: '', status: 'potential', owner: '' }, input);
+    return stamp('co', { name: '', status: 'potential', owner: '', ownerUserId: '' }, input);
   }
 
   function createPosition(input = {}) {
-    return stamp('pos', { companyId: '', title: '', status: 'open', owner: '' }, input);
+    return stamp('pos', { companyId: '', title: '', status: 'open', owner: '', ownerUserId: '' }, input);
   }
 
   function findPosition(bundle, positionId) {
@@ -97,6 +97,7 @@
       // 资产状态（open/active/archived 等），不是 pipeline 阶段；岗位阶段只存在于 application.stage
       status: 'open',
       owner: '',
+      ownerUserId: '',
       tags: [],
       resumeVersions: [],
     }, input);
@@ -123,6 +124,8 @@
       stageEnteredAt: nowIso(),
       pipelineEvents: [],
       owner: defaultOwner,
+      // 与 defaultOwner 同一归属链，保证 owner（姓名）与 ownerUserId（账号 id）指向同一人
+      ownerUserId: input.ownerUserId || position.ownerUserId || (company ? company.ownerUserId : '') || candidate.ownerUserId || '',
     }, input);
     bundle.applications.push(application);
     return application;

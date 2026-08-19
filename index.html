@@ -21,6 +21,7 @@
   <script src="./src/services/todo-rule-engine.js?v=20260818-todorule1"></script>
   <script src="./src/services/todo-reconciler.js?v=20260818-todoreconciler1"></script>
   <script src="./src/ui/application-progress-table.js?v=20260818-progress1"></script>
+  <script src="./src/ui/workbench-permissions.js?v=20260818-permissions1"></script>
   <script src="./src/workbench-v2.js?v=20260807-aiappcenter1"></script>
   <script src="./src/services/sync-merge.js?v=20260807-aiappcenter1"></script>
   <script src="./src/services/save-coordinator.js"></script>
@@ -4270,7 +4271,14 @@
             <section aria-labelledby="home-todo-title" class="wb-home-section wb-home-activity-section">
               <div class="flex flex-wrap items-start justify-between gap-3">
                 <div><h2 id="home-todo-title" class="font-bold text-slate-900">今日待办 <span class="ml-2 text-emerald-700">{{ dashboardTodos.length }}</span></h2></div>
-                <button type="button" @click="openTodoListView()" class="wb-home-link">查看全部 <svg aria-hidden="true" viewBox="0 0 24 24" class="ml-1 inline h-4 w-4 align-[-2px]" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-6-6 6 6-6 6"/></svg></button>
+                <div class="flex flex-wrap items-center gap-2">
+                  <select v-if="permissions.isAdmin" v-model="dashboardTodoFilter" aria-label="待办范围筛选" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                    <option value="mine">我的待办</option>
+                    <option value="all">全部团队</option>
+                    <option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option>
+                  </select>
+                  <button type="button" @click="openTodoListView()" class="wb-home-link">查看全部 <svg aria-hidden="true" viewBox="0 0 24 24" class="ml-1 inline h-4 w-4 align-[-2px]" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h13m-6-6 6 6-6 6"/></svg></button>
+                </div>
               </div>
               <div class="wb-home-todo-tabs" role="tablist" aria-label="待办类型">
                 <button v-for="tab in homeTodoTabs" :key="tab.key" type="button" role="tab" class="wb-home-todo-tab" :class="{ 'is-active': homeTodoFilter === tab.key }" :aria-selected="homeTodoFilter === tab.key" @click="homeTodoFilter = tab.key">{{ tab.label }} <span>{{ tab.count }}</span></button>
@@ -4671,7 +4679,7 @@
                 <h1 class="text-2xl font-bold mt-1">{{ selectedPosition.title }}</h1>
                 <p class="text-sm text-slate-500 mt-2">{{ selectedPosition.city || '地点待补充' }} · {{ selectedPosition.salary || '薪资待补充' }} · 负责人 {{ selectedPosition.owner || '未分配' }}</p>
               </div>
-              <div v-if="canWrite" class="flex flex-wrap items-center gap-2">
+              <div v-if="canWrite && permissions.canEditPosition(selectedPosition)" class="flex flex-wrap items-center gap-2">
                 <span :class="['px-2.5 py-1 rounded-full text-xs font-semibold', selectedPosition.status === 'open' ? 'bg-emerald-50 text-emerald-700' : (selectedPosition.status === 'paused' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500')]">
                   {{ PositionLibrary.STATUS_LABELS[selectedPosition.status] }}
                 </span>
@@ -4710,9 +4718,9 @@
               </li>
             </ul>
           </section>
-          <div v-if="workbenchRoute.tab === 'overview' && canWrite" class="flex justify-end gap-2"><button @click="openPositionDescriptionEdit" class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold" type="button">编辑岗位信息与职责</button><button v-if="canConfigureAi" @click="extractPositionSkillsWithDeepSeek" :disabled="positionSkillsExtracting" class="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold disabled:text-slate-400" type="button">{{ positionSkillsExtracting ? 'AI 提取中…' : 'AI 提取匹配关键词' }}</button></div>
+          <div v-if="workbenchRoute.tab === 'overview' && canWrite && permissions.canEditPosition(selectedPosition)" class="flex justify-end gap-2"><button @click="openPositionDescriptionEdit" class="px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold" type="button">编辑岗位信息与职责</button><button v-if="canConfigureAi" @click="extractPositionSkillsWithDeepSeek" :disabled="positionSkillsExtracting" class="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold disabled:text-slate-400" type="button">{{ positionSkillsExtracting ? 'AI 提取中…' : 'AI 提取匹配关键词' }}</button></div>
           <div v-if="workbenchRoute.tab === 'candidates' && canWrite" class="flex justify-end"><button @click="uploadCandidateForSelectedPosition" class="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold" type="button">上传候选人简历</button></div>
-          <form v-if="workbenchRoute.tab === 'overview' && positionDescriptionEdit.open && canWrite" @submit.prevent="savePositionDescription" class="bg-white border border-emerald-200 rounded-xl p-4"><div class="grid sm:grid-cols-2 gap-3"><label for="wb-position-city" class="text-sm text-slate-600">工作地点<input id="wb-position-city" v-model="positionDescriptionEdit.city" placeholder="例如：北京" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-salary" class="text-sm text-slate-600">薪资范围<input id="wb-position-salary" v-model="positionDescriptionEdit.salary" placeholder="例如：25-30K · 16薪" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-owner" class="text-sm text-slate-600">负责人<input id="wb-position-owner" v-model="positionDescriptionEdit.owner" placeholder="负责人姓名" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-skills" class="text-sm text-slate-600">匹配关键词<input id="wb-position-skills" v-model="positionDescriptionEdit.skills" placeholder="逗号分隔，例如：供应链、销售管理、物流" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-description" class="sm:col-span-2 text-sm text-slate-600">岗位职责与要求<textarea id="wb-position-description" v-model="positionDescriptionEdit.value" rows="12" placeholder="填写岗位职责、任职要求、优先条件等" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm leading-relaxed"></textarea></label></div><div class="mt-3 flex gap-2"><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">保存</button><button type="button" @click="positionDescriptionEdit.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div></form>
+          <form v-if="workbenchRoute.tab === 'overview' && positionDescriptionEdit.open && canWrite" @submit.prevent="savePositionDescription" class="bg-white border border-emerald-200 rounded-xl p-4"><div class="grid sm:grid-cols-2 gap-3"><label for="wb-position-city" class="text-sm text-slate-600">工作地点<input id="wb-position-city" v-model="positionDescriptionEdit.city" placeholder="例如：北京" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-salary" class="text-sm text-slate-600">薪资范围<input id="wb-position-salary" v-model="positionDescriptionEdit.salary" placeholder="例如：25-30K · 16薪" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-owner" class="text-sm text-slate-600">负责人<input id="wb-position-owner" v-model="positionDescriptionEdit.owner" :disabled="!permissions.canManageOwners" placeholder="负责人姓名" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm disabled:bg-slate-50 disabled:text-slate-400"></label><label for="wb-position-skills" class="text-sm text-slate-600">匹配关键词<input id="wb-position-skills" v-model="positionDescriptionEdit.skills" placeholder="逗号分隔，例如：供应链、销售管理、物流" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"></label><label for="wb-position-description" class="sm:col-span-2 text-sm text-slate-600">岗位职责与要求<textarea id="wb-position-description" v-model="positionDescriptionEdit.value" rows="12" placeholder="填写岗位职责、任职要求、优先条件等" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm leading-relaxed"></textarea></label></div><div class="mt-3 flex gap-2"><button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold">保存</button><button type="button" @click="positionDescriptionEdit.open = false" class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button></div></form>
           <div class="bg-white border border-slate-200 rounded-xl p-5"><template v-if="workbenchRoute.tab === 'overview'"><h2 class="font-bold">岗位职责与要求</h2><p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">{{ selectedPosition.description || '岗位信息待补充。' }}</p><div class="mt-5 pt-4 border-t border-slate-100"><h3 class="text-sm font-semibold text-slate-700">岗位匹配关键词</h3><div v-if="(selectedPosition.skills || []).length" class="mt-2 flex flex-wrap gap-1.5"><span v-for="skill in selectedPosition.skills" :key="skill" class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">{{ skill }}</span></div><p v-else class="mt-2 text-xs text-slate-400">尚未提取关键词，点击「AI 提取匹配关键词」后可用于人才匹配。</p></div></template><template v-else-if="workbenchRoute.tab === 'candidates'"><h2 class="font-bold">岗位候选人</h2><p class="text-sm text-slate-500 mt-2">当前共 {{ filteredPositionApplications.length }} 条推进记录。</p><button v-for="application in filteredPositionApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 w-full border border-slate-200 rounded-lg p-4 text-left hover:bg-emerald-50/40 flex items-center justify-between" type="button"><span><b>{{ workbenchV2.candidates.find(item => item.id === application.candidateId)?.name || '候选人已删除' }}</b><small class="block text-slate-400 mt-1">{{ candidatePipelineLabel(application.stage) }} · 匹配度 {{ application.matchScore ?? '未评分' }}</small></span><span class="text-sm text-emerald-700">查看详情 →</span></button><p v-if="!filteredPositionApplications.length" class="text-sm text-slate-400 text-center py-8">该岗位暂无推荐记录。</p></template><template v-else-if="workbenchRoute.tab === 'recommend'"><h2 class="font-bold">人才推荐</h2><div v-for="match in positionCandidateMatches" :key="match.candidateId" class="mt-3 border border-slate-200 rounded-lg p-4 flex gap-4 items-center"><div class="flex-1"><button @click="openCandidateDetail(match.candidateId)" class="font-bold hover:text-emerald-700" type="button">{{ workbenchV2.candidates.find(item => item.id === match.candidateId)?.name }}</button><p class="text-xs text-slate-500 mt-1">{{ match.reason }}</p></div><strong class="text-emerald-700">{{ match.score }}</strong><button v-if="canWrite && !workbenchV2.applications.some(a => a.candidateId === match.candidateId && a.positionId === selectedPosition.id && a.status !== 'archived')" @click="createApplicationFromMatch(match.candidateId, selectedPosition.id, match)" class="px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold" type="button">创建推荐</button><button v-else-if="workbenchV2.applications.some(a => a.candidateId === match.candidateId && a.positionId === selectedPosition.id && a.status !== 'archived')" @click="openApplicationDetail(workbenchV2.applications.find(a => a.candidateId === match.candidateId && a.positionId === selectedPosition.id && a.status !== 'archived')?.id)" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold" type="button">查看推荐</button></div><p v-if="!positionCandidateMatches.length" class="text-sm text-slate-400 text-center py-8">候选人库暂无可推荐人才。</p></template><template v-else><h2 class="font-bold">岗位 AI 分析</h2><p class="text-sm text-slate-500 mt-2">由 AI 工具箱生成并保存的岗位层面分析（JD拆解、招聘难度、筛选标准、周报、复盘等）。</p><div v-if="selectedPositionAiNotes.length" class="mt-4 space-y-3"><div v-for="note in [...selectedPositionAiNotes].reverse()" :key="note.id" class="border border-slate-200 rounded-lg p-4 hover:border-indigo-200 transition"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-sm font-bold text-slate-800">{{ note.title }}</p><p class="text-xs text-slate-400 mt-1">{{ (note.createdAt || '').slice(0,16).replace('T',' ') }}<span v-if="note.toolTitle"> · {{ note.toolTitle }}</span></p></div><button @click="deleteAiNote('position', selectedPosition.id, note.id)" class="text-xs text-red-500 hover:text-red-700 flex-shrink-0 font-semibold" type="button">删除</button></div><div class="mt-3 text-sm text-slate-700 advisor-markdown ai-toolbox-output leading-relaxed" v-html="renderAiToolboxMarkdown(note.content)"></div></div></div><div v-else class="text-center py-10"><p class="text-sm text-slate-400">暂无已保存的 AI 分析。</p><p class="text-xs text-slate-400 mt-1">在「猎头 AI 工具箱」生成结果后，点击「保存到AI分析」即可回看。</p></div></template></div>
         </div>
 
@@ -4753,8 +4761,8 @@
               <span v-if="!canWrite" class="text-xs text-slate-400">当前账号无编辑权限</span>
             </div>
             <div class="mt-3 flex items-center gap-2">
-              <input aria-label="推进负责人" v-model="selectedApplication.owner" list="application-owner-options" autocomplete="off" :disabled="!canWrite" placeholder="输入或选择负责人" class="w-full max-w-md px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-400 disabled:bg-slate-50 disabled:text-slate-400">
-              <button v-if="canWrite && selectedApplication.owner" type="button" @click="selectedApplication.owner = ''" class="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">清空</button>
+              <input aria-label="推进负责人" v-model="selectedApplication.owner" list="application-owner-options" autocomplete="off" :disabled="!permissions.canManageOwners" placeholder="输入或选择负责人" class="w-full max-w-md px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-400 disabled:bg-slate-50 disabled:text-slate-400">
+              <button v-if="permissions.canManageOwners && selectedApplication.owner" type="button" @click="selectedApplication.owner = ''" class="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">清空</button>
             </div>
             <datalist id="application-owner-options"><option v-for="owner in workbenchOwners" :key="owner" :value="owner"></option></datalist>
           </section>
@@ -4942,7 +4950,8 @@
                 <input aria-label="按学历筛选人才" v-model="talentLibraryFilters.education" type="search" placeholder="学历" class="mt-1 w-28 rounded-lg border border-slate-200 px-2 text-sm">
               </label>
               <label class="wb-talent-primary-filter text-xs font-medium text-slate-500">归属顾问
-                <select v-model="candidateFilters.owner" aria-label="按人才负责人筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
+                <select v-if="permissions.isAdmin" v-model="candidateFilters.owner" aria-label="按人才负责人筛选" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
+                <span v-else class="mt-1 block w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-600">我的人才</span>
               </label>
               <label v-if="talentLibraryMoreFiltersOpen" class="wb-talent-filter-field text-xs font-medium text-slate-500">求职状态
                 <select aria-label="按人才求职状态筛选" v-model="candidateFilters.status" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"><option value="all">全部求职状态</option><option value="open">可看机会</option><option value="passive">被动看机会</option><option value="paused">暂不考虑</option><option value="onboarded">已入职</option></select>
@@ -5155,7 +5164,7 @@
                   <div class="mt-2 flex gap-2"><input id="candidate-core-directions-input" v-model="candidateCoreEdit.directionInput" @keydown.enter.prevent="addCandidateCoreTags('directions', 'directionInput')" aria-label="添加人才方向" placeholder="输入后按回车，可用逗号分隔" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2"><button type="button" @click="addCandidateCoreTags('directions', 'directionInput')" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold">添加</button></div>
                 </div>
                 <div class="grid gap-4 sm:grid-cols-2">
-                  <div><label for="candidate-core-owner" class="block font-medium text-slate-600">沟通人</label><input id="candidate-core-owner" v-model="candidateCoreEdit.draft.owner" list="candidate-core-owner-options" autocomplete="off" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"><datalist id="candidate-core-owner-options"><option v-for="owner in workbenchOwners" :key="owner" :value="owner"></option></datalist></div>
+                  <div><label for="candidate-core-owner" class="block font-medium text-slate-600">沟通人</label><input id="candidate-core-owner" v-model="candidateCoreEdit.draft.owner" list="candidate-core-owner-options" autocomplete="off" :disabled="!permissions.canManageOwners" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 disabled:bg-slate-50 disabled:text-slate-400"><datalist id="candidate-core-owner-options"><option v-for="owner in workbenchOwners" :key="owner" :value="owner"></option></datalist></div>
                   <div><label for="candidate-core-phone" class="block font-medium text-slate-600">手机号</label><input id="candidate-core-phone" v-model="candidateCoreEdit.draft.phone" type="tel" autocomplete="tel" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"></div>
                   <div class="sm:col-span-2"><label for="candidate-core-email" class="block font-medium text-slate-600">邮箱</label><input id="candidate-core-email" v-model="candidateCoreEdit.draft.email" type="email" autocomplete="email" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"></div>
                 </div>
@@ -5850,14 +5859,19 @@
               <h1 class="text-2xl font-bold">面试 / 推进工作区</h1>
               <p class="text-sm text-slate-500 mt-1">{{ progressSummary.total }} 条推进记录</p>
             </div>
+            <div class="flex rounded-lg bg-slate-200 p-1" role="group" aria-label="工作区视图">
+              <button @click="selectWorkbenchNav('progress')" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', workbenchNav === 'progress' ? 'bg-white shadow-sm' : 'text-slate-500']" type="button">面试 / 推进主表</button>
+              <button @click="selectWorkbenchNav('applications')" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', workbenchNav === 'applications' ? 'bg-white shadow-sm' : 'text-slate-500']" type="button">推进中心（列表 / 看板）</button>
+            </div>
           </div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-2">
             <input aria-label="搜索推进记录" v-model="progressFilters.query" placeholder="搜索候选人 / 公司 / 岗位" class="min-w-52 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-400">
-            <select aria-label="按负责人筛选" v-model="progressFilters.owner" class="min-w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm">
+            <select v-if="permissions.isAdmin" aria-label="按负责人筛选" v-model="progressFilters.owner" class="min-w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm">
               <option value="all">全部负责人</option>
               <option value="__me__">我负责的</option>
               <option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option>
             </select>
+            <span v-else class="min-w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50 text-slate-600">我负责的</span>
             <select aria-label="按阶段筛选" v-model="progressFilters.stageGroup" class="min-w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm">
               <option v-for="(label, key) in progressStageFilterOptions" :key="key" :value="key">{{ label }}</option>
             </select>
@@ -6847,7 +6861,7 @@
         <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5"><div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">候选人批量入库</p><h2 id="candidate-excel-import-title" class="mt-1 text-xl font-bold text-slate-900">Excel 导入候选人</h2><p class="mt-1 text-sm text-slate-500">当前来源：{{ batchUpload.sourceChannelName }} · 当前公司：{{ companyById.get(batchUpload.sourceCompanyId)?.name || '当前公司' }}。AI 会整理字段，确认后才会写入人才库。</p></div><button type="button" @click="closeCandidateExcelImport" aria-label="关闭 Excel 候选人导入" class="h-8 w-8 rounded-lg bg-slate-100 text-lg text-slate-500">×</button></div>
         <div class="candidate-excel-import-body space-y-4 px-6 py-5">
           <div class="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-5"><div class="min-w-0 flex-1"><label for="candidate-excel-file" class="text-sm font-semibold text-slate-700">上传候选人 Excel</label><p class="mt-1 text-xs text-slate-500">支持 .xlsx / .xls；每一行识别为一名候选人，可识别姓名、职位、公司、城市、学历、邮箱和电话。</p><p v-if="candidateExcelImport.fileName" class="mt-1 text-xs font-semibold text-emerald-700">已选择：{{ candidateExcelImport.fileName }}</p></div><input id="candidate-excel-file" type="file" accept=".xlsx,.xls" class="candidate-excel-file-picker mt-1 block w-full text-sm sm:mt-0 sm:min-w-[520px] sm:flex-[0_1_560px]" @change="onCandidateExcelFile"></div>
-          <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4"><label for="candidate-excel-owner" class="text-sm font-semibold text-slate-700">默认归属顾问（沟通人）</label><select id="candidate-excel-owner" v-model="batchUpload.owner" class="min-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"><option value="">不指定（导入后可批量设置）</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><p class="text-xs text-slate-500">导入的候选人将统一归属该顾问；留空则导入后可在人才库批量设置。</p></div>
+          <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4"><label for="candidate-excel-owner" class="text-sm font-semibold text-slate-700">默认归属顾问（沟通人）</label><select v-if="permissions.isAdmin" id="candidate-excel-owner" v-model="batchUpload.owner" class="min-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"><option value="">不指定（导入后可批量设置）</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select><span v-else class="min-w-[200px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">我（{{ permissions.currentUserName }}）</span><p class="text-xs text-slate-500">导入的候选人将统一归属该顾问；留空则导入后可在人才库批量设置。</p></div>
           <div v-if="candidateExcelImport.parsing" class="rounded-xl border border-emerald-100 bg-white px-4 py-3" role="status" aria-live="polite" aria-label="正在处理候选人 Excel"><div class="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-800"><span>{{ candidateExcelImport.progressLabel }}</span><span>{{ candidateExcelImport.progress }}%</span></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"><div class="h-full rounded-full bg-emerald-600 transition-all duration-300" :style="{ width: `${candidateExcelImport.progress}%` }"></div></div></div>
           <p v-if="candidateExcelImport.error" role="alert" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ candidateExcelImport.error }}</p>
           <div v-if="candidateExcelImport.rows.length" class="candidate-excel-import-table overflow-x-auto rounded-xl border border-slate-200"><table class="min-w-[1180px] w-full text-left text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-3 py-3">状态</th><th class="px-3 py-3">姓名 *</th><th class="px-3 py-3">当前职位</th><th class="px-3 py-3">当前公司</th><th class="px-3 py-3">城市</th><th class="px-3 py-3">邮箱</th><th class="px-3 py-3">电话</th><th class="px-3 py-3">学历</th><th class="px-3 py-3">匹配度</th><th class="px-3 py-3">来源备注</th></tr></thead><tbody><tr v-for="row in candidateExcelImport.rows" :key="row.rowNumber" class="border-t border-slate-100 align-top"><td class="whitespace-nowrap px-3 py-3"><span v-if="row.duplicateType === 'existing'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">已有候选人</span><span v-else-if="row.duplicateType === 'batch'" class="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">本批次重复</span><span v-else-if="row.status === 'invalid'" class="rounded-full bg-rose-100 px-2 py-1 text-xs text-rose-700">缺少姓名</span><span v-else-if="row.status === 'needs_review'" class="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">待确认</span><span v-else class="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">待入库</span></td><td class="px-3 py-3"><input v-model.trim="row.name" aria-label="Excel 候选人姓名" class="w-36 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.currentTitle" aria-label="Excel 候选人职位" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.currentCompany" aria-label="Excel 候选人公司" class="w-48 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.city" aria-label="Excel 候选人城市" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.email" aria-label="Excel 候选人邮箱" class="w-48 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.phone" aria-label="Excel 候选人电话" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model="row.education" aria-label="Excel 候选人学历" class="w-32 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><input v-model.number="row.matchScore" type="number" aria-label="Excel 候选人匹配度" class="w-20 rounded-lg border border-slate-200 px-2 py-1.5"></td><td class="px-3 py-3"><p class="max-w-64 text-xs leading-5 text-slate-500">{{ row.verificationStatus }}{{ row.note ? ` · ${row.note}` : '' }}</p></td></tr></tbody></table></div>
@@ -6950,7 +6964,7 @@
             <p class="text-sm text-slate-500">手填或粘贴文本后入库；文件请直接拖入或从上方选择，可一次处理多份。</p>
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="text-sm text-slate-600">姓名 *<input v-model="talentIntakeDirectForm.name" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
-              <label class="text-sm text-slate-600">负责人<input v-model="talentIntakeDirectForm.owner" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
+              <label class="text-sm text-slate-600">负责人<input v-model="talentIntakeDirectForm.owner" :disabled="!permissions.isAdmin" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"></label>
               <label class="text-sm text-slate-600">手机号<input v-model="talentIntakeDirectForm.phone" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
               <label class="text-sm text-slate-600">邮箱<input v-model="talentIntakeDirectForm.email" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
               <label class="text-sm text-slate-600">当前公司<input v-model="talentIntakeDirectForm.currentCompany" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200"></label>
@@ -12358,7 +12372,6 @@ const vueAppConfig = {
       { key: 'positions', label: '岗位库', icon: '岗' },
       { key: 'candidates', label: '人才库', icon: '人' },
       { key: 'progress', label: '面试进度', icon: '面' },
-      { key: 'applications', label: '推进中心', icon: '进' },
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
       { key: 'aiApps', label: 'AI应用中心', icon: '应' },
       { key: 'knowledge', label: '知识库', icon: '知' },
@@ -12500,6 +12513,13 @@ const vueAppConfig = {
       members: [], loading: false, error: '',
       form: { username: '', displayName: '', role: 'member', password: '' }
     });
+    // ── P0-3 权限上下文：管理员 / 顾问（角色复用现有 admin/editor/member，不新增角色）──
+    // 游客模式按管理员放开（演示数据不受真实 RLS 影响）
+    const permissions = computed(() => window.WorkBuddyPermissions.createPermissionContext(
+      isGuestMode
+        ? { profile: { id: 'guest', display_name: '游客', username: 'guest', role: 'admin' }, members: [] }
+        : { profile: window.WorkBuddyAccess?.profile || {}, members: memberManagement.members || [] }
+    ));
     const memberActions = window.WorkBuddyMemberActions.createMemberActions({
       state: memberManagement,
       canManageMembers,
@@ -12542,6 +12562,10 @@ const vueAppConfig = {
     const positionSkillsExtracting = ref(false);
     const positionSkillsBatch = reactive({ running: false, total: 0, completed: 0, succeeded: 0, failed: 0, industrySucceeded: 0, industryFailed: 0, current: '' });
     const candidateFilters = reactive({ query: '', category: 'all', direction: 'all', owner: 'all', city: 'all', status: 'all' });
+    // P0-3：顾问无法切换人才负责人（列表已按权限过滤，owner 固定 all 不产生二次影响）
+    watch(() => permissions.value.isAdmin, isAdmin => {
+      if (!isAdmin && candidateFilters.owner !== 'all') candidateFilters.owner = 'all';
+    }, { immediate: true });
     const talentLibraryFilters = reactive({
       base: '', positionId: 'all', stage: 'all', education: '',
       sourceCompanyId: 'all', sourceChannelId: 'all', stageKeys: [], stageKeysLabel: '',
@@ -12649,6 +12673,10 @@ const vueAppConfig = {
       open: false, running: false, concurrency: (WorkbenchV2.BATCH_PARSE_LIMIT || 2), defaultCategoryIds: [],
       tasks: [], hashes: {}, active: 0, gate: Promise.resolve(), sourceCompanyId: '', sourceChannelId: '', sourceChannelName: '', excelPreview: false, owner: '',
     });
+    // P0-3：顾问导入候选人默认归属自己（管理员可选任意顾问）
+    watch(() => permissions.value.isAdmin, isAdmin => {
+      if (!isAdmin) batchUpload.owner = permissions.value.currentUserName || '';
+    }, { immediate: true });
     const candidateExcelImport = reactive({ open: false, fileName: '', rows: [], parsing: false, progress: 0, progressLabel: '', importing: false, error: '' });
     const batchCategorySelectorOpen = ref(false);
     const talentIntakeDirectEntryOpen = ref(false);
@@ -12835,6 +12863,8 @@ const vueAppConfig = {
       try {
         rows.forEach(row => {
           const candidate = WorkbenchV2.createTalent(workbenchV2, window.WorkBuddyCandidateExcelImport.buildCandidateFields(row, { channelName: batchUpload.sourceChannelName, owner: batchUpload.owner }), { allowDuplicate: false });
+          const mappedCandidateOwner = permissions.value.resolveOwnerUserId({ owner: candidate.owner || batchUpload.owner });
+          if (mappedCandidateOwner) candidate.ownerUserId = mappedCandidateOwner;
           candidate.sourceChannelId = batchUpload.sourceChannelId;
           candidate.sourceChannelName = batchUpload.sourceChannelName;
           candidate.sourceCompanyId = batchUpload.sourceCompanyId;
@@ -12879,7 +12909,18 @@ const vueAppConfig = {
       if (next.has(categoryId)) next.delete(categoryId); else next.add(categoryId);
       batchUpload.defaultCategoryIds = [...next];
     }
-    async function saveTalentIntakeDirectEntry() { return talentIntakeActions.saveDirectEntry(); }
+    async function saveTalentIntakeDirectEntry() {
+      // P0-3：顾问直接录入归属自己；管理员可指定
+      if (!permissions.value.isAdmin) {
+        talentIntakeDirectForm.owner = permissions.value.currentUserName;
+        const mappedDirectOwner = permissions.value.resolveOwnerUserId({ owner: talentIntakeDirectForm.owner });
+        if (mappedDirectOwner) talentIntakeDirectForm.ownerUserId = mappedDirectOwner;
+      } else if (talentIntakeDirectForm.owner && !talentIntakeDirectForm.ownerUserId) {
+        const mappedDirectOwner = permissions.value.resolveOwnerUserId({ owner: talentIntakeDirectForm.owner });
+        if (mappedDirectOwner) talentIntakeDirectForm.ownerUserId = mappedDirectOwner;
+      }
+      return talentIntakeActions.saveDirectEntry();
+    }
     function addBatchFiles(fileList) { return talentIntakeActions.addFiles(fileList); }
     function startBatchAll() { return talentIntakeActions.startAll(); }
     function retryBatchFailed() { return talentIntakeActions.retryFailed(); }
@@ -13051,7 +13092,15 @@ const vueAppConfig = {
       updateTalent: WorkbenchV2.updateTalent, persist: saveWorkbenchV2,
       reset: resetCandidateCoreEdit, schedulePush, showToast,
     });
-    async function saveCandidateCoreEdit() { return candidateProfileActions.saveCore(); }
+    async function saveCandidateCoreEdit() {
+      // owner 变更时同步 ownerUserId（管理员改负责人）
+      const draft = candidateCoreEdit.draft;
+      if (draft && permissions.value.canManageOwners && draft.owner) {
+        const mapped = permissions.value.resolveOwnerUserId({ owner: draft.owner });
+        if (mapped && draft.ownerUserId !== mapped) draft.ownerUserId = mapped;
+      }
+      return candidateProfileActions.saveCore();
+    }
     watch(
       () => [workbenchRoute.type, workbenchRoute.id, workbenchRoute.tab],
       ([type, id, tab]) => {
@@ -13257,7 +13306,8 @@ const vueAppConfig = {
       candidateFilters.category
     ));
     const talentLibraryRows = computed(() => TalentLibrary.buildRows({
-      candidates: candidateSourceRows.value,
+      // P0-3：顾问只看到自己负责的候选人（管理员 / 游客看全部）
+      candidates: candidateSourceRows.value.filter(candidate => permissions.value.canViewCandidate(candidate)),
       applications: visibleApplications.value,
       positions: workbenchV2.positions,
       companies: workbenchV2.companies,
@@ -13404,12 +13454,19 @@ const vueAppConfig = {
       const title = String(positionLibraryEditor.title || '').trim();
       if (!title) { positionLibraryEditor.error = '请填写岗位名称'; return; }
       if (!positionLibraryEditor.companyId) { positionLibraryEditor.error = '请选择所属公司'; return; }
+      const positionOwner = permissions.value.isAdmin
+        ? String(positionLibraryEditor.owner || '').trim() || permissions.value.currentUserName
+        : permissions.value.currentUserName;
       const position = WorkbenchV2.createPosition({
         companyId: positionLibraryEditor.companyId,
         title,
         city: String(positionLibraryEditor.city || '').trim(),
         salary: String(positionLibraryEditor.salary || '').trim(),
-        owner: String(positionLibraryEditor.owner || '').trim(),
+        owner: positionOwner,
+        // P0-3：创建岗位强制归属（顾问默认自己，管理员可选）
+        ownerUserId: permissions.value.isAdmin
+          ? permissions.value.resolveOwnerUserId({ owner: positionOwner })
+          : permissions.value.currentUserId,
         description: String(positionLibraryEditor.description || '').trim(),
       });
       workbenchV2.positions.push(position);
@@ -14182,8 +14239,29 @@ const vueAppConfig = {
     ));
 
     // ── 仪表盘：我的待办（Manual + System 同一数据源，source/status 原样透传）──
+    // P0-3：管理员可查看「全部团队 / 指定顾问」待办；顾问固定「我的待办」
+    const dashboardTodoFilter = ref('mine'); // mine | all | 具体负责人（姓名或 uid）
+    const teamTodos = reactive([]);
+    async function loadTeamTodos() {
+      if (!permissions.value.isAdmin) return;
+      try {
+        const client = getPrivateTodoClient();
+        const rows = typeof client.loadAll === 'function' ? await client.loadAll() : [];
+        teamTodos.splice(0, teamTodos.length, ...(Array.isArray(rows) ? rows : []));
+      } catch (error) {
+        console.warn('[todo] 团队待办加载失败（RLS 未上线时仅返回本人数据）:', error?.message || error);
+      }
+    }
+    const dashboardTodoSource = computed(() => {
+      if (permissions.value.isAdmin && dashboardTodoFilter.value !== 'mine') {
+        const filter = dashboardTodoFilter.value;
+        if (filter === 'all') return teamTodos;
+        return teamTodos.filter(t => (t.owner || '') === filter || (t.ownerUserId || '') === filter);
+      }
+      return privateTodos;
+    });
     const dashboardTodos = computed(() => {
-      const todos = privateTodos.map(t => ({
+      const todos = dashboardTodoSource.value.map(t => ({
         id: t.id,
         source: t.source || 'manual',
         status: t.status || (t.done ? 'done' : 'pending'),
@@ -14259,8 +14337,17 @@ const vueAppConfig = {
     // ── 面试 / 推进工作区：Application 推进主表（纯函数模块驱动，一行 = 一条 Application）──
     const ProgressTable = window.WorkBuddyApplicationProgressTable;
     const progressFilters = reactive({ query: '', owner: 'all', stageGroup: 'all', quick: 'all' });
+    // P0-3：顾问固定"我负责的"，不能切换他人
+    watch(() => permissions.value.isAdmin, isAdmin => {
+      if (!isAdmin) progressFilters.owner = '__me__';
+    }, { immediate: true });
+    watch(() => progressFilters.owner, owner => {
+      if (!permissions.value.isAdmin && owner !== '__me__') progressFilters.owner = '__me__';
+    });
     const progressRows = computed(() => ProgressTable.buildRows({
-      applications: workbenchV2.applications || [],
+      applications: (workbenchV2.applications || []).filter(application =>
+        permissions.value.canViewApplication(application, candidateById.value.get(application.candidateId))
+      ),
       candidates: workbenchV2.candidates || [],
       companies: workbenchV2.companies || [],
       positions: workbenchV2.positions || [],
@@ -14841,10 +14928,20 @@ const vueAppConfig = {
       companyBulkPositionImport.importing = true;
       companyBulkPositionImport.error = '';
       try {
-        rows.forEach(row => workbenchV2.positions.push(WorkbenchV2.createPosition({
-          companyId: selectedCompany.value.id, title: String(row.title).trim(), city: String(row.city || '').trim(),
-          salary: String(row.salary || '').trim(), owner: String(row.owner || '').trim(), description: String(row.description || '').trim(), skills: Array.isArray(row.skills) ? row.skills : [],
-        })));
+        rows.forEach(row => {
+          const bulkOwner = permissions.value.isAdmin
+            ? String(row.owner || '').trim() || permissions.value.currentUserName
+            : permissions.value.currentUserName;
+          const createdPosition = WorkbenchV2.createPosition({
+            companyId: selectedCompany.value.id, title: String(row.title).trim(), city: String(row.city || '').trim(),
+            salary: String(row.salary || '').trim(), owner: bulkOwner, description: String(row.description || '').trim(), skills: Array.isArray(row.skills) ? row.skills : [],
+            // P0-3：批量导入岗位强制归属
+            ownerUserId: permissions.value.isAdmin
+              ? permissions.value.resolveOwnerUserId({ owner: bulkOwner })
+              : permissions.value.currentUserId,
+          });
+          workbenchV2.positions.push(createdPosition);
+        });
         const saved = await saveWorkbenchV2();
         if (cloudReady) schedulePush();
         closeCompanyBulkPositionImport();
@@ -14869,6 +14966,11 @@ const vueAppConfig = {
     async function closeWorkbenchPosition() { return workbenchEntityActions.closeWorkbenchPosition(); }
     async function requestWorkbenchPositionDelete() { return workbenchEntityActions.requestWorkbenchPositionDelete(); }
     function selectCandidateDetail(id, tab) {
+      const guardCandidate = candidateById.value.get(id);
+      if (guardCandidate && !permissions.value.canViewCandidate(guardCandidate)) {
+        showToast('你没有权限查看该内容', 'error');
+        return;
+      }
       workbenchNav.value = 'candidates';
       candidateCategoriesExpanded.value = false;
       tab = tab || 'resume';
@@ -14928,8 +15030,24 @@ const vueAppConfig = {
       });
       return true;
     }
-    function openApplicationDetail(id) { return workbenchApplicationActions.openApplicationDetail(id); }
-    async function saveApplicationDetail() { return workbenchApplicationActions.saveApplicationDetail(); }
+    function openApplicationDetail(id) {
+      const guardApplication = applicationById.value.get(id);
+      const guardCandidate = guardApplication ? candidateById.value.get(guardApplication.candidateId) : null;
+      if (guardApplication && !permissions.value.canViewApplication(guardApplication, guardCandidate)) {
+        showToast('你没有权限查看该推进记录', 'error');
+        return;
+      }
+      return workbenchApplicationActions.openApplicationDetail(id);
+    }
+    async function saveApplicationDetail() {
+      // owner 变更时同步 ownerUserId（管理员改负责人；姓名 → 稳定账号 id）
+      const app = selectedApplication.value;
+      if (app && permissions.value.canManageOwners && app.owner) {
+        const mapped = permissions.value.resolveOwnerUserId({ owner: app.owner });
+        if (mapped && app.ownerUserId !== mapped) app.ownerUserId = mapped;
+      }
+      return workbenchApplicationActions.saveApplicationDetail();
+    }
     // ── 面试时间（interviewAt）：datetime-local ↔ ISO 转换 + 保存后触发自动待办对账 ──
     function toDatetimeLocalValue(value) {
       if (!value) return '';
@@ -15371,6 +15489,14 @@ const vueAppConfig = {
       };
       // 统一入口：新人才 → createTalent（forceCreate 显式允许重复，仍经统一入口）
       const candidate = WorkbenchV2.createTalent(workbenchV2, baseFields, { allowDuplicate: Boolean(forceCreate) });
+      // P0-3：创建候选人强制归属（顾问固定自己；管理员缺省自己，有填则映射）
+      if (permissions.value.isAdmin) {
+        if (!candidate.owner) candidate.owner = permissions.value.currentUserName;
+        if (!candidate.ownerUserId) candidate.ownerUserId = permissions.value.resolveOwnerUserId({ owner: candidate.owner });
+      } else {
+        candidate.owner = permissions.value.currentUserName;
+        candidate.ownerUserId = permissions.value.currentUserId;
+      }
       WorkbenchV2.assignTalentCategories(workbenchV2, candidate.id, form.categoryIds || []);
       if (version) WorkbenchV2.appendTalentResumeVersion(workbenchV2, candidate.id, version);
       let linkedToPosition = false;
@@ -15570,6 +15696,12 @@ const vueAppConfig = {
       return application;
     }
     function changeWorkbenchApplicationStage(application, toStage) {
+      if (!application) return false;
+      const guardCandidate = candidateById.value.get(application.candidateId);
+      if (!permissions.value.canEditApplication(application, guardCandidate)) {
+        showToast('你没有权限修改该推进记录', 'error');
+        return false;
+      }
       const result = workbenchApplicationActions.changeWorkbenchApplicationStage(application, toStage);
       void reconcileBusinessTodos(); // 阶段变化后对账自动待办（旧 Todo 自动关闭/新 Todo 生成）
       return result;
@@ -19142,6 +19274,7 @@ ${ocrText}`
       await loadWorkbenchV2(); // 加载独立公司、候选人和推进记录
       await reconcileMigratedPositionDescriptions();
       await initializePrivateTodos(); // 加载当前账号私有待办，并由管理员认领旧共享待办
+      void loadTeamTodos(); // P0-3：管理员加载团队待办（RLS 未上线时仅本人）
       void reconcileBusinessTodos(); // 数据初始化完成后对账自动待办
       console.log('[diag] onMounted: loadWorkbenchV2 完成后 workbenchV2 =', {
         companies: workbenchV2.companies.length,
@@ -21928,6 +22061,11 @@ ${ocrText}`
     }
     function openPositionDescriptionEdit() {
       if (!canWrite || !selectedPosition.value) return;
+      // P0-3：无 owner 岗位顾问只读（待管理员分配负责人）
+      if (!permissions.value.canEditPosition(selectedPosition.value)) {
+        showToast('该岗位未分配给你，无编辑权限', 'error');
+        return;
+      }
       positionDescriptionEdit.value = selectedPosition.value.description || '';
       positionDescriptionEdit.city = selectedPosition.value.city || '';
       positionDescriptionEdit.salary = selectedPosition.value.salary || '';
@@ -21940,7 +22078,11 @@ ${ocrText}`
       selectedPosition.value.description = positionDescriptionEdit.value.trim();
       selectedPosition.value.city = positionDescriptionEdit.city.trim();
       selectedPosition.value.salary = positionDescriptionEdit.salary.trim();
-      selectedPosition.value.owner = positionDescriptionEdit.owner.trim();
+      if (permissions.value.canManageOwners) {
+        selectedPosition.value.owner = positionDescriptionEdit.owner.trim();
+        const mappedOwner = permissions.value.resolveOwnerUserId({ owner: selectedPosition.value.owner });
+        if (mappedOwner) selectedPosition.value.ownerUserId = mappedOwner;
+      }
       selectedPosition.value.skills = Array.from(new Set(positionDescriptionEdit.skills
         .split(/[，,、\n]/)
         .map(item => item.trim())
@@ -26719,7 +26861,7 @@ ${clipped}`
     return {
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
-      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, candidateDrawerOpen, candidateDrawerElement, candidateDrawerCloseButton, trapCandidateDrawerFocus, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi,
+      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, candidateDrawerOpen, candidateDrawerElement, candidateDrawerCloseButton, trapCandidateDrawerFocus, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi, permissions,
       knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkSuggestions, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
@@ -26752,6 +26894,7 @@ ${clipped}`
       applicationFilters, applicationPage, applicationViewMode, workbenchApplicationStages, applicationStageGroups, filteredApplications, pagedApplications, pagedApplicationStageGroups, candidatePositionMatches, positionCandidateMatches, applicationBatchScoring,
       candidateById, positionById, companyById, applicationsByCandidateId, filteredWorkbenchCompanies, workbenchOwners, workbenchDashboardMetrics, workbenchDashboardDeltaView, dashboardTodos, openDashboardTodo, talentPoolPeriod, filteredTalentPoolCandidates, talentPoolChart, businessProgressPeriod, businessProgressItems,
       candidateTodos, companyTodos, positionTodos, applicationTodos, myTodos, reconcileBusinessTodos,
+      dashboardTodoFilter, loadTeamTodos,
       progressFilters, progressRows, progressFilteredRows, progressSortedRows, progressSummary, progressQuickFilters, progressStageFilterOptions, openProgressApplication,
       todoForm, todoListView, todoDetail, todoTypeOptions, todoLinkTypeOptions, todoLinkOptions, openTodoForm, saveTodo, openTodoListView, openTodoDetail, toggleTodoDone, deleteTodo, jumpToTodoLink, onTodoLinkTypeChange, onTodoLinkTargetChange, resetTodoForm,
       showWorkbench, showLegacyWorkbench, selectWorkbenchNav, openCompanyCreate, createWorkbenchCompany, openCompanyPositionCreate, createCompanyPosition, openCompanyBulkPositionImport, closeCompanyBulkPositionImport, onCompanyBulkPositionFile, parseCompanyBulkPositions, removeCompanyBulkPositionRow, confirmCompanyBulkPositions, openCompanyProfileEdit, cancelCompanyProfileEdit, saveCompanyProfileEdit, openCompanyDetail, openPositionDetail, toggleWorkbenchPositionStatus, closeWorkbenchPosition, requestWorkbenchPositionDelete, openPositionDescriptionEdit, savePositionDescription, extractPositionSkillsWithDeepSeek, runBulkPositionSkillsExtraction,
