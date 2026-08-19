@@ -4235,7 +4235,7 @@
               <div class="flex flex-wrap items-center gap-2">
                 <label class="sr-only" for="home-funnel-time">时间范围</label><select id="home-funnel-time" v-model="homeFunnelTimeRange" class="wb-home-control"><option value="today">今日</option><option value="week">本周</option><option value="month">本月</option><option value="custom">自定义</option></select>
                 <label class="sr-only" for="home-funnel-company">选择公司</label><select id="home-funnel-company" v-model="homeFunnelCompanyId" class="wb-home-control wb-home-company-select"><option value="">全部公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select>
-                <label class="sr-only" for="home-funnel-position">岗位筛选</label><select id="home-funnel-position" v-model="homeFunnelPositionId" class="wb-home-control"><option value="all">全部岗位</option><option v-for="position in workbenchV2.positions" :key="position.id" :value="position.id">{{ position.title || '未命名岗位' }}</option></select>
+                <label class="sr-only" for="home-funnel-position">岗位筛选</label><select id="home-funnel-position" v-model="homeFunnelPositionId" class="wb-home-control"><option value="all">全部岗位</option><option v-for="position in homeFunnelPositionOptions" :key="position.id" :value="position.id">{{ position.title || '未命名岗位' }}</option></select>
                 <select aria-label="归属顾问" v-model="homeFunnelOwnerId" class="wb-home-control"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
                 <button v-if="homeFunnelCompanyId" type="button" @click="reloadHomeTalentFunnelDashboard" class="wb-home-secondary" aria-label="刷新渠道漏斗" title="刷新"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 0 0-14.9-3.9L3 9m0 0V4m0 5h5M4 13a8 8 0 0 0 14.9 3.9L21 15m0 0v5m0-5h-5"/></svg></button>
                 <button type="button" @click="openTalentIntake" class="wb-home-primary">＋ 导入人才</button>
@@ -14520,6 +14520,13 @@ const vueAppConfig = {
     const homeFunnelTimeRange = ref('week');
     const homeFunnelPositionId = ref('all');
     const homeFunnelOwnerId = ref('all');
+    // 首页漏斗岗位下拉只展示当前所选公司的岗位；未选公司（全部公司）时展示全部岗位。
+    const homeFunnelPositionOptions = computed(() => {
+      const positions = Array.isArray(workbenchV2.positions) ? workbenchV2.positions : [];
+      const companyId = homeFunnelCompanyId.value;
+      if (!companyId) return positions;
+      return positions.filter(position => position.companyId === companyId);
+    });
     const homeFunnelSelectedChannelId = ref('all');
     function summarizeHomeFunnelStages(channels) {
       const labels = ['新增人才', '已查看', '已触达', '有意向', '已推荐', '进入面试'];
@@ -14652,7 +14659,7 @@ const vueAppConfig = {
       return talentFunnelDashboardController.analyzeWithAi({ aiService: talentFunnelAiService });
     }
     function reloadHomeTalentFunnelDashboard() {
-      return homeFunnelDashboardController.loadCompany(homeFunnelCompanyId.value, { owner: homeFunnelOwnerId.value });
+      return homeFunnelDashboardController.loadCompany(homeFunnelCompanyId.value, { owner: homeFunnelOwnerId.value, positionId: homeFunnelPositionId.value });
     }
     function runHomeTalentFunnelAi() {
       if (!canConfigureAi) { showToast('当前账号无 AI 功能权限', 'error'); return; }
@@ -14716,7 +14723,8 @@ const vueAppConfig = {
     watch(
       () => workbenchV2.companies.map(company => company.id).filter(Boolean),
       companyIds => {
-        if (homeFunnelCompanyId.value && !companyIds.includes(homeFunnelCompanyId.value)) {
+        // 默认展示「中科量枢」：初始未选择（全部公司）或已选公司失效时，回落到默认试点公司。
+        if (!homeFunnelCompanyId.value || !companyIds.includes(homeFunnelCompanyId.value)) {
           const preferred = workbenchV2.companies.find(company => companyIds.includes(company.id) && String(company.name || '').trim() === '中科量枢');
           homeFunnelCompanyId.value = preferred?.id || companyIds[0] || '';
         }
@@ -14724,9 +14732,16 @@ const vueAppConfig = {
       { immediate: true },
     );
     watch(
-      () => [workbenchNav.value, workbenchRoute.type, homeFunnelCompanyId.value, homeFunnelOwnerId.value],
-      ([nav, routeType, companyId, ownerId]) => {
-        if (nav === 'dashboard' && routeType === 'list') void homeFunnelDashboardController.loadCompany(companyId, { owner: ownerId });
+      () => [homeFunnelCompanyId.value, homeFunnelPositionOptions.value.map(position => position.id)],
+      ([, positionIds]) => {
+        // 公司切换后岗位下拉随之收窄：已选岗位不在当前公司的岗位中时重置为「全部岗位」。
+        if (homeFunnelPositionId.value !== 'all' && !positionIds.includes(homeFunnelPositionId.value)) homeFunnelPositionId.value = 'all';
+      },
+    );
+    watch(
+      () => [workbenchNav.value, workbenchRoute.type, homeFunnelCompanyId.value, homeFunnelOwnerId.value, homeFunnelPositionId.value],
+      ([nav, routeType, companyId, ownerId, positionId]) => {
+        if (nav === 'dashboard' && routeType === 'list') void homeFunnelDashboardController.loadCompany(companyId, { owner: ownerId, positionId });
       },
       { immediate: true },
     );
@@ -26771,7 +26786,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, bulkOwnerEditor, openBulkSetCandidateOwner, closeBulkSetCandidateOwner, confirmBulkSetCandidateOwner, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, applicationPipelineTrail, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,

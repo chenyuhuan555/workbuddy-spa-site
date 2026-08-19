@@ -394,3 +394,62 @@ test('按归属顾问(owner)过滤：仅统计该顾问跟进候选人的漏斗�
   assert.equal(item.counts.imported, 1);
   assert.equal(item.counts.contacted, 1);
 });
+
+test("owner 为哨兵值 'all' 时通配：统计全部顾问之和（不为 0）", () => {
+  const candidateOwnerById = { cand_1: '李芷婷', cand_2: '王顾问' };
+  const applicationCandidateById = { app_1: 'cand_1', app_2: 'cand_2' };
+  const analytics = buildTalentFunnelAnalytics({
+    events: [
+      { candidateId: 'cand_1', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { candidateId: 'cand_2', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { applicationId: 'app_1', companyId: 'co_A', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T09:00:00.000Z' },
+      { applicationId: 'app_2', companyId: 'co_A', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T09:00:00.000Z' },
+    ],
+    channels: [{ id: 'referral', name: '内推' }],
+    companyId: 'co_A',
+    baselineAt: '2026-08-01T00:00:00.000Z',
+    owner: 'all',
+    candidateOwnerById,
+    applicationCandidateById,
+  });
+  const item = analytics.channels[0];
+  assert.equal(item.counts.imported, 2);
+  assert.equal(item.counts.contacted, 2);
+});
+
+test('多人共有归属的候选人：任一共有顾问命中即计入，与人才库筛选口径一致', () => {
+  const candidateOwnerById = { cand_1: '李芷婷、王顾问', cand_2: '李芷婷' };
+  const baseInput = {
+    events: [
+      { candidateId: 'cand_1', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { candidateId: 'cand_2', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+    ],
+    channels: [{ id: 'referral', name: '内推' }],
+    companyId: 'co_A',
+    baselineAt: '2026-08-01T00:00:00.000Z',
+    candidateOwnerById,
+  };
+  const bySharedOwner = buildTalentFunnelAnalytics({ ...baseInput, owner: '王顾问' });
+  assert.equal(bySharedOwner.channels[0].counts.imported, 1);
+  const byPrimaryOwner = buildTalentFunnelAnalytics({ ...baseInput, owner: '李芷婷' });
+  assert.equal(byPrimaryOwner.channels[0].counts.imported, 2);
+});
+
+test('按岗位(positionId)过滤：仅统计该岗位的漏斗事件，all 与空值通配', () => {
+  const baseInput = {
+    events: [
+      { candidateId: 'cand_1', positionId: 'pos_1', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { candidateId: 'cand_2', positionId: 'pos_2', companyId: 'co_A', channelId: 'referral', stage: 'imported', result: 'success', isPilot: true, occurredAt: '2026-08-11T08:00:00.000Z' },
+      { applicationId: 'app_3', positionId: 'pos_1', companyId: 'co_A', channelId: 'referral', stage: 'contacted', result: 'success', isPilot: true, occurredAt: '2026-08-11T09:00:00.000Z' },
+    ],
+    channels: [{ id: 'referral', name: '内推' }],
+    companyId: 'co_A',
+    baselineAt: '2026-08-01T00:00:00.000Z',
+  };
+  const byPosition = buildTalentFunnelAnalytics({ ...baseInput, positionId: 'pos_1' });
+  assert.equal(byPosition.channels[0].counts.imported, 1);
+  assert.equal(byPosition.channels[0].counts.contacted, 1);
+  const byAll = buildTalentFunnelAnalytics({ ...baseInput, positionId: 'all' });
+  assert.equal(byAll.channels[0].counts.imported, 2);
+  assert.equal(byAll.channels[0].counts.contacted, 1);
+});
