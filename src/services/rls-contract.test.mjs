@@ -23,7 +23,7 @@ test('提供 is_workbench_admin / current_member_display_name 稳定 helper（SE
 test('顾问 INSERT：candidates / applications / positions 必须归属自己（ownerUserId = auth.uid() 或 owner=本人姓名）', () => {
   const policyBlocks = ['candidates_insert', 'applications_insert', 'positions_insert'];
   for (const policy of policyBlocks) {
-    const block = SQL.match(new RegExp(`create policy ${policy} on public\\.\\w+[\\s\\S]*?;\n`))?.[0] || '';
+    const block = SQL.match(new RegExp(`create policy ${policy} on public\\.\\w+[\\s\\S]*?;\\r?\n`))?.[0] || '';
     assert.ok(block, `应存在 ${policy} 策略`);
     assert.match(block, /\(extra ->> 'ownerUserId'\) = auth\.uid\(\)::text/, `${policy} 必须允许 ownerUserId = auth.uid()`);
     // 不允许"owner 为空放行"（安全收口前版本有 or (owner is null or owner = '')）
@@ -32,13 +32,13 @@ test('顾问 INSERT：candidates / applications / positions 必须归属自己�
 });
 
 test('无 owner 岗位：顾问只读（positions_update 不放行空 owner）', () => {
-  const block = SQL.match(/create policy positions_update on public\.positions[\s\S]*?;\n/)?.[0] || '';
+  const block = SQL.match(/create policy positions_update on public\.positions[\s\S]*?;\r?\n/)?.[0] || '';
   assert.ok(block, '应存在 positions_update 策略');
   assert.doesNotMatch(block, /owner is null or owner = ''/, '无 owner 岗位不得被顾问修改');
 });
 
 test('简历 Storage：read 按路径 candidateId 关联候选人属主，管理员全部', () => {
-  const block = SQL.match(/create policy "workbuddy_resume_files_read"[\s\S]*?;\n/)?.[0] || '';
+  const block = SQL.match(/create policy "workbuddy_resume_files_read"[\s\S]*?;\r?\n/)?.[0] || '';
   assert.ok(block, '应存在 storage 简历读策略');
   assert.match(block, /storage\.foldername\(name\)\)\[4\]/, '路径第 4 段应为 candidateId');
   assert.match(block, /public\.is_workbench_admin\(\)/, '管理员可读全部简历文件');
@@ -53,6 +53,6 @@ test('管理员可读团队 Todo（user_todos_admin_read）', () => {
 test('resume_versions / resume_texts 读策略跟随候选人属主', () => {
   assert.match(SQL, /create policy resume_versions_read on public\.resume_versions/);
   assert.match(SQL, /create policy resume_texts_read on public\.resume_texts/);
-  const resumeTexts = SQL.match(/create policy resume_texts_read[\s\S]*?;\n/)?.[0] || '';
+  const resumeTexts = SQL.match(/create policy resume_texts_read[\s\S]*?;\r?\n/)?.[0] || '';
   assert.match(resumeTexts, /join public\.candidates c on c\.id = rv\.candidate_id/, 'resume_texts 经 resume_versions→candidates 关联');
 });
