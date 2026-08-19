@@ -217,7 +217,7 @@
       });
     }
 
-    async function loadCompany(companyId, { owner = '' } = {}) {
+    async function loadCompany(companyId, { owner = '', positionId = '' } = {}) {
       const id = normalizeString(companyId);
       const currentRequestId = ++requestId;
       reset(id);
@@ -243,6 +243,7 @@
           companyId: id,
           baselineAt: scope?.baselineAt || '',
           owner: normalizeString(owner),
+          positionId: normalizeString(positionId),
           candidateOwnerById,
           applicationCandidateById,
         });

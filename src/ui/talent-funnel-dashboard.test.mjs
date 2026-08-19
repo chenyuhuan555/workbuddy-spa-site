@@ -145,6 +145,40 @@ test('只为选中公司加载事件，并只把该 companyId 传给 analytics',
   assert.equal(state.model.channels[1].stages[0].count, 0);
 });
 
+test('首页漏斗把岗位筛选透传给 analytics，all 与空值均不触发过滤', async () => {
+  const analyticsArguments = [];
+  const controller = createTalentFunnelDashboardController({
+    state: {},
+    getChannels: async () => channels,
+    getEventsByCompany: async () => events,
+    getScope: () => ({ baselineAt: '2026-08-11T00:00:00.000Z' }),
+    analytics: {
+      buildTalentFunnelAnalytics(input) {
+        analyticsArguments.push(input);
+        return analyticsFor(input.companyId, input.events);
+      },
+    },
+  });
+
+  await controller.loadCompany('company-a', { owner: 'all', positionId: 'pos_1' });
+  await controller.loadCompany('company-a', { owner: 'all', positionId: 'all' });
+  await controller.loadCompany('company-a');
+
+  assert.equal(analyticsArguments[0].positionId, 'pos_1');
+  assert.equal(analyticsArguments[1].positionId, 'all');
+  assert.equal(analyticsArguments[2].positionId, '');
+});
+
+test('首页漏斗岗位下拉仅展示当前公司岗位并默认选中中科量枢', () => {
+  const homePositionControl = INDEX_HTML.match(/<select id="home-funnel-position"[\s\S]*?<\/select>/)?.[0] || '';
+  assert.ok(homePositionControl, 'home-funnel-position control should exist');
+  assert.match(homePositionControl, /v-for="position in homeFunnelPositionOptions"/);
+  assert.doesNotMatch(homePositionControl, /v-for="position in workbenchV2\.positions"/);
+  assert.match(INDEX_HTML, /positions\.filter\(position => position\.companyId === companyId\)/);
+  assert.match(INDEX_HTML, /if \(!homeFunnelCompanyId\.value \|\| !companyIds\.includes\(homeFunnelCompanyId\.value\)\)/);
+  assert.match(INDEX_HTML, /homeFunnelPositionId\.value !== 'all' && !positionIds\.includes\(homeFunnelPositionId\.value\)/);
+});
+
 test('看板模型固定为渠道漏斗、卡点诊断、结论建议三段', () => {
   const model = buildTalentFunnelDashboardModel({
     companyId: 'company-a',

@@ -12,6 +12,14 @@
     return String(value || '').trim();
   }
 
+  // 拆分多人共有的归属字段（如「李芷婷、王顾问」），与 workbench-owners 的 splitOwners 语义保持一致。
+  function splitOwners(value) {
+    return String(value || '')
+      .split(/[、,，/／|\n;；]+/)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
   function emptyCounts() {
     return {
       imported: 0,
@@ -144,6 +152,7 @@
     companyId,
     baselineAt,
     owner = '',
+    positionId = '',
     candidateOwnerById = null,
     applicationCandidateById = null,
   } = {}) {
@@ -174,10 +183,15 @@
     const canonicalEvents = pickCanonicalEvents(filteredEvents, knownChannelIds);
 
     canonicalEvents.forEach(event => {
-      // 顾问维度过滤：解析事件归属顾问，不匹配则跳过计数（含成功与失败）
-      if (owner) {
-        const eventOwner = resolveEventOwner(event, candidateOwnerById, applicationCandidateById);
-        if (eventOwner !== normalizeString(owner)) return;
+      // 顾问维度过滤：解析事件归属顾问（支持多人共有归属，任一顾问命中即计入）。
+      // owner 为空或为哨兵值 'all' 时表示「全部顾问」，不做过滤（通配）。
+      if (owner && owner !== 'all') {
+        const eventOwners = splitOwners(resolveEventOwner(event, candidateOwnerById, applicationCandidateById));
+        if (!eventOwners.includes(normalizeString(owner))) return;
+      }
+      // 岗位维度过滤：positionId 为空或为哨兵值 'all' 时表示「全部岗位」，不做过滤（通配）。
+      if (positionId && positionId !== 'all') {
+        if (normalizeString(event?.positionId) !== normalizeString(positionId)) return;
       }
       const stage = normalizeString(event?.stage);
       const result = normalizeString(event?.result);
