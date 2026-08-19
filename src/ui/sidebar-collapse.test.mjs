@@ -243,8 +243,8 @@ test('侧栏底部账号区域使用轻量分隔和透明样式', () => {
 });
 
 test('侧栏将核心导航与拓展导航分组', () => {
-  assert.match(INDEX_HTML, /\.wb-v2-workspace\s+\.wb-v2-sidebar-navigation\s*>\s*button:nth-of-type\(5\)\s*\{[^}]*border-top:\s*1px solid/s);
-  assert.match(INDEX_HTML, /\.wb-v2-workspace\s+\.wb-v2-sidebar-navigation\s*>\s*button:nth-of-type\(6\)\s*\{[^}]*margin-top:\s*28px/s);
+  assert.match(INDEX_HTML, /item\.key === 'ai' \? 'wb-v2-sidebar-extension-start'/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace\s+\.wb-v2-sidebar-navigation\s*>\s*button\.wb-v2-sidebar-extension-start\s*\{[^}]*margin-top:\s*auto[^}]*border-top:\s*1px solid/s);
   assert.match(INDEX_HTML, /\.wb-v2-workspace\s+\.wb-v2-sidebar-navigation\s*>\s*button\s*\{[^}]*transition:\s*background-color/s);
 });
 

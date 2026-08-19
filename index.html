@@ -2882,6 +2882,9 @@
     }
 
     .wb-v2-workspace .wb-v2-sidebar-navigation {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
       padding: 17px 24px;
     }
 
@@ -2894,8 +2897,11 @@
       transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
     }
 
-    .wb-v2-workspace .wb-v2-sidebar-navigation > button:nth-of-type(6) {
-      margin-top: 28px;
+    .wb-v2-workspace .wb-v2-sidebar-navigation > button.wb-v2-sidebar-extension-start {
+      margin-top: auto;
+      padding-top: 16px;
+      padding-bottom: 16px;
+      border-top: 1px solid #edf1ef;
     }
 
     .wb-v2-workspace .wb-v2-sidebar-navigation > button.bg-emerald-800 {
@@ -2945,13 +2951,6 @@
       width: 13px;
       height: 13px;
       color: #94a39b;
-    }
-
-    .wb-v2-workspace .wb-v2-sidebar-navigation > button:nth-of-type(5) {
-      margin-top: 14px;
-      padding-top: 16px;
-      padding-bottom: 16px;
-      border-top: 1px solid #edf1ef;
     }
 
     .wb-v2-workspace .wb-v2-sidebar.is-collapsed {
@@ -4087,6 +4086,7 @@
         <button v-for="item in workbenchNavItems" :key="item.key" type="button" :aria-label="item.label" :title="workbenchSidebarCollapsed ? item.label : ''"
           @click="selectWorkbenchNav(item.key)"
           :class="['w-full text-left px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all flex items-center justify-start gap-3',
+            item.key === 'ai' ? 'wb-v2-sidebar-extension-start' : '',
             workbenchNav === item.key ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50']">
           <!-- 图标 -->
           <span v-if="item.key === 'dashboard'" class="w-5 h-5 flex-shrink-0 flex items-center justify-center">
@@ -12352,10 +12352,10 @@ const vueAppConfig = {
       { key: 'companies', label: '公司', icon: '司' },
       { key: 'positions', label: '岗位库', icon: '岗' },
       { key: 'candidates', label: '人才库', icon: '人' },
+      { key: 'progress', label: '面试进度', icon: '面' },
       { key: 'ai', label: 'AI工具箱', icon: 'AI' },
       { key: 'aiApps', label: 'AI应用中心', icon: '应' },
       { key: 'knowledge', label: '知识库', icon: '知' },
-      { key: 'progress', label: '面试进度', icon: '面' },
       { key: 'settings', label: '设置', icon: '设' },
     ].filter(item => canConfigureAi || item.key !== 'settings')
       .filter(item => !isGuestMode || item.key !== 'settings')
