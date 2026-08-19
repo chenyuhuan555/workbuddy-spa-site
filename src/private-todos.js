@@ -26,6 +26,20 @@
       linkType: String(data.linkType || 'none'),
       linkId: String(data.linkId || ''),
       linkLabel: String(data.linkLabel || ''),
+      // 自动待办扩展字段：缺失时按旧数据兼容（source=manual / status=done 推导）
+      source: String(data.source || 'manual'),
+      status: String(data.status || (data.done ? 'done' : 'pending')),
+      ruleKey: String(data.ruleKey || ''),
+      entityType: String(data.entityType || ''),
+      entityId: String(data.entityId || ''),
+      candidateId: String(data.candidateId || ''),
+      companyId: String(data.companyId || ''),
+      positionId: String(data.positionId || ''),
+      applicationId: String(data.applicationId || ''),
+      owner: String(data.owner || ''),
+      dueAt: String(data.dueAt || ''),
+      dedupeKey: String(data.dedupeKey || ''),
+      completedAt: String(data.completedAt || ''),
       createdAt: String(row.created_at || ''),
       updatedAt: String(row.updated_at || ''),
     };
@@ -41,6 +55,19 @@
       linkType: String(todo.linkType || 'none'),
       linkId: String(todo.linkId || ''),
       linkLabel: String(todo.linkLabel || ''),
+      source: String(todo.source || 'manual'),
+      status: String(todo.status || (todo.done ? 'done' : 'pending')),
+      ruleKey: String(todo.ruleKey || ''),
+      entityType: String(todo.entityType || ''),
+      entityId: String(todo.entityId || ''),
+      candidateId: String(todo.candidateId || ''),
+      companyId: String(todo.companyId || ''),
+      positionId: String(todo.positionId || ''),
+      applicationId: String(todo.applicationId || ''),
+      owner: String(todo.owner || ''),
+      dueAt: String(todo.dueAt || ''),
+      dedupeKey: String(todo.dedupeKey || ''),
+      completedAt: String(todo.completedAt || ''),
     };
   }
 
@@ -62,6 +89,18 @@
         .select('id, data, created_at, updated_at')
         .eq('workspace_id', 'main')
         .eq('user_id', profile.id)
+        .order('updated_at', { ascending: false });
+      if (error) throw appError('PRIVATE_TODOS_REQUEST_FAILED', error);
+      return (Array.isArray(data) ? data : []).map(fromRow);
+    }
+
+    // 管理员读团队 Todo：不带 user_id 过滤，由 RLS 决定可见范围
+    // （admin 可读全部；顾问调用时 RLS 只返回自己，自然降级）
+    async function loadAll() {
+      requireProfile(getProfile);
+      const { data, error } = await supabase.from('user_todos')
+        .select('id, data, created_at, updated_at')
+        .eq('workspace_id', 'main')
         .order('updated_at', { ascending: false });
       if (error) throw appError('PRIVATE_TODOS_REQUEST_FAILED', error);
       return (Array.isArray(data) ? data : []).map(fromRow);
