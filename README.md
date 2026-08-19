@@ -95,6 +95,8 @@ npm run preview
 6. `supabase/talent-funnel-reasons.sql`
 7. `supabase/talent-funnel-events.sql`
 8. `supabase/workbuddy-files-storage.sql`
+9. `supabase/user-todos.sql`（依赖第 1 步的 `touch_updated_at()`；手动待办与自动待办共用，含 RLS）
+10. `supabase/workbench-permissions.sql`（管理员/顾问 RLS：候选人/推进/简历/待办按属主私有，公司/岗位共享；含 `is_workbench_admin()` helper）
 
 渠道漏斗试点只统计满足当前试点范围和基线时间的数据。建议先在设置中配置量子计算试点公司的 ID 和开始时间，再开始录入新候选人。
 
@@ -147,6 +149,21 @@ npm run preview
 6. 失败阶段需要填写原因码；原因码为“其他”时还需要补充说明。
 
 ## 更新日志
+
+### 2026-08-18
+
+- **P0-3 权限安全收口**：顾问 INSERT 强制归属自己（`ownerUserId = auth.uid()` 或 `owner=本人姓名`，禁止孤儿数据）；无 owner 岗位顾问只读（待管理员分配负责人）；简历 Storage 读策略按路径 `candidateId` 关联候选人属主（管理员全部、顾问仅自己的）；管理员首页待办支持「全部团队 / 指定顾问」筛选（`user_todos.loadAll` + RLS 兜底）；新增 `src/services/rls-contract.test.mjs` 守护 SQL 关键约束。
+- 新增「管理员 / 顾问权限」：权限模块 `src/ui/workbench-permissions.js`（前端防御）+ `supabase/workbench-permissions.sql`（RLS 最终边界）。
+- 角色复用现有 `admin`（管理员）/ `editor`（高级成员）/ `member`（普通成员）：admin → 管理员，editor / member → 顾问；editor 保留可写、member 保留只读。
+- 归属规则：候选人 / 推进 / 待办 / 简历按属主私有（顾问只看自己的），公司 / 岗位团队共享可见；仅管理员可修改负责人（owner）。
+- 新增 `ownerUserId`（稳定账号 id）存于 `extra->>'ownerUserId'`，`owner` 姓名继续用于展示；旧数据按 `profiles.display_name` 兼容。
+- 前端：人才库 / 面试推进工作区按权限过滤；详情打开与推进操作带权限守卫；负责人筛选顾问固定自己、导入默认归属自己。
+- 新增「面试 / 推进工作区」：左侧导航「面试进度」，一行 = 一条 Application 的高密度推进表格。
+- 新增纯函数模块 `src/ui/application-progress-table.js`：buildRows / filterRows / sortRows / summarize，阶段、SLA、下一步、待办数全部从现有 Pipeline 常量与统一 Todo 派生，不新增重复业务字段。
+- 新增自动待办（System Todo）能力：规则引擎 `src/services/todo-rule-engine.js` + 对账器 `src/services/todo-reconciler.js`。
+- 第一版 5 条规则：候选人今日跟进、推荐后 2 天无反馈、明日面试提醒、面试结束未反馈、Offer 长时间未更新；按 `dedupeKey` 幂等去重。
+- 补充 `supabase/user-todos.sql` 建表与 RLS 定义（手动 + 自动待办共用）。
+- 推进详情支持录入面试时间（`interviewAt`），面试提醒与反馈规则生效。
 
 ### 2026-08-12
 
