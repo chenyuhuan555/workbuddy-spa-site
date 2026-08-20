@@ -375,6 +375,13 @@ test('首页渠道漏斗保留大标题字号并放大其余信息文字', () =>
   assert.match(dashboardBlock, /openHomeFunnelChannelImport\(selectedHomeFunnelChannelRow\)/);
 });
 
+test('岗位库页面不重复显示内层岗位库标题', () => {
+  const positionsBlock = INDEX_HTML.match(/workbenchNav === 'positions'[\s\S]*?<div v-else-if="workbenchNav === 'applications'/)?.[0] || '';
+  assert.ok(positionsBlock, 'positions page block should exist');
+  assert.doesNotMatch(positionsBlock, /<h1 class="font-bold text-slate-900">岗位库<\/h1>/);
+  assert.match(positionsBlock, /positionLibrarySummary\.total/);
+});
+
 test('人才上传归类展开控件使用 SVG 下箭头', () => {
   const uploadCategoryRow = INDEX_HTML.match(/上传后归类人才[\s\S]*?<\/button>/)?.[0] || '';
   assert.match(uploadCategoryRow, /展开选择/);
