@@ -70,6 +70,16 @@ test('工作台首页按渠道漏斗、今日待办、今日复盘分层', () =>
   assert.match(dashboard, /dailyReviewMetrics\.addedCandidates/);
 });
 
+test('首页三大业务板块各自占满横向空间', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-execution-grid \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
+  assert.ok(dashboard, 'dashboard template should exist');
+  assert.match(dashboard, /class="wb-home-funnel[^"]*"/);
+  assert.match(dashboard, /class="wb-home-execution-grid"/);
+  assert.match(dashboard, /aria-labelledby="home-todo-title"/);
+  assert.match(dashboard, /aria-labelledby="home-review-title"/);
+});
+
 test('工作台首页不再展示旧的 KPI 卡片和业务进展大卡片', () => {
   const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
   assert.match(dashboard, /wb-home-section/);
