@@ -255,6 +255,8 @@ test('历史复盘在同一 Drawer 内提供只读详情和返回列表', () => 
   assert.match(html, /新增人才[\s\S]*?触达[\s\S]*?已推荐[\s\S]*?进入面试[\s\S]*?Offer[\s\S]*?完成待办[\s\S]*?跟进/);
   assert.match(html, /今天遇到的问题/);
   assert.match(html, /明日重点/);
+  assert.match(html, /row\.issue \|\| '—'/);
+  assert.match(html, /row\.tomorrowFocus \|\| '—'/);
   assert.match(html, /提交时间/);
   assert.match(html, /更新时间/);
 });

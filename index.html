@@ -4354,12 +4354,14 @@
                   <template v-if="!dailyReview.historySelected">
                     <p v-if="dailyReview.historyLoading" class="text-sm text-slate-400">加载中…</p>
                     <p v-else-if="!dailyReview.historyRows.length" class="text-sm text-slate-400">暂无历史复盘</p>
-                    <table v-else class="w-full text-sm">
-                      <thead><tr class="text-left text-xs text-slate-500"><th class="py-2">日期</th><th class="py-2">顾问</th><th class="py-2">新增</th><th class="py-2">推荐</th><th class="py-2">面试</th><th class="py-2">Offer</th><th class="py-2">待办</th><th class="py-2">更新时间</th></tr></thead>
+                    <div v-else class="overflow-x-auto"><table class="min-w-[980px] w-full text-sm">
+                      <thead><tr class="text-left text-xs text-slate-500"><th class="py-2">日期</th><th class="py-2">顾问</th><th class="py-2">今天遇到的问题</th><th class="py-2">明日重点</th><th class="py-2">新增</th><th class="py-2">推荐</th><th class="py-2">面试</th><th class="py-2">Offer</th><th class="py-2">待办</th><th class="py-2">更新时间</th></tr></thead>
                       <tbody>
                         <tr v-for="row in dailyReview.historyRows" :key="row.id || (row.reviewDate + ':' + row.userName)" role="button" tabindex="0" :aria-label="`查看 ${row.reviewDate} ${row.userName || ''} 的复盘详情`" @click="openDailyReviewHistoryDetail(row)" @keydown.enter.prevent="openDailyReviewHistoryDetail(row)" @keydown.space.prevent="openDailyReviewHistoryDetail(row)" class="cursor-pointer border-t border-slate-100 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500">
                           <td class="py-2 text-slate-800">{{ row.reviewDate }}</td>
                           <td class="py-2 text-slate-800">{{ row.userName || '—' }}</td>
+                          <td class="max-w-56 py-2 text-slate-600"><span class="block max-w-56 truncate" :title="row.issue || ''">{{ row.issue || '—' }}</span></td>
+                          <td class="max-w-56 py-2 text-slate-600"><span class="block max-w-56 truncate" :title="row.tomorrowFocus || ''">{{ row.tomorrowFocus || '—' }}</span></td>
                           <td class="py-2 text-slate-600">{{ row.metrics.addedCandidates || 0 }}</td>
                           <td class="py-2 text-slate-600">{{ row.metrics.recommendations || 0 }}</td>
                           <td class="py-2 text-slate-600">{{ row.metrics.interviews || 0 }}</td>
@@ -4368,7 +4370,7 @@
                           <td class="py-2 text-slate-500">{{ dailyReviewDateTimeLabel(row.updatedAt || row.savedAt) }}</td>
                         </tr>
                       </tbody>
-                    </table>
+                    </table></div>
                   </template>
                   <article v-else class="space-y-5" aria-label="历史复盘只读详情">
                     <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
