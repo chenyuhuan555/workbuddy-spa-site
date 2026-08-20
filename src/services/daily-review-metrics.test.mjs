@@ -242,6 +242,11 @@ test('今日总结接 AI Gateway 且失败时回退规则总结，不误标 AI',
   assert.doesNotMatch(html, /dailyReview\.summary\s*=\s*\(row\s*&&\s*row\.summary\)/);
 });
 
+test('今日复盘模板可访问 dailyMetricsEqual，避免渲染时白屏', () => {
+  const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  assert.match(html, /dailyReviewMetrics, dailyMetricsEqual, dailyReviewSummary/);
+});
+
 test('历史复盘在同一 Drawer 内提供只读详情和返回列表', () => {
   const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(html, /openDailyReviewHistoryDetail\(row\)/);
