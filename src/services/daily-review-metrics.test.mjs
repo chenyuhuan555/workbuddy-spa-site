@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 globalThis.window = globalThis;
+await import('../constants/pipeline-stages.js');
 await import('./daily-review-metrics.js');
 const {
   buildDailyReviewMetrics,
@@ -187,4 +189,67 @@ test('触达可同时来自 candidate.touchedAt 与 application contacted，统�
   const apps = [application('a1', { candidateId: 'c1', pipelineEvents: [{ toStage: 'contacted', occurredAt: TODAY }] })];
   const m = metrics({ candidates, applications: apps });
   assert.equal(m.touchedCandidates, 1);
+});
+
+test('阶段口径只复用 pipeline-stages 的 KEYS / GROUPS，不维护第二套常量', () => {
+  const source = readFileSync(new URL('./daily-review-metrics.js', import.meta.url), 'utf8');
+  assert.match(source, /WorkBuddyStages/);
+  assert.match(source, /stages\.KEYS/);
+  assert.match(source, /stages\.GROUPS/);
+  assert.doesNotMatch(source, /const\s+INTERVIEW_STAGES\s*=/);
+  assert.doesNotMatch(source, /const\s+OFFER_STAGES\s*=/);
+  assert.doesNotMatch(source, /const\s+RECOMMENDED_STAGE\s*=/);
+  assert.doesNotMatch(source, /const\s+CONTACTED_STAGE\s*=/);
+});
+
+test('Application 无 owner 时回退 Candidate owner，推荐、面试、Offer 正确计入', () => {
+  const candidates = [candidate('c1')];
+  const apps = [{
+    id: 'a1',
+    candidateId: 'c1',
+    pipelineEvents: [
+      { toStage: 'recommended', occurredAt: TODAY },
+      { toStage: 'interviewing', occurredAt: TODAY },
+      { toStage: 'offer', occurredAt: TODAY },
+    ],
+  }];
+  const m = metrics({ candidates, applications: apps });
+  assert.equal(m.recommendations, 1);
+  assert.equal(m.interviews, 1);
+  assert.equal(m.offers, 1);
+});
+
+test('Application 有明确 owner 时不回退 Candidate owner', () => {
+  const candidates = [candidate('c1')];
+  const apps = [application('a1', {
+    candidateId: 'c1',
+    owner: '顾问B',
+    ownerUserId: 'u_B',
+    pipelineEvents: [{ toStage: 'recommended', occurredAt: TODAY }],
+  })];
+  const m = metrics({ candidates, applications: apps });
+  assert.equal(m.recommendations, 0);
+});
+
+test('今日总结接 AI Gateway 且失败时回退规则总结，不误标 AI', () => {
+  const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  assert.match(html, /<strong>今日总结<\/strong>/);
+  assert.doesNotMatch(html, /<strong>AI 智能总结<\/strong>/);
+  assert.match(html, /summarizeDailyReview/);
+  assert.match(html, /buildDailyReviewRuleSummary/);
+  assert.match(html, /catch\s*\(error\)[\s\S]*?return fallback/);
+  assert.match(html, /dailyReview\.scope === 'mine'[\s\S]*?dailyReview\.summary/);
+  assert.doesNotMatch(html, /dailyReview\.summary\s*=\s*\(row\s*&&\s*row\.summary\)/);
+});
+
+test('历史复盘在同一 Drawer 内提供只读详情和返回列表', () => {
+  const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  assert.match(html, /openDailyReviewHistoryDetail\(row\)/);
+  assert.match(html, /backToDailyReviewHistoryList/);
+  assert.match(html, /dailyReview\.historySelected/);
+  assert.match(html, /新增人才[\s\S]*?触达[\s\S]*?已推荐[\s\S]*?进入面试[\s\S]*?Offer[\s\S]*?完成待办[\s\S]*?跟进/);
+  assert.match(html, /今天遇到的问题/);
+  assert.match(html, /明日重点/);
+  assert.match(html, /提交时间/);
+  assert.match(html, /更新时间/);
 });

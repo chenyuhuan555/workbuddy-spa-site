@@ -4309,7 +4309,7 @@
               <div v-if="dailyReview.yesterdayFocus && dailyReview.scope === 'mine'" class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"><strong>昨日计划</strong> {{ dailyReview.yesterdayFocus }}</div>
               <div class="wb-home-review-stats"><span>新增人才 <strong>{{ dailyReviewMetrics.addedCandidates }}</strong></span><span>触达 <strong>{{ dailyReviewMetrics.touchedCandidates }}</strong></span><span>已推荐 <strong>{{ dailyReviewMetrics.recommendations }}</strong></span><span>进入面试 <strong>{{ dailyReviewMetrics.interviews }}</strong></span><span>Offer <strong>{{ dailyReviewMetrics.offers }}</strong></span><span>完成待办 <strong>{{ dailyReviewMetrics.completedTodos }}</strong></span></div>
               <p v-if="dailyReview.savedMetrics && !dailyMetricsEqual(dailyReviewMetrics, dailyReview.savedMetrics)" class="mt-2 text-xs text-slate-400">数据已更新</p>
-              <div class="wb-home-ai-summary"><strong>AI 智能总结</strong><p>{{ dailyReviewSummary }}</p></div>
+              <div class="wb-home-ai-summary"><strong>今日总结</strong><p>{{ dailyReviewSummary }}</p></div>
               <div v-if="permissions.isAdmin && dailyReview.scope === 'all'" class="mt-3 space-y-1">
                 <div v-for="row in dailyReview.teamRows" :key="row.userId" class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50/70 px-3 py-2 text-sm">
                   <button type="button" @click="dailyReview.scope = row.userId; onDailyReviewScopeChange()" class="font-medium text-slate-800 hover:text-emerald-700">{{ row.userName }}</button>
@@ -4336,27 +4336,51 @@
             <div v-if="dailyReview.historyOpen" class="fixed inset-0 z-[130] flex justify-end bg-slate-950/40 backdrop-blur-sm" @click.self="closeDailyReviewHistory">
               <section role="dialog" aria-modal="true" aria-labelledby="daily-review-history-title" class="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
                 <header class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                  <h2 id="daily-review-history-title" class="text-lg font-bold text-slate-900">历史复盘</h2>
+                  <div class="flex items-center gap-3">
+                    <button v-if="dailyReview.historySelected" type="button" @click="backToDailyReviewHistoryList" aria-label="返回历史复盘列表" class="rounded-lg px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-100">← 返回</button>
+                    <h2 id="daily-review-history-title" class="text-lg font-bold text-slate-900">{{ dailyReview.historySelected ? '复盘详情' : '历史复盘' }}</h2>
+                  </div>
                   <button type="button" @click="closeDailyReviewHistory" aria-label="关闭" class="h-9 w-9 rounded-full bg-slate-100 text-xl text-slate-500 hover:bg-slate-200">×</button>
                 </header>
                 <div class="flex-1 overflow-y-auto p-6">
-                  <p v-if="dailyReview.historyLoading" class="text-sm text-slate-400">加载中…</p>
-                  <p v-else-if="!dailyReview.historyRows.length" class="text-sm text-slate-400">暂无历史复盘</p>
-                  <table v-else class="w-full text-sm">
-                    <thead><tr class="text-left text-xs text-slate-500"><th class="py-2">日期</th><th class="py-2">顾问</th><th class="py-2">新增</th><th class="py-2">推荐</th><th class="py-2">面试</th><th class="py-2">Offer</th><th class="py-2">待办</th><th class="py-2">提交时间</th></tr></thead>
-                    <tbody>
-                      <tr v-for="row in dailyReview.historyRows" :key="row.reviewDate + ':' + row.userName" class="border-t border-slate-100">
-                        <td class="py-2 text-slate-800">{{ row.reviewDate }}</td>
-                        <td class="py-2 text-slate-800">{{ row.userName || '—' }}</td>
-                        <td class="py-2 text-slate-600">{{ row.metrics.addedCandidates || 0 }}</td>
-                        <td class="py-2 text-slate-600">{{ row.metrics.recommendations || 0 }}</td>
-                        <td class="py-2 text-slate-600">{{ row.metrics.interviews || 0 }}</td>
-                        <td class="py-2 text-slate-600">{{ row.metrics.offers || 0 }}</td>
-                        <td class="py-2 text-slate-600">{{ row.metrics.completedTodos || 0 }}</td>
-                        <td class="py-2 text-slate-500">{{ row.savedAt || '—' }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <template v-if="!dailyReview.historySelected">
+                    <p v-if="dailyReview.historyLoading" class="text-sm text-slate-400">加载中…</p>
+                    <p v-else-if="!dailyReview.historyRows.length" class="text-sm text-slate-400">暂无历史复盘</p>
+                    <table v-else class="w-full text-sm">
+                      <thead><tr class="text-left text-xs text-slate-500"><th class="py-2">日期</th><th class="py-2">顾问</th><th class="py-2">新增</th><th class="py-2">推荐</th><th class="py-2">面试</th><th class="py-2">Offer</th><th class="py-2">待办</th><th class="py-2">更新时间</th></tr></thead>
+                      <tbody>
+                        <tr v-for="row in dailyReview.historyRows" :key="row.id || (row.reviewDate + ':' + row.userName)" role="button" tabindex="0" :aria-label="`查看 ${row.reviewDate} ${row.userName || ''} 的复盘详情`" @click="openDailyReviewHistoryDetail(row)" @keydown.enter.prevent="openDailyReviewHistoryDetail(row)" @keydown.space.prevent="openDailyReviewHistoryDetail(row)" class="cursor-pointer border-t border-slate-100 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500">
+                          <td class="py-2 text-slate-800">{{ row.reviewDate }}</td>
+                          <td class="py-2 text-slate-800">{{ row.userName || '—' }}</td>
+                          <td class="py-2 text-slate-600">{{ row.metrics.addedCandidates || 0 }}</td>
+                          <td class="py-2 text-slate-600">{{ row.metrics.recommendations || 0 }}</td>
+                          <td class="py-2 text-slate-600">{{ row.metrics.interviews || 0 }}</td>
+                          <td class="py-2 text-slate-600">{{ row.metrics.offers || 0 }}</td>
+                          <td class="py-2 text-slate-600">{{ row.metrics.completedTodos || 0 }}</td>
+                          <td class="py-2 text-slate-500">{{ dailyReviewDateTimeLabel(row.updatedAt || row.savedAt) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </template>
+                  <article v-else class="space-y-5" aria-label="历史复盘只读详情">
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p class="text-xs text-slate-500">复盘日期</p><p class="mt-1 font-semibold text-slate-900">{{ dailyReview.historySelected.reviewDate }}</p>
+                      <p class="mt-3 text-xs text-slate-500">顾问</p><p class="mt-1 text-sm text-slate-800">{{ dailyReview.historySelected.userName || '—' }}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">新增人才</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.addedCandidates || 0 }}</strong></div>
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">触达</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.touchedCandidates || 0 }}</strong></div>
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">已推荐</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.recommendations || 0 }}</strong></div>
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">进入面试</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.interviews || 0 }}</strong></div>
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">Offer</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.offers || 0 }}</strong></div>
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">完成待办</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.completedTodos || 0 }}</strong></div>
+                      <div class="rounded-lg border border-slate-200 p-3"><span class="text-xs text-slate-500">跟进</span><strong class="mt-1 block text-slate-900">{{ dailyReview.historySelected.metrics.followups || 0 }}</strong></div>
+                    </div>
+                    <section><h3 class="text-sm font-semibold text-slate-900">今日总结</h3><p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ dailyReview.historySelected.summary || '—' }}</p></section>
+                    <section><h3 class="text-sm font-semibold text-slate-900">今天遇到的问题</h3><p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ dailyReview.historySelected.issue || '—' }}</p></section>
+                    <section><h3 class="text-sm font-semibold text-slate-900">明日重点</h3><p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ dailyReview.historySelected.tomorrowFocus || '—' }}</p></section>
+                    <dl class="grid gap-3 border-t border-slate-100 pt-4 text-xs text-slate-500 sm:grid-cols-2"><div><dt>提交时间</dt><dd class="mt-1 text-slate-700">{{ dailyReviewDateTimeLabel(dailyReview.historySelected.createdAt || dailyReview.historySelected.updatedAt || dailyReview.historySelected.savedAt) }}</dd></div><div><dt>更新时间</dt><dd class="mt-1 text-slate-700">{{ dailyReviewDateTimeLabel(dailyReview.historySelected.updatedAt || dailyReview.historySelected.savedAt) }}</dd></div></dl>
+                  </article>
                 </div>
               </section>
             </div>
@@ -14703,6 +14727,7 @@ const vueAppConfig = {
       historyOpen: false,
       historyLoading: false,
       historyRows: [],
+      historySelected: null,
     });
     function emptyDailyMetrics() {
       return { addedCandidates: 0, touchedCandidates: 0, recommendations: 0, interviews: 0, offers: 0, completedTodos: 0, followups: 0 };
@@ -14742,8 +14767,7 @@ const vueAppConfig = {
         : (dailyReviewMembers.value.find(m => m.userId === dailyReview.scope) || {});
       return M.buildDailyReviewMetrics({ ...base, userId: target.userId, userName: target.userName });
     });
-    const dailyReviewSummary = computed(() => {
-      const m = dailyReviewMetrics.value;
+    function buildDailyReviewRuleSummary(m) {
       const parts = [];
       if (m.addedCandidates) parts.push(`新增 ${m.addedCandidates} 位人才`);
       if (m.touchedCandidates) parts.push(`触达 ${m.touchedCandidates} 位`);
@@ -14753,6 +14777,13 @@ const vueAppConfig = {
       if (m.completedTodos) parts.push(`完成 ${m.completedTodos} 条待办`);
       if (!parts.length) return '今日暂无业务数据，完成人才入库、触达与推进后会自动汇总。';
       return `今日${parts.join('，')}。`;
+    }
+    const dailyReviewSummary = computed(() => {
+      const metrics = dailyReviewMetrics.value;
+      if (dailyReview.scope === 'mine' && dailyReview.summary && dailyReview.savedMetrics && dailyMetricsEqual(metrics, dailyReview.savedMetrics)) {
+        return dailyReview.summary;
+      }
+      return buildDailyReviewRuleSummary(metrics);
     });
     function dailyMetricsEqual(a, b) {
       if (!a || !b) return false;
@@ -14769,6 +14800,30 @@ const vueAppConfig = {
       }
       return getDailyReviewRepo._cache;
     }
+    function getDailyReviewAiGateway() {
+      if (isGuestMode || !window.WorkBuddyAiGateway || !window.WorkBuddySupabase) return null;
+      if (!getDailyReviewAiGateway._cache) {
+        getDailyReviewAiGateway._cache = window.WorkBuddyAiGateway.createAiGateway({ supabase: window.WorkBuddySupabase });
+      }
+      return getDailyReviewAiGateway._cache;
+    }
+    async function generateDailyReviewSummary(metrics) {
+      const fallback = buildDailyReviewRuleSummary(metrics);
+      const gateway = getDailyReviewAiGateway();
+      if (!gateway?.summarizeDailyReview) return fallback;
+      try {
+        return await gateway.summarizeDailyReview({
+          reviewDate: dailyReview.reviewDate,
+          userName: permissions.value.currentUserName,
+          metrics,
+          issue: dailyReview.issue,
+          tomorrowFocus: dailyReview.tomorrowFocus,
+        });
+      } catch (error) {
+        console.warn('[daily-review] AI 总结失败，使用规则总结:', error?.message || error);
+        return fallback;
+      }
+    }
     function dailyMetricsFor(userId, userName) {
       const M = window.WorkBuddyDailyReviewMetrics;
       if (!M) return emptyDailyMetrics();
@@ -14783,6 +14838,12 @@ const vueAppConfig = {
       if (!iso) return '';
       const d = new Date(iso);
       return Number.isFinite(d.getTime()) ? d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+    }
+    function dailyReviewDateTimeLabel(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      if (!Number.isFinite(d.getTime())) return String(value);
+      return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
     }
     function dailyReviewLocalKey(userId, date) {
       return `dailyReview:${userId}:${date}`;
@@ -14844,7 +14905,9 @@ const vueAppConfig = {
       dailyReview.saving = true;
       try {
         const snapshot = { ...dailyReviewMetrics.value };
-        const savedAtLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        const savedAtIso = new Date().toISOString();
+        const savedAtLabel = dailyReviewSavedAtLabel(savedAtIso);
+        const summary = await generateDailyReviewSummary(snapshot);
         const payload = {
           id: `dr_${permissions.value.currentUserId}_${dailyReview.reviewDate}`,
           workspaceId: 'main',
@@ -14854,15 +14917,22 @@ const vueAppConfig = {
           metrics: snapshot,
           issue: dailyReview.issue,
           tomorrowFocus: dailyReview.tomorrowFocus,
-          summary: dailyReviewSummary.value,
+          summary,
         };
         if (isGuestMode) {
-          localStorage.setItem(dailyReviewLocalKey(permissions.value.currentUserId, dailyReview.reviewDate), JSON.stringify({ ...payload, savedAt: savedAtLabel }));
+          const existing = dailyReviewReadLocal(permissions.value.currentUserId, dailyReview.reviewDate);
+          localStorage.setItem(dailyReviewLocalKey(permissions.value.currentUserId, dailyReview.reviewDate), JSON.stringify({
+            ...payload,
+            createdAt: existing?.createdAt || savedAtIso,
+            updatedAt: savedAtIso,
+            savedAt: savedAtLabel,
+          }));
         } else {
           const repo = getDailyReviewRepo();
           if (!repo) { showToast('无法连接云端，请稍后重试', 'error'); return; }
           await repo.upsertReview(payload);
         }
+        dailyReview.summary = summary;
         dailyReview.savedMetrics = snapshot;
         dailyReview.savedAt = savedAtLabel;
         showToast('已保存今日复盘');
@@ -14878,7 +14948,6 @@ const vueAppConfig = {
         const row = dailyReview.teamRows.find(r => r.userId === dailyReview.scope);
         dailyReview.issue = (row && row.issue) || '';
         dailyReview.tomorrowFocus = (row && row.tomorrowFocus) || '';
-        dailyReview.summary = (row && row.summary) || '';
         dailyReview.loadedIssue = !!(row && row.submitted);
       }
     }
@@ -14886,6 +14955,7 @@ const vueAppConfig = {
       dailyReview.historyOpen = true;
       dailyReview.historyLoading = true;
       dailyReview.historyRows = [];
+      dailyReview.historySelected = null;
       if (isGuestMode) {
         const prefix = `dailyReview:${permissions.value.currentUserId}:`;
         const rows = [];
@@ -14893,7 +14963,14 @@ const vueAppConfig = {
           const key = localStorage.key(i);
           if (!key || !key.startsWith(prefix)) continue;
           const d = JSON.parse(localStorage.getItem(key));
-          rows.push({ reviewDate: key.slice(prefix.length), userName: d.userName || '游客', metrics: d.metrics || {}, savedAt: d.savedAt || '' });
+          rows.push({
+            ...d,
+            id: d.id || key,
+            reviewDate: key.slice(prefix.length),
+            userName: d.userName || '游客',
+            metrics: d.metrics || {},
+            savedAt: d.savedAt || '',
+          });
         }
         rows.sort((a, b) => String(b.reviewDate).localeCompare(String(a.reviewDate)));
         dailyReview.historyRows = rows;
@@ -14904,16 +14981,21 @@ const vueAppConfig = {
             userId: permissions.value.isAdmin ? 'all' : permissions.value.currentUserId,
             endDate: dailyReview.reviewDate,
           });
-          dailyReview.historyRows = rows.map(r => ({
-            reviewDate: r.reviewDate, userName: r.userName || '', metrics: r.metrics || {},
-            savedAt: dailyReviewSavedAtLabel(r.updatedAt),
-          }));
+          dailyReview.historyRows = rows.map(r => ({ ...r, metrics: r.metrics || {} }));
         }
       }
       dailyReview.historyLoading = false;
     }
+    function openDailyReviewHistoryDetail(row) {
+      if (!row) return;
+      dailyReview.historySelected = { ...row, metrics: row.metrics || {} };
+    }
+    function backToDailyReviewHistoryList() {
+      dailyReview.historySelected = null;
+    }
     function closeDailyReviewHistory() {
       dailyReview.historyOpen = false;
+      dailyReview.historySelected = null;
     }
     const channelDetailDialog = reactive({ open: false, companyId: '', channelId: '', channelName: '', query: '', status: 'all' });
     const homeFunnelDashboardController = window.WorkBuddyTalentFunnelDashboard.createTalentFunnelDashboardController({
@@ -27079,7 +27161,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails, dailyReview, dailyReviewMetrics, dailyReviewSummary, dailyReviewMembers, dailyReviewIsReadonly, loadDailyReview, saveDailyReview, onDailyReviewScopeChange, openDailyReviewHistory, closeDailyReviewHistory, todayBeijingDate,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails, dailyReview, dailyReviewMetrics, dailyReviewSummary, dailyReviewMembers, dailyReviewIsReadonly, dailyReviewDateTimeLabel, loadDailyReview, saveDailyReview, onDailyReviewScopeChange, openDailyReviewHistory, openDailyReviewHistoryDetail, backToDailyReviewHistoryList, closeDailyReviewHistory, todayBeijingDate,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, bulkOwnerEditor, openBulkSetCandidateOwner, closeBulkSetCandidateOwner, confirmBulkSetCandidateOwner, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, applicationPipelineTrail, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,

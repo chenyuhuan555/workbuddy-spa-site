@@ -1,17 +1,15 @@
 ;(function initDailyReviewMetrics(root, factory) {
-  const api = factory();
+  const api = factory(root.WorkBuddyStages);
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.WorkBuddyDailyReviewMetrics = api;
-})(typeof globalThis !== 'undefined' ? globalThis : window, function createDailyReviewMetricsModule() {
+})(typeof globalThis !== 'undefined' ? globalThis : window, function createDailyReviewMetricsModule(stages) {
   'use strict';
 
-  // 阶段组：与 src/constants/pipeline-stages.js 的 KEYS / GROUPS 保持一致。
-  // 这里内联一份是为了让纯函数模块可独立加载（不依赖 window.WorkBuddyStages 全局），
-  // 语义上务必与 pipeline-stages.js 同步。
-  const INTERVIEW_STAGES = Object.freeze(['interview_pending', 'interviewing', 'interview_passed']);
-  const OFFER_STAGES = Object.freeze(['offer', 'offer_accepted']);
-  const RECOMMENDED_STAGE = 'recommended';
-  const CONTACTED_STAGE = 'contacted';
+  if (!stages?.KEYS || !stages?.GROUPS) {
+    throw new Error('WORKBUDDY_PIPELINE_STAGES_REQUIRED');
+  }
+  const KEYS = stages.KEYS;
+  const GROUPS = stages.GROUPS;
 
   function emptyMetrics() {
     return {
@@ -56,6 +54,15 @@
     return Boolean(name) && Boolean(userName) && name === String(userName);
   }
 
+  // 与 P0-3 权限口径一致：Application owner 优先，完全缺失时才回退 Candidate owner。
+  function applicationBelongsTo(application, candidate, userId, userName) {
+    const appUid = String(application?.ownerUserId || application?.owner_id || '');
+    if (appUid) return appUid === String(userId || '');
+    const appOwner = String(application?.owner || '');
+    if (appOwner) return Boolean(userName) && appOwner === String(userName);
+    return belongsTo(candidate, userId, userName);
+  }
+
   /**
    * 计算单顾问在某一天的「每日复盘」业务指标（纯函数，不负责 Supabase）。
    *
@@ -88,7 +95,9 @@
     if (!date) return metrics; // 未指定复盘日期时，无「当天」可统计
 
     const touchedCandidateIds = new Set();
-    const ownCandidates = (Array.isArray(candidates) ? candidates : []).filter(c => belongsTo(c, uid, uname));
+    const candidateList = Array.isArray(candidates) ? candidates : [];
+    const candidatesById = new Map(candidateList.filter(c => c?.id).map(c => [c.id, c]));
+    const ownCandidates = candidateList.filter(c => belongsTo(c, uid, uname));
     ownCandidates.forEach(c => {
       const intake = toTimezoneDate(c && (c.intakeAt || c.createdAt), timezone);
       if (intake === date) metrics.addedCandidates += 1;
@@ -96,7 +105,7 @@
       // 触达来源 1：candidate.touchedAt（旧数据兼容）或 candidate 自身的 contacted 阶段事件
       const touched = toTimezoneDate(c && c.touchedAt, timezone);
       const contactedEvent = Array.isArray(c && c.pipelineEvents)
-        ? (c.pipelineEvents).some(e => e && e.toStage === CONTACTED_STAGE && toTimezoneDate(e.occurredAt, timezone) === date)
+        ? (c.pipelineEvents).some(e => e && e.toStage === KEYS.CONTACTED && toTimezoneDate(e.occurredAt, timezone) === date)
         : false;
       if (touched === date || contactedEvent) touchedCandidateIds.add(c && c.id);
 
@@ -105,14 +114,16 @@
       metrics.followups += fups.filter(f => f && toTimezoneDate(f.createdAt, timezone) === date).length;
     });
 
-    const ownApplications = (Array.isArray(applications) ? applications : []).filter(a => belongsTo(a, uid, uname));
+    const ownApplications = (Array.isArray(applications) ? applications : []).filter(a => (
+      applicationBelongsTo(a, candidatesById.get(a?.candidateId), uid, uname)
+    ));
     ownApplications.forEach(a => {
       const events = Array.isArray(a && a.pipelineEvents) ? a.pipelineEvents : [];
-      if (events.some(e => e && e.toStage === RECOMMENDED_STAGE && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.recommendations += 1;
-      if (events.some(e => e && INTERVIEW_STAGES.includes(e.toStage) && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.interviews += 1;
-      if (events.some(e => e && OFFER_STAGES.includes(e.toStage) && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.offers += 1;
+      if (events.some(e => e && e.toStage === KEYS.RECOMMENDED && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.recommendations += 1;
+      if (events.some(e => e && GROUPS.INTERVIEW.includes(e.toStage) && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.interviews += 1;
+      if (events.some(e => e && GROUPS.OFFER.includes(e.toStage) && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.offers += 1;
       // 触达来源 2：application 进入 contacted 阶段（workbench-v2 里触达是 application 级 pipeline），去重到候选人
-      if (events.some(e => e && e.toStage === CONTACTED_STAGE && toTimezoneDate(e.occurredAt, timezone) === date) && a.candidateId) {
+      if (events.some(e => e && e.toStage === KEYS.CONTACTED && toTimezoneDate(e.occurredAt, timezone) === date) && a.candidateId) {
         touchedCandidateIds.add(a.candidateId);
       }
     });
@@ -144,12 +155,9 @@
   }
 
   return Object.freeze({
-    INTERVIEW_STAGES,
-    OFFER_STAGES,
-    RECOMMENDED_STAGE,
-    CONTACTED_STAGE,
     toTimezoneDate,
     belongsTo,
+    applicationBelongsTo,
     buildDailyReviewMetrics,
     buildTeamDailyReviewMetrics,
   });
