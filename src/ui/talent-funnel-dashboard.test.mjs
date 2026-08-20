@@ -65,7 +65,9 @@ test('工作台首页按渠道漏斗、今日待办、今日复盘分层', () =>
   assert.match(dashboard, /openTalentIntake/);
   assert.match(dashboard, /openHomeFunnelChannelImport\(selectedHomeFunnelChannelRow\)/);
   assert.match(dashboard, /filteredHomeTodos\.slice\(0, 6\)/);
-  assert.match(dashboard, /homeFunnelReview\.added/);
+  // 首页「今日复盘」区块用 dailyReviewMetrics 暴露统计（addedCandidates/touchedCandidates 等），
+  // 与已实现的复盘特性一致；homeFunnelReview 仅用于漏斗 AI 摘要，不在模板中渲染。
+  assert.match(dashboard, /dailyReviewMetrics\.addedCandidates/);
 });
 
 test('工作台首页不再展示旧的 KPI 卡片和业务进展大卡片', () => {

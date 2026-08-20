@@ -49,6 +49,8 @@
   <script src="./src/services/repo/talent-funnel-event-repo.js?v=20260811-talentfunneleventrepo1"></script>
   <script src="./src/services/talent-funnel-scope.js?v=20260811-talentfunnelscope1"></script>
   <script src="./src/services/talent-funnel-analytics.js?v=20260811-talentfunnelanalytics1"></script>
+  <script src="./src/services/daily-review-metrics.js?v=20260820-dailyreview1"></script>
+  <script src="./src/services/repo/daily-review-repo.js?v=20260820-dailyreview1"></script>
   <script src="./src/services/talent-funnel-ai.js?v=20260811-talentfunnelai1"></script>
   <script src="./src/services/position-bulk-import.js?v=20260812-positionbulkimport1"></script>
   <script src="./src/services/candidate-excel-import.js?v=20260812-candidateexcelimport1"></script>
@@ -3213,7 +3215,7 @@
     .wb-v2-workspace .wb-home-todo-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 6px; color: #64748b; font-size: 14px; }
     .wb-v2-workspace .wb-home-todo-summary strong { color: #0f172a; font-size: 16px; }
     .wb-v2-workspace .wb-home-todo-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #f1f5f9; margin-top: 16px; padding-top: 18px; color: #64748b; font-size: 15px; }
-    .wb-v2-workspace .wb-home-review-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 18px; color: #64748b; font-size: 12px; }
+    .wb-v2-workspace .wb-home-review-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 18px; color: #64748b; font-size: 12px; }
     .wb-v2-workspace .wb-home-review-stats span { min-width: 0; padding: 0 8px; text-align: center; }
     .wb-v2-workspace .wb-home-review-stats span + span { border-left: 1px solid #eef1ef; }
     .wb-v2-workspace .wb-home-review-stats strong { display: block; margin-top: 5px; color: #087a55; font-size: 25px; line-height: 1; }
@@ -4293,11 +4295,71 @@
             </section>
 
             <section aria-labelledby="home-review-title" class="wb-home-section wb-home-activity-section">
-              <div class="flex items-center gap-2"><h2 id="home-review-title" class="font-bold text-slate-900">今日复盘</h2><span class="wb-home-ai-label">AI 生成</span></div>
-              <div class="wb-home-review-stats"><span>新增人才 <strong>{{ homeFunnelReview.added }}</strong></span><span>触达 <strong>{{ homeFunnelReview.touched }}</strong></span><span>有意向 <strong>{{ homeFunnelReview.interested }}</strong></span><span>已推荐 <strong>{{ homeFunnelReview.recommended }}</strong></span><span>进入面试 <strong>{{ homeFunnelReview.interviewed }}</strong></span></div>
-              <div class="wb-home-ai-summary"><strong>AI 智能总结</strong><p>{{ homeFunnelAiSummary }}</p></div>
-              <div class="wb-home-review-notes"><label class="wb-home-note"><h3>今天遇到的问题</h3><textarea v-model="homeReviewNotes.issue" aria-label="今天遇到的问题" placeholder="记录今天需要关注的问题"></textarea></label><label class="wb-home-note"><h3>明日重点</h3><textarea v-model="homeReviewNotes.tomorrow" aria-label="明日重点" placeholder="记录明天优先处理的事项"></textarea></label></div>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2"><h2 id="home-review-title" class="font-bold text-slate-900">今日复盘</h2><span class="text-sm text-slate-500">{{ dailyReview.reviewDate }}</span></div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <select v-if="permissions.isAdmin" v-model="dailyReview.scope" @change="onDailyReviewScopeChange" aria-label="复盘范围" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                    <option value="mine">我的复盘</option>
+                    <option value="all">全部团队</option>
+                    <option v-for="m in dailyReviewMembers" :key="m.userId" :value="m.userId">{{ m.userName }}</option>
+                  </select>
+                  <button type="button" @click="openDailyReviewHistory" class="wb-home-link">查看历史复盘</button>
+                </div>
+              </div>
+              <div v-if="dailyReview.yesterdayFocus && dailyReview.scope === 'mine'" class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"><strong>昨日计划</strong> {{ dailyReview.yesterdayFocus }}</div>
+              <div class="wb-home-review-stats"><span>新增人才 <strong>{{ dailyReviewMetrics.addedCandidates }}</strong></span><span>触达 <strong>{{ dailyReviewMetrics.touchedCandidates }}</strong></span><span>已推荐 <strong>{{ dailyReviewMetrics.recommendations }}</strong></span><span>进入面试 <strong>{{ dailyReviewMetrics.interviews }}</strong></span><span>Offer <strong>{{ dailyReviewMetrics.offers }}</strong></span><span>完成待办 <strong>{{ dailyReviewMetrics.completedTodos }}</strong></span></div>
+              <p v-if="dailyReview.savedMetrics && !dailyMetricsEqual(dailyReviewMetrics, dailyReview.savedMetrics)" class="mt-2 text-xs text-slate-400">数据已更新</p>
+              <div class="wb-home-ai-summary"><strong>AI 智能总结</strong><p>{{ dailyReviewSummary }}</p></div>
+              <div v-if="permissions.isAdmin && dailyReview.scope === 'all'" class="mt-3 space-y-1">
+                <div v-for="row in dailyReview.teamRows" :key="row.userId" class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50/70 px-3 py-2 text-sm">
+                  <button type="button" @click="dailyReview.scope = row.userId; onDailyReviewScopeChange()" class="font-medium text-slate-800 hover:text-emerald-700">{{ row.userName }}</button>
+                  <span class="text-xs text-slate-500">新增 {{ row.metrics.addedCandidates }} · 推荐 {{ row.metrics.recommendations }} · 面试 {{ row.metrics.interviews }} · 待办 {{ row.metrics.completedTodos }}</span>
+                  <span class="text-xs" :class="row.submitted ? 'text-emerald-600' : 'text-slate-400'">{{ row.submitted ? '已提交 ' + row.savedAt : '未提交' }}</span>
+                </div>
+                <p v-if="!dailyReview.teamRows.length" class="text-xs text-slate-400">暂无团队成员</p>
+              </div>
+              <template v-if="dailyReview.scope === 'mine'">
+                <div class="wb-home-review-notes"><label class="wb-home-note"><h3>今天遇到的问题</h3><textarea v-model="dailyReview.issue" aria-label="今天遇到的问题" placeholder="记录今天需要关注的问题"></textarea></label><label class="wb-home-note"><h3>明日重点</h3><textarea v-model="dailyReview.tomorrowFocus" aria-label="明日重点" placeholder="记录明天优先处理的事项"></textarea></label></div>
+                <div class="mt-3 flex items-center gap-3">
+                  <button type="button" @click="saveDailyReview" :disabled="dailyReview.saving" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{{ dailyReview.saving ? '保存中…' : '保存今日复盘' }}</button>
+                  <span v-if="dailyReview.savedAt" class="text-xs text-slate-500">已保存 · {{ dailyReview.savedAt }}</span>
+                </div>
+              </template>
+              <template v-else-if="permissions.isAdmin && dailyReview.scope !== 'all'">
+                <div v-if="dailyReview.loadedIssue" class="mt-3 space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
+                  <p><strong>今天遇到的问题</strong><br>{{ dailyReview.issue || '—' }}</p>
+                  <p><strong>明日重点</strong><br>{{ dailyReview.tomorrowFocus || '—' }}</p>
+                </div>
+                <p v-else class="mt-3 rounded-lg bg-slate-50/60 px-3 py-2 text-sm text-slate-400">今日尚未提交复盘</p>
+              </template>
             </section>
+            <div v-if="dailyReview.historyOpen" class="fixed inset-0 z-[130] flex justify-end bg-slate-950/40 backdrop-blur-sm" @click.self="closeDailyReviewHistory">
+              <section role="dialog" aria-modal="true" aria-labelledby="daily-review-history-title" class="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+                <header class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                  <h2 id="daily-review-history-title" class="text-lg font-bold text-slate-900">历史复盘</h2>
+                  <button type="button" @click="closeDailyReviewHistory" aria-label="关闭" class="h-9 w-9 rounded-full bg-slate-100 text-xl text-slate-500 hover:bg-slate-200">×</button>
+                </header>
+                <div class="flex-1 overflow-y-auto p-6">
+                  <p v-if="dailyReview.historyLoading" class="text-sm text-slate-400">加载中…</p>
+                  <p v-else-if="!dailyReview.historyRows.length" class="text-sm text-slate-400">暂无历史复盘</p>
+                  <table v-else class="w-full text-sm">
+                    <thead><tr class="text-left text-xs text-slate-500"><th class="py-2">日期</th><th class="py-2">顾问</th><th class="py-2">新增</th><th class="py-2">推荐</th><th class="py-2">面试</th><th class="py-2">Offer</th><th class="py-2">待办</th><th class="py-2">提交时间</th></tr></thead>
+                    <tbody>
+                      <tr v-for="row in dailyReview.historyRows" :key="row.reviewDate + ':' + row.userName" class="border-t border-slate-100">
+                        <td class="py-2 text-slate-800">{{ row.reviewDate }}</td>
+                        <td class="py-2 text-slate-800">{{ row.userName || '—' }}</td>
+                        <td class="py-2 text-slate-600">{{ row.metrics.addedCandidates || 0 }}</td>
+                        <td class="py-2 text-slate-600">{{ row.metrics.recommendations || 0 }}</td>
+                        <td class="py-2 text-slate-600">{{ row.metrics.interviews || 0 }}</td>
+                        <td class="py-2 text-slate-600">{{ row.metrics.offers || 0 }}</td>
+                        <td class="py-2 text-slate-600">{{ row.metrics.completedTodos || 0 }}</td>
+                        <td class="py-2 text-slate-500">{{ row.savedAt || '—' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
           </div>
 
           <div v-if="channelDetailDialog.open" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" @click.self="closeChannelDetails">
@@ -14624,6 +14686,235 @@ const vueAppConfig = {
       return `当前新增人才 ${added} 位${primary?.count ? `，主要来源为${primary.channelName}` : ''}。触达率为 ${touchRate}%，尚有 ${Math.max(added - touched, 0)} 位未触达人才。`;
     });
     const homeReviewNotes = reactive({ issue: '', tomorrow: '' });
+    // ── 每日复盘（P1-1 每日复盘团队化）──
+    const dailyReview = reactive({
+      scope: 'mine',
+      reviewDate: '',
+      savedMetrics: null,
+      issue: '',
+      tomorrowFocus: '',
+      summary: '',
+      savedAt: '',
+      saving: false,
+      loaded: false,
+      yesterdayFocus: '',
+      loadedIssue: false,
+      teamRows: [],
+      historyOpen: false,
+      historyLoading: false,
+      historyRows: [],
+    });
+    function emptyDailyMetrics() {
+      return { addedCandidates: 0, touchedCandidates: 0, recommendations: 0, interviews: 0, offers: 0, completedTodos: 0, followups: 0 };
+    }
+    function dailyReviewDateInTimezone(iso) {
+      const M = window.WorkBuddyDailyReviewMetrics;
+      return (M && M.toTimezoneDate) ? M.toTimezoneDate(iso, 'Asia/Shanghai') : '';
+    }
+    function todayBeijingDate() {
+      return dailyReviewDateInTimezone(new Date().toISOString());
+    }
+    function yesterdayBeijingDate() {
+      const today = todayBeijingDate();
+      if (!today) return '';
+      const d = new Date(`${today}T12:00:00+08:00`);
+      d.setDate(d.getDate() - 1);
+      return dailyReviewDateInTimezone(d.toISOString());
+    }
+    const dailyReviewMembers = computed(() => (permissions.value.members || [])
+      .map(m => ({ userId: String(m.id || ''), userName: String(m.display_name || m.username || '') }))
+      .filter(m => m.userId));
+    const dailyReviewMetrics = computed(() => {
+      const M = window.WorkBuddyDailyReviewMetrics;
+      if (!M) return emptyDailyMetrics();
+      const base = {
+        candidates: workbenchV2.candidates || [],
+        applications: workbenchV2.applications || [],
+        todos: dashboardTodos.value.map(t => t._raw || t),
+        reviewDate: dailyReview.reviewDate,
+        timezone: 'Asia/Shanghai',
+      };
+      if (dailyReview.scope === 'all') {
+        return M.buildTeamDailyReviewMetrics({ ...base, members: dailyReviewMembers.value });
+      }
+      const target = dailyReview.scope === 'mine'
+        ? { userId: permissions.value.currentUserId, userName: permissions.value.currentUserName }
+        : (dailyReviewMembers.value.find(m => m.userId === dailyReview.scope) || {});
+      return M.buildDailyReviewMetrics({ ...base, userId: target.userId, userName: target.userName });
+    });
+    const dailyReviewSummary = computed(() => {
+      const m = dailyReviewMetrics.value;
+      const parts = [];
+      if (m.addedCandidates) parts.push(`新增 ${m.addedCandidates} 位人才`);
+      if (m.touchedCandidates) parts.push(`触达 ${m.touchedCandidates} 位`);
+      if (m.recommendations) parts.push(`${m.recommendations} 次推荐`);
+      if (m.interviews) parts.push(`${m.interviews} 位进入面试`);
+      if (m.offers) parts.push(`${m.offers} 位进入 Offer`);
+      if (m.completedTodos) parts.push(`完成 ${m.completedTodos} 条待办`);
+      if (!parts.length) return '今日暂无业务数据，完成人才入库、触达与推进后会自动汇总。';
+      return `今日${parts.join('，')}。`;
+    });
+    function dailyMetricsEqual(a, b) {
+      if (!a || !b) return false;
+      return Object.keys(emptyDailyMetrics()).every(k => (a[k] || 0) === (b[k] || 0));
+    }
+    const dailyReviewIsReadonly = computed(() => permissions.value.isAdmin && dailyReview.scope !== 'mine');
+    function getDailyReviewRepo() {
+      if (isGuestMode || !window.WorkBuddyDailyReviewRepo || !window.WorkBuddySupabase || !window.WorkBuddyAccess?.profile) return null;
+      if (!getDailyReviewRepo._cache) {
+        getDailyReviewRepo._cache = window.WorkBuddyDailyReviewRepo.createDailyReviewRepo({
+          supabase: window.WorkBuddySupabase,
+          getProfile: () => window.WorkBuddyAccess?.profile,
+        });
+      }
+      return getDailyReviewRepo._cache;
+    }
+    function dailyMetricsFor(userId, userName) {
+      const M = window.WorkBuddyDailyReviewMetrics;
+      if (!M) return emptyDailyMetrics();
+      return M.buildDailyReviewMetrics({
+        candidates: workbenchV2.candidates || [],
+        applications: workbenchV2.applications || [],
+        todos: dashboardTodos.value.map(t => t._raw || t),
+        userId, userName, reviewDate: dailyReview.reviewDate, timezone: 'Asia/Shanghai',
+      });
+    }
+    function dailyReviewSavedAtLabel(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return Number.isFinite(d.getTime()) ? d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+    }
+    function dailyReviewLocalKey(userId, date) {
+      return `dailyReview:${userId}:${date}`;
+    }
+    function dailyReviewReadLocal(userId, date) {
+      const raw = localStorage.getItem(dailyReviewLocalKey(userId, date));
+      return raw ? JSON.parse(raw) : null;
+    }
+    async function loadDailyReview() {
+      dailyReview.reviewDate = todayBeijingDate();
+      dailyReview.loaded = false;
+      dailyReview.yesterdayFocus = '';
+      dailyReview.teamRows = [];
+      const userId = permissions.value.currentUserId;
+      if (isGuestMode) {
+        const mine = dailyReviewReadLocal(userId, dailyReview.reviewDate);
+        if (mine) {
+          dailyReview.issue = mine.issue || ''; dailyReview.tomorrowFocus = mine.tomorrowFocus || '';
+          dailyReview.summary = mine.summary || ''; dailyReview.savedMetrics = mine.metrics || null;
+          dailyReview.savedAt = mine.savedAt || '';
+        }
+        const y = dailyReviewReadLocal(userId, yesterdayBeijingDate());
+        dailyReview.yesterdayFocus = (y && y.tomorrowFocus) || '';
+      } else {
+        const repo = getDailyReviewRepo();
+        if (!repo) { dailyReview.loaded = true; return; }
+        try {
+          const mine = await repo.loadByDate({ userId, reviewDate: dailyReview.reviewDate });
+          if (mine) {
+            dailyReview.issue = mine.issue || ''; dailyReview.tomorrowFocus = mine.tomorrowFocus || '';
+            dailyReview.summary = mine.summary || ''; dailyReview.savedMetrics = mine.metrics || null;
+            dailyReview.savedAt = dailyReviewSavedAtLabel(mine.updatedAt);
+          }
+          const yesterday = await repo.loadByDate({ userId, reviewDate: yesterdayBeijingDate() });
+          dailyReview.yesterdayFocus = (yesterday && yesterday.tomorrowFocus) || '';
+          if (permissions.value.isAdmin) {
+            const team = await repo.loadTeamByDate({ reviewDate: dailyReview.reviewDate });
+            dailyReview.teamRows = dailyReviewMembers.value.map(m => {
+              const row = team.find(r => r.userId === m.userId);
+              return {
+                userId: m.userId, userName: m.userName,
+                submitted: !!row,
+                savedAt: row ? dailyReviewSavedAtLabel(row.updatedAt) : '',
+                metrics: row ? (row.metrics || emptyDailyMetrics()) : dailyMetricsFor(m.userId, m.userName),
+                issue: row ? (row.issue || '') : '',
+                tomorrowFocus: row ? (row.tomorrowFocus || '') : '',
+                summary: row ? (row.summary || '') : '',
+              };
+            });
+          }
+        } catch (error) {
+          console.warn('[daily-review] 加载失败:', error?.message || error);
+        }
+      }
+      dailyReview.loaded = true;
+    }
+    async function saveDailyReview() {
+      if (dailyReview.saving || dailyReview.scope !== 'mine') return;
+      dailyReview.saving = true;
+      try {
+        const snapshot = { ...dailyReviewMetrics.value };
+        const savedAtLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        const payload = {
+          id: `dr_${permissions.value.currentUserId}_${dailyReview.reviewDate}`,
+          workspaceId: 'main',
+          userId: permissions.value.currentUserId,
+          userName: permissions.value.currentUserName,
+          reviewDate: dailyReview.reviewDate,
+          metrics: snapshot,
+          issue: dailyReview.issue,
+          tomorrowFocus: dailyReview.tomorrowFocus,
+          summary: dailyReviewSummary.value,
+        };
+        if (isGuestMode) {
+          localStorage.setItem(dailyReviewLocalKey(permissions.value.currentUserId, dailyReview.reviewDate), JSON.stringify({ ...payload, savedAt: savedAtLabel }));
+        } else {
+          const repo = getDailyReviewRepo();
+          if (!repo) { showToast('无法连接云端，请稍后重试', 'error'); return; }
+          await repo.upsertReview(payload);
+        }
+        dailyReview.savedMetrics = snapshot;
+        dailyReview.savedAt = savedAtLabel;
+        showToast('已保存今日复盘');
+      } catch (error) {
+        showToast('保存失败：' + (error?.message || error), 'error');
+      } finally {
+        dailyReview.saving = false;
+      }
+    }
+    function onDailyReviewScopeChange() {
+      dailyReview.loadedIssue = false;
+      if (dailyReview.scope !== 'mine' && dailyReview.scope !== 'all') {
+        const row = dailyReview.teamRows.find(r => r.userId === dailyReview.scope);
+        dailyReview.issue = (row && row.issue) || '';
+        dailyReview.tomorrowFocus = (row && row.tomorrowFocus) || '';
+        dailyReview.summary = (row && row.summary) || '';
+        dailyReview.loadedIssue = !!(row && row.submitted);
+      }
+    }
+    async function openDailyReviewHistory() {
+      dailyReview.historyOpen = true;
+      dailyReview.historyLoading = true;
+      dailyReview.historyRows = [];
+      if (isGuestMode) {
+        const prefix = `dailyReview:${permissions.value.currentUserId}:`;
+        const rows = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key || !key.startsWith(prefix)) continue;
+          const d = JSON.parse(localStorage.getItem(key));
+          rows.push({ reviewDate: key.slice(prefix.length), userName: d.userName || '游客', metrics: d.metrics || {}, savedAt: d.savedAt || '' });
+        }
+        rows.sort((a, b) => String(b.reviewDate).localeCompare(String(a.reviewDate)));
+        dailyReview.historyRows = rows;
+      } else {
+        const repo = getDailyReviewRepo();
+        if (repo) {
+          const rows = await repo.loadHistory({
+            userId: permissions.value.isAdmin ? 'all' : permissions.value.currentUserId,
+            endDate: dailyReview.reviewDate,
+          });
+          dailyReview.historyRows = rows.map(r => ({
+            reviewDate: r.reviewDate, userName: r.userName || '', metrics: r.metrics || {},
+            savedAt: dailyReviewSavedAtLabel(r.updatedAt),
+          }));
+        }
+      }
+      dailyReview.historyLoading = false;
+    }
+    function closeDailyReviewHistory() {
+      dailyReview.historyOpen = false;
+    }
     const channelDetailDialog = reactive({ open: false, companyId: '', channelId: '', channelName: '', query: '', status: 'all' });
     const homeFunnelDashboardController = window.WorkBuddyTalentFunnelDashboard.createTalentFunnelDashboardController({
       state: homeFunnelDashboard,
@@ -19179,6 +19470,7 @@ ${ocrText}`
         loadAiConfig();
         await loadGuestWorkspace();
         void reconcileBusinessTodos(); // 游客演示数据也可体验自动待办
+        void loadDailyReview(); // 每日复盘：游客模式走 localStorage
         appHydrating = false;
         updateActiveNavFromScroll();
         window.addEventListener('scroll', updateActiveNavFromScroll, { passive: true });
@@ -19195,6 +19487,7 @@ ${ocrText}`
       await initializePrivateTodos(); // 加载当前账号私有待办，并由管理员认领旧共享待办
       void loadTeamTodos(); // P0-3：管理员加载团队待办（RLS 未上线时仅本人）
       void reconcileBusinessTodos(); // 数据初始化完成后对账自动待办
+      void loadDailyReview(); // 每日复盘：加载当天复盘 + 昨日承接 + 管理员团队
       console.log('[diag] onMounted: loadWorkbenchV2 完成后 workbenchV2 =', {
         companies: workbenchV2.companies.length,
         candidates: workbenchV2.candidates.length,
@@ -26786,7 +27079,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
-      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails,
+      companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails, dailyReview, dailyReviewMetrics, dailyReviewSummary, dailyReviewMembers, dailyReviewIsReadonly, loadDailyReview, saveDailyReview, onDailyReviewScopeChange, openDailyReviewHistory, closeDailyReviewHistory, todayBeijingDate,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, bulkOwnerEditor, openBulkSetCandidateOwner, closeBulkSetCandidateOwner, confirmBulkSetCandidateOwner, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, applicationPipelineTrail, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,

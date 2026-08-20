@@ -172,3 +172,19 @@ test('归属按 ownerUserId 匹配；ownerUserId 缺失时回退 owner 姓名', 
   });
   assert.equal(byName.addedCandidates, 1, 'owner 姓名回退命中');
 });
+
+test('触达从 application contacted 事件统计并去重到候选人', () => {
+  const apps = [
+    application('a1', { candidateId: 'c1', pipelineEvents: [{ toStage: 'contacted', occurredAt: TODAY }] }),
+    application('a2', { candidateId: 'c1', pipelineEvents: [{ toStage: 'contacted', occurredAt: TODAY }] }),
+  ];
+  const m = metrics({ applications: apps });
+  assert.equal(m.touchedCandidates, 1, '同一候选人两个岗位触达只计一次');
+});
+
+test('触达可同时来自 candidate.touchedAt 与 application contacted，统一去重', () => {
+  const candidates = [candidate('c1', { touchedAt: TODAY })];
+  const apps = [application('a1', { candidateId: 'c1', pipelineEvents: [{ toStage: 'contacted', occurredAt: TODAY }] })];
+  const m = metrics({ candidates, applications: apps });
+  assert.equal(m.touchedCandidates, 1);
+});

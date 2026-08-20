@@ -87,17 +87,18 @@
     const date = String(reviewDate || '').trim();
     if (!date) return metrics; // 未指定复盘日期时，无「当天」可统计
 
+    const touchedCandidateIds = new Set();
     const ownCandidates = (Array.isArray(candidates) ? candidates : []).filter(c => belongsTo(c, uid, uname));
     ownCandidates.forEach(c => {
       const intake = toTimezoneDate(c && (c.intakeAt || c.createdAt), timezone);
       if (intake === date) metrics.addedCandidates += 1;
 
-      // 触达：优先 touchedAt，其次 pipeline 里的 contacted 事件；同一候选人一天只计一次。
+      // 触达来源 1：candidate.touchedAt（旧数据兼容）或 candidate 自身的 contacted 阶段事件
       const touched = toTimezoneDate(c && c.touchedAt, timezone);
       const contactedEvent = Array.isArray(c && c.pipelineEvents)
         ? (c.pipelineEvents).some(e => e && e.toStage === CONTACTED_STAGE && toTimezoneDate(e.occurredAt, timezone) === date)
         : false;
-      if (touched === date || contactedEvent) metrics.touchedCandidates += 1;
+      if (touched === date || contactedEvent) touchedCandidateIds.add(c && c.id);
 
       // 跟进：结构化 followup 记录（动作次数，非候选人数）。无 followups 字段时自然为 0（降级）。
       const fups = Array.isArray(c && c.followups) ? c.followups : [];
@@ -110,7 +111,12 @@
       if (events.some(e => e && e.toStage === RECOMMENDED_STAGE && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.recommendations += 1;
       if (events.some(e => e && INTERVIEW_STAGES.includes(e.toStage) && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.interviews += 1;
       if (events.some(e => e && OFFER_STAGES.includes(e.toStage) && toTimezoneDate(e.occurredAt, timezone) === date)) metrics.offers += 1;
+      // 触达来源 2：application 进入 contacted 阶段（workbench-v2 里触达是 application 级 pipeline），去重到候选人
+      if (events.some(e => e && e.toStage === CONTACTED_STAGE && toTimezoneDate(e.occurredAt, timezone) === date) && a.candidateId) {
+        touchedCandidateIds.add(a.candidateId);
+      }
     });
+    metrics.touchedCandidates = touchedCandidateIds.size;
 
     const ownTodos = (Array.isArray(todos) ? todos : []).filter(t => belongsTo(t, uid, uname));
     metrics.completedTodos = ownTodos.filter(t => t && t.status === 'done' && toTimezoneDate(t.completedAt, timezone) === date).length;
