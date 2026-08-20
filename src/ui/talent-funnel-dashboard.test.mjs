@@ -80,6 +80,15 @@ test('首页三大业务板块各自占满横向空间', () => {
   assert.match(dashboard, /aria-labelledby="home-review-title"/);
 });
 
+test('今日待办和复盘放大非标题文字字号', () => {
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-activity-section h2 \{ font-size: 22px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-activity-section \.wb-home-todo-tab \{ font-size: 15px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-activity-section \.wb-home-todo-empty \{ font-size: 17px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-activity-section \.wb-home-review-stats \{ font-size: 14px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-activity-section \.wb-home-ai-summary \{ font-size: 15px;/);
+  assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-home-activity-section \.wb-home-note textarea \{ font-size: 15px;/);
+});
+
 test('工作台首页不再展示旧的 KPI 卡片和业务进展大卡片', () => {
   const dashboard = INDEX_HTML.match(/workbenchNav === 'dashboard' && workbenchRoute\.type === 'list'[\s\S]*?<div v-else-if="workbenchNav === 'companies'/)?.[0] || '';
   assert.match(dashboard, /wb-home-section/);
