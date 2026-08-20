@@ -5694,7 +5694,7 @@
                   </div>
                 </div>
                 <button type="button" @click="positionLibraryMoreFiltersOpen = !positionLibraryMoreFiltersOpen" :aria-expanded="positionLibraryMoreFiltersOpen" class="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.2v5.3l-3 1.5v-6.8L4 5Z"></path></svg><span>更多筛选</span></button>
-                <button v-if="canWrite" type="button" @click="createPositionLibrary" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增岗位</button>
+                <button v-if="canWrite" type="button" @click="openPositionBulkImportLibrary" class="inline-flex min-h-[34px] items-center rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">批量上传</button><button v-if="canWrite" type="button" @click="createPositionLibrary" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增岗位</button>
               </div>
             </header>
 
@@ -5909,6 +5909,13 @@
             <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
               <h2 class="text-lg font-bold text-slate-900">{{ positionLibraryEditor.id ? '编辑岗位' : '新增岗位' }}</h2>
               <div class="mt-4 space-y-3">
+                <div v-if="!positionLibraryEditor.id" class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2"><p class="text-sm font-semibold text-indigo-900">智能填写岗位信息</p><span class="text-xs text-indigo-600">支持截图 OCR 或粘贴文字 + AI</span></div>
+                  <div class="mt-3 grid gap-3 md:grid-cols-2">
+                    <div><label class="block text-xs font-semibold text-slate-600">截图 OCR 识别</label><div class="mt-1 flex min-h-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-indigo-200 bg-white px-3 py-3 text-center text-xs text-slate-500" :class="{ 'border-indigo-400 bg-indigo-50': positionOcrDragging }" @paste="onPositionOcrPaste" @dragover.prevent="positionOcrDragging = true" @dragleave="positionOcrDragging = false" @drop.prevent="onPositionOcrDrop"><img v-if="positionOcrImage" :src="positionOcrImage" class="max-h-20 rounded border border-slate-200" alt="待识别岗位截图"><span v-else>粘贴截图或拖拽图片到这里</span></div><input ref="positionOcrInput" aria-label="上传岗位截图" type="file" accept="image/*" class="hidden" @change="onPositionOcrFileChange"><div class="mt-1 flex items-center gap-2 text-xs"><button type="button" @click="triggerPositionOcrInput" class="text-indigo-700 hover:underline">选择图片</button><span v-if="positionOcrStatus === 'loading'" class="text-amber-600">识别中…</span><span v-if="positionOcrStatus === 'ai'" class="text-blue-600">AI 填充中…</span><span v-if="positionOcrStatus === 'done'" class="text-emerald-600">完成 ✓</span><span v-if="positionOcrStatus === 'error'" class="text-rose-600">{{ positionOcrError }}</span></div></div>
+                    <div><label for="position-text-parse" class="block text-xs font-semibold text-slate-600">文字识别 + AI 自动填写</label><textarea id="position-text-parse" v-model="positionTextParseRaw" rows="4" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400" placeholder="粘贴岗位名称、公司、地点、薪资、职责和要求"></textarea><div class="mt-1 flex items-center gap-2 text-xs"><button type="button" @click="parsePositionText" :disabled="positionTextParseStatus === 'ai'" class="rounded-lg bg-indigo-600 px-2.5 py-1.5 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{{ positionTextParseStatus === 'ai' ? '解析中…' : '自动填写' }}</button><span v-if="positionTextParseStatus === 'done'" class="text-emerald-600">完成 ✓</span><span v-if="positionTextParseStatus === 'error'" class="text-rose-600">{{ positionTextParseError }}</span></div></div>
+                  </div>
+                </div>
                 <label class="block text-sm"><span class="text-slate-500">岗位名称 *</span><input v-model="positionLibraryEditor.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
                 <label class="block text-sm"><span class="text-slate-500">所属公司 *</span><select v-model="positionLibraryEditor.companyId" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">请选择公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select></label>
                 <div class="grid grid-cols-2 gap-3">
@@ -5924,6 +5931,13 @@
                 <button type="button" @click="positionLibraryEditor.id ? savePositionLibraryEdit() : savePositionLibraryCreate()" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">{{ positionLibraryEditor.id ? '保存' : '创建' }}</button>
               </div>
             </div>
+          </div>
+
+          <div v-if="positionLibraryBulkImport.open && canWrite" class="fixed inset-0 z-[125] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" @click.self="closePositionBulkImportLibrary">
+            <section role="dialog" aria-modal="true" aria-labelledby="position-library-bulk-title" class="w-full max-w-6xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+              <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5"><div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">岗位库批量入库</p><h2 id="position-library-bulk-title" class="mt-1 text-xl font-bold text-slate-900">批量上传岗位</h2><p class="mt-1 text-sm text-slate-500">支持 CSV / Excel / 多岗位文本；确认后才会写入岗位库。</p></div><button type="button" @click="closePositionBulkImportLibrary" aria-label="关闭岗位批量上传" class="h-8 w-8 rounded-lg bg-slate-100 text-lg text-slate-500">×</button></div>
+              <div class="space-y-4 px-6 py-5"><div class="grid gap-4 lg:grid-cols-[240px_1fr]"><label class="block text-sm font-semibold text-slate-700">所属公司<select v-model="positionLibraryBulkImport.companyId" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">请选择公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select></label><div><label class="block text-sm font-semibold text-slate-700">上传 CSV / Excel<input type="file" accept=".csv,.xlsx,.xls" class="mt-2 block w-full text-sm" @change="onPositionBulkImportFile"></label><p v-if="positionLibraryBulkImport.fileName" class="mt-1 text-xs text-emerald-700">已选择：{{ positionLibraryBulkImport.fileName }}</p><textarea aria-label="岗位库批量岗位文本" v-model="positionLibraryBulkImport.rawText" rows="5" class="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500" placeholder="也可直接粘贴多个岗位，例如：岗位名称：量子算法工程师\n工作地点：北京\n岗位职责：负责算法研发\n---\n岗位名称：量子软件工程师"></textarea></div></div><div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">{{ positionLibraryBulkImport.rows.length ? `已解析 ${positionLibraryBulkImport.rows.length} 个岗位` : '请先上传文件或粘贴岗位内容' }}</p><div class="flex gap-2"><button type="button" @click="parsePositionBulkImport" :disabled="positionLibraryBulkImport.parsing" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{{ positionLibraryBulkImport.parsing ? '解析中…' : '解析并预览' }}</button><button type="button" @click="closePositionBulkImportLibrary" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">取消</button></div></div><p v-if="positionLibraryBulkImport.error" role="alert" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ positionLibraryBulkImport.error }}</p><div v-if="positionLibraryBulkImport.rows.length" class="overflow-x-auto rounded-xl border border-slate-200"><table class="min-w-[920px] w-full table-fixed text-left text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-3 py-2">状态</th><th class="px-3 py-2">岗位名称 *</th><th class="px-3 py-2">城市</th><th class="px-3 py-2">薪资</th><th class="px-3 py-2">负责人</th><th class="px-3 py-2">职责 / 要求</th><th class="px-3 py-2">技能</th><th class="px-3 py-2">操作</th></tr></thead><tbody><tr v-for="(row, index) in positionLibraryBulkImport.rows" :key="`${index}-${row.title}`" class="border-t border-slate-100 align-top"><td class="px-3 py-3"><span v-if="row.duplicateType" class="whitespace-nowrap rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">{{ row.duplicateType === 'existing' ? '已有岗位' : '本批次重复' }}</span><span v-else class="whitespace-nowrap rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-800">待入库</span></td><td class="px-3 py-3"><input v-model="row.title" class="w-40 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="岗位库批量岗位名称"></td><td class="px-3 py-3"><input v-model="row.city" class="w-24 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="岗位库批量岗位城市"></td><td class="px-3 py-3"><input v-model="row.salary" class="w-24 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="岗位库批量岗位薪资"></td><td class="px-3 py-3"><input v-model="row.owner" class="w-24 rounded-lg border border-slate-200 px-2 py-1.5" aria-label="岗位库批量岗位负责人"></td><td class="px-3 py-3"><textarea v-model="row.description" rows="3" class="w-full rounded-lg border border-slate-200 px-2 py-1.5" aria-label="岗位库批量岗位职责"></textarea></td><td class="px-3 py-3"><input :value="row.skills.join('、')" @input="row.skills = $event.target.value.split(/[、,，]/).map(item => item.trim()).filter(Boolean)" class="w-full rounded-lg border border-slate-200 px-2 py-1.5" aria-label="岗位库批量岗位技能"></td><td class="px-3 py-3"><button type="button" @click="removePositionBulkImportRow(index)" class="text-xs font-semibold text-rose-600">删除</button></td></tr></tbody></table></div><div v-if="positionLibraryBulkImport.rows.length" class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">已有岗位或本批次重复项不会入库。</p><button type="button" @click="confirmPositionBulkImport" :disabled="positionLibraryBulkImport.importing" class="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60">{{ positionLibraryBulkImport.importing ? '正在入库…' : `确认入库（${positionLibraryBulkImport.rows.filter(row => !row.duplicateType && row.title.trim()).length} 个）` }}</button></div></div>
+            </section>
           </div>
 
           <div v-if="positionOwnerEditor.open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
@@ -13433,6 +13447,15 @@ const vueAppConfig = {
     const positionRowMenuId = ref('');
     const positionRemarkDraft = ref('');
     const positionLibraryEditor = reactive({ active: false, id: '', title: '', companyId: '', city: '', salary: '', owner: '', description: '', error: '' });
+    const positionOcrImage = ref('');
+    const positionOcrDragging = ref(false);
+    const positionOcrStatus = ref('');
+    const positionOcrError = ref('');
+    const positionOcrInput = ref(null);
+    const positionTextParseRaw = ref('');
+    const positionTextParseStatus = ref('');
+    const positionTextParseError = ref('');
+    const positionLibraryBulkImport = reactive({ open: false, companyId: '', fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' });
     const positionOwnerEditor = reactive({ open: false, id: '', owner: '' });
     const positionLibraryTagOptions = computed(() => [...new Set((workbenchV2.positions || []).flatMap(position => position.tags || []))]);
     function openPositionDrawer(id, tab = 'overview') { positionLibrarySelectedId.value = id; positionDrawerTab.value = tab; positionRowMenuId.value = ''; }
@@ -13469,6 +13492,7 @@ const vueAppConfig = {
         city: position.city || '', salary: position.salary || '', owner: position.owner || '',
         description: position.description || position.jd || '', error: '',
       });
+      resetPositionSmartInput();
     }
     function savePositionLibraryEdit() {
       if (!canWrite) return;
@@ -13522,6 +13546,7 @@ const vueAppConfig = {
         active: true, id: '', title: '', city: '', salary: '', owner: '', description: '', error: '',
         companyId: positionLibraryFilters.companyId !== 'all' ? positionLibraryFilters.companyId : (workbenchV2.companies[0]?.id || ''),
       });
+      resetPositionSmartInput();
     }
     function savePositionLibraryCreate() {
       if (!canWrite) return;
@@ -13547,7 +13572,7 @@ const vueAppConfig = {
       positionLibraryEditor.active = false;
       return saveWorkbenchV2().then(saved => { if (cloudReady) schedulePush(); showToast(saved ? '岗位已创建' : '已暂存到浏览器'); openPositionDrawer(position.id); });
     }
-    function cancelPositionLibraryEdit() { positionLibraryEditor.active = false; }
+    function cancelPositionLibraryEdit() { positionLibraryEditor.active = false; resetPositionSmartInput(); }
     function openPositionOwnerEditor(id) {
       const position = workbenchV2.positions.find(item => item.id === id);
       if (!position) return;
@@ -13563,7 +13588,63 @@ const vueAppConfig = {
     }
     function openPositionBulkImportLibrary() {
       if (!canWrite) { showToast('当前账号无写入权限', 'error'); return; }
-      showToast('批量导入岗位请在公司详情页操作（岗位库以单条新增为主）', 'error');
+      Object.assign(positionLibraryBulkImport, { open: true, companyId: positionLibraryFilters.companyId !== 'all' ? positionLibraryFilters.companyId : (workbenchV2.companies[0]?.id || ''), fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' });
+    }
+    function closePositionBulkImportLibrary() { Object.assign(positionLibraryBulkImport, { open: false, fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' }); }
+    async function onPositionBulkImportFile(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      positionLibraryBulkImport.fileName = file.name; positionLibraryBulkImport.error = '';
+      try {
+        if (/\.xlsx?$/i.test(file.name)) {
+          const XLSXLib = await ensureXlsxDependency();
+          const workbook = XLSXLib.read(await file.arrayBuffer(), { type: 'array' });
+          positionLibraryBulkImport.rawText = XLSXLib.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+        } else positionLibraryBulkImport.rawText = await file.text();
+      } catch (error) { positionLibraryBulkImport.error = error?.message || '读取岗位文件失败'; }
+      finally { if (event.target) event.target.value = ''; }
+    }
+    function refreshPositionBulkImportDuplicates(rows) {
+      const helper = window.WorkBuddyPositionBulkImport;
+      const existing = workbenchV2.positions.filter(position => position.companyId === positionLibraryBulkImport.companyId);
+      positionLibraryBulkImport.rows = helper.markDuplicatePositions(rows, existing);
+    }
+    async function parsePositionBulkImport() {
+      if (!canWrite) return;
+      const rawText = String(positionLibraryBulkImport.rawText || '').trim();
+      if (!positionLibraryBulkImport.companyId) { positionLibraryBulkImport.error = '请先选择所属公司'; return; }
+      if (!rawText) { positionLibraryBulkImport.error = '请先上传文件或粘贴岗位内容'; return; }
+      positionLibraryBulkImport.parsing = true; positionLibraryBulkImport.error = '';
+      try {
+        const helper = window.WorkBuddyPositionBulkImport;
+        let rows = /^(岗位名称|岗位|职位|title|position)[,，]/im.test(rawText) ? helper.parsePositionCsv(rawText) : helper.splitPositionText(rawText);
+        if (canConfigureAi) {
+          try {
+            const company = workbenchV2.companies.find(item => item.id === positionLibraryBulkImport.companyId);
+            const result = await callDeepSeekWithProgress({ task: 'position-library-bulk-import', getApiKey: requireDeepSeekApiKey, temperature: 0.1, timeout: 90000, schema: 'json', responseFormat: { type: 'json_object' }, messages: helper.buildPositionBulkImportMessages({ companyName: company?.name || '', rawText }) });
+            rows = helper.normalizePositionBulkAiResult(result);
+          } catch (error) { if (!rows.length) throw error; showToast('AI 解析暂不可用，已使用本地规则生成预览', 'error'); }
+        }
+        if (!rows.length) throw new Error('未识别到带岗位名称的内容，请检查输入格式');
+        refreshPositionBulkImportDuplicates(rows);
+      } catch (error) { positionLibraryBulkImport.error = error?.message || '岗位解析失败'; }
+      finally { positionLibraryBulkImport.parsing = false; }
+    }
+    function removePositionBulkImportRow(index) { positionLibraryBulkImport.rows.splice(index, 1); refreshPositionBulkImportDuplicates(positionLibraryBulkImport.rows); }
+    async function confirmPositionBulkImport() {
+      if (!canWrite || positionLibraryBulkImport.importing) return;
+      refreshPositionBulkImportDuplicates(positionLibraryBulkImport.rows);
+      const rows = positionLibraryBulkImport.rows.filter(row => !row.duplicateType && String(row.title || '').trim());
+      if (!rows.length) { positionLibraryBulkImport.error = '没有可入库的岗位，请修改或删除重复项'; return; }
+      positionLibraryBulkImport.importing = true; positionLibraryBulkImport.error = '';
+      try {
+        rows.forEach(row => {
+          const owner = permissions.value.isAdmin ? String(row.owner || '').trim() || permissions.value.currentUserName : permissions.value.currentUserName;
+          workbenchV2.positions.push(WorkbenchV2.createPosition({ companyId: positionLibraryBulkImport.companyId, title: String(row.title).trim(), city: String(row.city || '').trim(), salary: String(row.salary || '').trim(), owner, ownerUserId: permissions.value.isAdmin ? permissions.value.resolveOwnerUserId({ owner }) : permissions.value.currentUserId, description: String(row.description || '').trim(), skills: Array.isArray(row.skills) ? row.skills : [] }));
+        });
+        const saved = await saveWorkbenchV2(); if (cloudReady) schedulePush(); closePositionBulkImportLibrary(); showToast(saved ? `已批量创建 ${rows.length} 个岗位` : `已批量创建 ${rows.length} 个岗位，已暂存到浏览器`);
+      } catch (error) { positionLibraryBulkImport.error = error?.message || '岗位批量入库失败'; }
+      finally { positionLibraryBulkImport.importing = false; }
     }
     function exportPositions() {
       const rows = filteredPositionLibraryRows.value;
@@ -16290,6 +16371,27 @@ ${ocrText}`
 
     function processOcrImage(file) { return legacyJobParseActions.processOcrImage(file); }
     function parseJobText() { return legacyJobParseActions.parseJobText(); }
+
+    function applyPositionStructured(structured) {
+      if (!structured) return false;
+      if (structured.positionName) positionLibraryEditor.title = structured.positionName;
+      if (structured.location) positionLibraryEditor.city = structured.location;
+      if (structured.detail) positionLibraryEditor.description = structured.detail;
+      if (structured.company) {
+        const company = workbenchV2.companies.find(item => String(item.name || '').trim() === String(structured.company).trim());
+        if (company) positionLibraryEditor.companyId = company.id;
+      }
+      return Boolean(structured.positionName || structured.location || structured.detail || structured.company);
+    }
+    function resetPositionSmartInput() {
+      positionOcrImage.value = ''; positionOcrDragging.value = false; positionOcrStatus.value = ''; positionOcrError.value = '';
+      positionTextParseRaw.value = ''; positionTextParseStatus.value = ''; positionTextParseError.value = '';
+    }
+    function triggerPositionOcrInput() { positionOcrInputActions.triggerInput(); }
+    function onPositionOcrPaste(event) { return positionOcrInputActions.paste(event); }
+    function onPositionOcrDrop(event) { return positionOcrInputActions.drop(event); }
+    function onPositionOcrFileChange(event) { return positionOcrInputActions.change(event); }
+    function parsePositionText() { return positionLibraryInputActions.parseJobText(); }
 
     // -------- 弹窗 --------
     const modal = reactive({ show: false, job: {}, assigneeName: '', colIdx: 0 });
@@ -20384,6 +20486,16 @@ ${ocrText}`
     const legacyJobParseActions = window.WorkBuddyLegacyJobParseActions.createLegacyJobParseActions({
       form, textParseRaw, textParseStatus, textParseError, ocrImage, ocrStatus, ocrError,
       ensureTesseractDependency, extractJobInfoWithDeepSeek, addPositionRow, showToast,
+    });
+    const positionLibraryInputActions = window.WorkBuddyLegacyJobParseActions.createLegacyJobParseActions({
+      form: { positions: [{ name: '', detail: '', location: '' }] },
+      textParseRaw: positionTextParseRaw, textParseStatus: positionTextParseStatus, textParseError: positionTextParseError,
+      ocrImage: positionOcrImage, ocrStatus: positionOcrStatus, ocrError: positionOcrError, positionOcrInput,
+      ensureTesseractDependency, extractJobInfoWithDeepSeek, showToast, applyStructured: applyPositionStructured,
+    });
+    const positionOcrInputActions = window.WorkBuddyOcrInputActions.createOcrInputActions({
+      state: { image: positionOcrImage, dragging: positionOcrDragging, status: positionOcrStatus, error: positionOcrError, input: positionOcrInput },
+      processImage: file => positionLibraryInputActions.processOcrImage(file),
     });
 
     const candidateProfileStats = computed(() => {
@@ -27186,8 +27298,10 @@ ${clipped}`
       filteredPositionLibraryRows, positionRowMenuId, positionDrawerOpen, positionDrawerTab, selectedPositionLibrary, selectedPositionLibraryProgress,
       positionLibraryMatches, positionLibraryApplications, positionLibraryInterviews, positionRemarkDraft,
       openPositionDrawer, closePositionDrawer, openPositionLibraryEdit, openPositionOwnerEditor, setPositionLibraryStatus, deletePositionLibrary,
-      createPositionLibrary, openPositionBulkImportLibrary, exportPositions, savePositionRemark,
-      positionLibraryEditor, cancelPositionLibraryEdit, savePositionLibraryEdit, savePositionLibraryCreate,
+      createPositionLibrary, openPositionBulkImportLibrary, closePositionBulkImportLibrary, onPositionBulkImportFile, parsePositionBulkImport, removePositionBulkImportRow, confirmPositionBulkImport, exportPositions, savePositionRemark,
+      positionLibraryEditor, positionLibraryBulkImport, positionOcrImage, positionOcrDragging, positionOcrStatus, positionOcrError, positionTextParseRaw, positionTextParseStatus, positionTextParseError,
+      triggerPositionOcrInput, onPositionOcrPaste, onPositionOcrDrop, onPositionOcrFileChange, parsePositionText,
+      cancelPositionLibraryEdit, savePositionLibraryEdit, savePositionLibraryCreate,
       positionOwnerEditor, setPositionLibraryOwner,
       startCandidateResumeEdit, saveCandidateResumeEdit, cancelCandidateResumeEdit,
       reprocessCandidateResumeVersion, reprocessCandidateResumeFromText, reextractCandidateResumeFromOriginal, resumeAiStageLabel,

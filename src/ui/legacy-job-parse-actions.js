@@ -30,11 +30,13 @@ export function createLegacyJobParseActions({
   ocrError,
   ensureTesseractDependency,
   extractJobInfoWithDeepSeek,
+  applyStructured: applyStructuredOverride,
   addPositionRow = () => {},
   showToast = () => {},
 }) {
   function applyStructured(structured) {
     if (!structured) return false;
+    if (typeof applyStructuredOverride === 'function') return applyStructuredOverride(structured);
     if (structured.company) form.company = structured.company;
     if (structured.positionName) {
       const first = form.positions[0];
