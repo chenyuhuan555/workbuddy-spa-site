@@ -24,6 +24,18 @@ test('guest lifecycle branches before any real cache or cloud initialization', (
   assert.match(mounted, /return;/);
 });
 
+test('authenticated startup kicks non-critical hydration tasks off in parallel', () => {
+  const startup = block('function startBackgroundStartupTasks()', '// -------- 生命周期 --------');
+  const mounted = block('onMounted(async () => {', 'onBeforeUnmount(() => {');
+
+  assert.match(startup, /Promise\.allSettled\(/);
+  for (const task of ['loadTeamTodos', 'loadDailyReview', 'localLoadKb', 'localLoadKbApiKey', 'hydrateResumesFromCache', 'loadQuantumRadarFromCloud']) {
+    assert.match(startup, new RegExp(task));
+  }
+  assert.ok(mounted.indexOf('startBackgroundStartupTasks()') < mounted.indexOf('await initCloud()'));
+  assert.doesNotMatch(mounted, /await loadQuantumRadarFromCloud\(\)/);
+});
+
 test('guest workspace load and save use only WorkBuddyGuestDemo', () => {
   const load = block('function loadGuestWorkspace()', 'async function saveGuestWorkspace()');
   const save = block('async function saveGuestWorkspace()', '// -------- localStorage 本地缓存 --------');

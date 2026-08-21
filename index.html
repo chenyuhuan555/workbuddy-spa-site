@@ -12453,6 +12453,23 @@ const vueAppConfig = {
         console.warn('[quantum-radar] cloud read fallback', error);
       }
     }
+    function startBackgroundStartupTasks() {
+      const tasks = [
+        ['team todos', () => loadTeamTodos()],
+        ['daily review', () => loadDailyReview()],
+        ['knowledge base', () => localLoadKb()],
+        ['knowledge api key', () => localLoadKbApiKey()],
+        ['resume cache', () => hydrateResumesFromCache()],
+        ['quantum radar', () => loadQuantumRadarFromCloud()],
+      ];
+      void Promise.allSettled(tasks.map(([, task]) => Promise.resolve().then(task))).then(results => {
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.warn(`[startup] ${tasks[index][0]} 后台加载失败:`, result.reason?.message || result.reason);
+          }
+        });
+      });
+    }
     const quantumRadarMetrics = computed(() => window.WorkBuddyQuantumRadarDashboard?.buildMetrics(quantumRadarData) || {});
     const quantumRadarPriorityJobs = computed(() => window.WorkBuddyQuantumRadarDashboard?.getPriorityJobs(quantumRadarData.externalJobs, 5) || []);
     const quantumRadarCompanies = computed(() => window.WorkBuddyQuantumRadarCompany?.filterCompanies(quantumRadarData.quantumCompanies, '') || []);
@@ -15004,16 +15021,18 @@ const vueAppConfig = {
         const repo = getDailyReviewRepo();
         if (!repo) { dailyReview.loaded = true; return; }
         try {
-          const mine = await repo.loadByDate({ userId, reviewDate: dailyReview.reviewDate });
+          const [mine, yesterday, team] = await Promise.all([
+            repo.loadByDate({ userId, reviewDate: dailyReview.reviewDate }),
+            repo.loadByDate({ userId, reviewDate: yesterdayBeijingDate() }),
+            permissions.value.isAdmin ? repo.loadTeamByDate({ reviewDate: dailyReview.reviewDate }) : Promise.resolve([]),
+          ]);
           if (mine) {
             dailyReview.issue = mine.issue || ''; dailyReview.tomorrowFocus = mine.tomorrowFocus || '';
             dailyReview.summary = mine.summary || ''; dailyReview.savedMetrics = mine.metrics || null;
             dailyReview.savedAt = dailyReviewSavedAtLabel(mine.updatedAt);
           }
-          const yesterday = await repo.loadByDate({ userId, reviewDate: yesterdayBeijingDate() });
           dailyReview.yesterdayFocus = (yesterday && yesterday.tomorrowFocus) || '';
           if (permissions.value.isAdmin) {
-            const team = await repo.loadTeamByDate({ reviewDate: dailyReview.reviewDate });
             dailyReview.teamRows = dailyReviewMembers.value.map(m => {
               const row = team.find(r => r.userId === m.userId);
               return {
@@ -19721,26 +19740,21 @@ ${ocrText}`
       await loadWorkbenchV2(); // 加载独立公司、候选人和推进记录
       await reconcileMigratedPositionDescriptions();
       await initializePrivateTodos(); // 加载当前账号私有待办，并由管理员认领旧共享待办
-      void loadTeamTodos(); // P0-3：管理员加载团队待办（RLS 未上线时仅本人）
       void reconcileBusinessTodos(); // 数据初始化完成后对账自动待办
-      void loadDailyReview(); // 每日复盘：加载当天复盘 + 昨日承接 + 管理员团队
       console.log('[diag] onMounted: loadWorkbenchV2 完成后 workbenchV2 =', {
         companies: workbenchV2.companies.length,
         candidates: workbenchV2.candidates.length,
         migrationMeta: workbenchV2.migrationMeta?.executedAt || '(无)'
       });
       initMetricsBaseline(); // 固定"较昨日"基准快照（在业务数据加载完成后读取）
-      await localLoadKb(); // 恢复知识库元数据
-      await localLoadKbApiKey(); // 恢复 API Key 本地缓存（兼容云端同步）
       loadRecycleBin(); // 恢复本地回收站
       loadRadarCache(); // 恢复活水雷达缓存（30分钟内有效）
       loadAiNewsCache(); // 恢复AI资讯缓存（6小时内有效）
       radarRssApiKeyInput.value = getRadarRssApiKey(); // 自动加载/保存rss2json Key
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
-      await hydrateResumesFromCache(); // 恢复尚未成功推送的简历 base64 备份
+      startBackgroundStartupTasks(); // 非首屏模块并行后台恢复，避免互相排队
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
       void reconcileBusinessTodos(); // 云端数据同步完成后对账自动待办
-      await loadQuantumRadarFromCloud(); // Sprint 2：登录用户读取独立量子雷达表，失败回退演示数据
       startWorkbenchEntityPolling();
       startCandidatePolling();
       await reconcileMigratedPositionDescriptions();
