@@ -4694,7 +4694,7 @@
           <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap gap-2">
             <input aria-label="搜索公司、行业或负责人" v-model="companyFilter.query" type="search" placeholder="搜索公司、行业或负责人" class="min-w-56 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500">
             <select aria-label="按公司状态筛选" v-model="companyFilter.status" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部状态</option><option value="active">合作中</option><option value="potential">潜在客户</option><option value="paused">暂停合作</option></select>
-            <select aria-label="按公司负责人筛选" v-model="companyFilter.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
+            <select aria-label="按公司负责人筛选" v-model="companyFilter.owner" class="px-3 py-2 rounded-lg border border-slate-200 text-sm"><option value="all">全部负责人</option><option v-for="owner in companyOwners" :key="owner" :value="owner">{{ owner }}</option></select>
           </div>
           <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div class="hidden lg:grid grid-cols-[1.6fr_.8fr_.8fr_.7fr_.7fr_.7fr_.8fr] gap-3 px-4 py-3 bg-slate-50 text-xs font-semibold text-slate-500"><span>公司</span><span>负责人</span><span>状态</span><span>开放岗位</span><span>推进中</span><span>面试</span><span>最近更新</span></div>
@@ -14528,6 +14528,7 @@ const vueAppConfig = {
     const candidatePositionMatches = computed(() => selectedCandidate.value ? WorkbenchV2.matchPositions(selectedCandidate.value, workbenchV2.positions).slice(0, 10) : []);
     const positionCandidateMatches = computed(() => selectedPosition.value ? WorkbenchV2.matchCandidates(selectedPosition.value, workbenchV2.candidates).slice(0, 10) : []);
     const workbenchOwners = computed(() => WorkBuddyWorkbenchOwners.collectOwners(workbenchV2));
+    const companyOwners = computed(() => WorkBuddyWorkbenchOwners.collectOwners({ companies: workbenchV2.companies }));
     const workbenchDashboardMetrics = computed(() => WorkBuddyDashboardMetrics.buildDashboardMetrics(visibleWorkbenchV2.value, {
       closedStage: SK.CLOSED,
       interviewStages: SG.INTERVIEW,
@@ -16430,6 +16431,24 @@ const vueAppConfig = {
         if (categoriesSeeded || aiAppsSeeded) await saveWorkbenchV2();
         return loaded;
       });
+    }
+
+    function migrateLegacyCompanyOwners() {
+      if (!canWrite) return 0;
+      const legacyNames = new Set(['张嘉一', '嘉一']);
+      const targetName = '陈雨欢';
+      const targetUserId = String(window.WorkBuddyAccess?.profile?.id || '').trim();
+      let changed = 0;
+      for (const company of workbenchV2.companies || []) {
+        const owners = WorkBuddyWorkbenchOwners.splitOwners(company.owner);
+        if (!owners.some(owner => legacyNames.has(owner))) continue;
+        const nextOwners = [...new Set(owners.map(owner => legacyNames.has(owner) ? targetName : owner))];
+        company.owner = nextOwners.join('、');
+        if (targetUserId) company.ownerUserId = targetUserId;
+        company.updatedAt = new Date().toISOString();
+        changed += 1;
+      }
+      return changed;
     }
 
     async function saveWorkbenchV2() {
@@ -19957,6 +19976,12 @@ ${ocrText}`
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       startBackgroundStartupTasks(); // 非首屏模块并行后台恢复，避免互相排队
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
+      const migratedCompanyOwnerCount = migrateLegacyCompanyOwners();
+      if (migratedCompanyOwnerCount) {
+        const saved = await saveWorkbenchV2();
+        if (saved && cloudReady) schedulePush();
+        showToast(saved ? `已将 ${migratedCompanyOwnerCount} 家公司的负责人更新为陈雨欢` : '公司负责人已更新，暂存到浏览器', 'success');
+      }
       void reconcileBusinessTodos(); // 云端数据同步完成后对账自动待办
       startWorkbenchEntityPolling();
       startCandidatePolling();
@@ -27543,6 +27568,7 @@ ${clipped}`
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
+      companyOwners,
       companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails, dailyReview, dailyReviewMetrics, dailyMetricsEqual, dailyReviewSummary, dailyReviewMembers, dailyReviewIsReadonly, dailyReviewDateTimeLabel, loadDailyReview, saveDailyReview, onDailyReviewScopeChange, openDailyReviewHistory, openDailyReviewHistoryDetail, backToDailyReviewHistoryList, closeDailyReviewHistory, todayBeijingDate,
       TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel, tableColumnWidths, tableColumnWidth, startTableColumnResize,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, bulkOwnerEditor, openBulkSetCandidateOwner, closeBulkSetCandidateOwner, confirmBulkSetCandidateOwner, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, applicationPipelineTrail, selectedCandidateResumeVersions,
