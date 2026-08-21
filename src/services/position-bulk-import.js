@@ -1,5 +1,17 @@
 function text(value) { return String(value ?? '').trim(); }
 
+export function cleanPositionDescription(raw) {
+  return String(raw || '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map(line => line.replace(/[ \t]+/g, ' ').trim())
+    .filter(line => line && line !== '聊一聊' && !/(?:在线|已认证)/.test(line))
+    .map(line => line.replace(/^招聘经理\s*[·•|：:]\s*/u, '').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
 function splitCsvLine(line) {
   const cells = [];
   let cell = '';
@@ -33,6 +45,7 @@ function parseCsvRecords(raw) {
 function headerKey(value) {
   const key = text(value).toLowerCase().replace(/[\s_\-]/g, '');
   if (['岗位名称', '岗位', '职位', 'position', 'title', 'name'].includes(key)) return 'title';
+  if (['公司名称', '公司', '企业', 'company', 'companyname', 'client'].includes(key)) return 'company';
   if (['工作城市', '工作地点', '地点', '城市', 'base', 'location', 'city'].includes(key)) return 'city';
   if (['薪资范围', '薪资', '预算', 'salary', 'compensation'].includes(key)) return 'salary';
   if (['岗位职责', '职责', '岗位描述', 'jd', 'description', 'detail'].includes(key)) return 'description';
@@ -47,7 +60,7 @@ export function parsePositionCsv(raw) {
   const headers = splitCsvLine(records[0]).map(headerKey);
   return records.slice(1).map(record => {
     const cells = splitCsvLine(record);
-    const row = { title: '', city: '', salary: '', description: '', owner: '', skills: [] };
+    const row = { title: '', company: '', city: '', salary: '', description: '', owner: '', skills: [] };
     headers.forEach((key, index) => {
       if (!key) return;
       const value = text(cells[index]);
@@ -72,8 +85,9 @@ export function splitPositionText(raw) {
     title: labeledValue(block, ['岗位名称', '岗位', '职位']) || text((block.match(/^(?:岗位名称|岗位|职位)\s*[:：]?\s*(.+)$/im) || [])[1]),
     city: labeledValue(block, ['工作地点', '工作城市', '地点', '城市', 'Base']),
     salary: labeledValue(block, ['薪资范围', '薪资', '预算']),
+    company: labeledValue(block, ['公司名称', '公司', '企业']),
     owner: labeledValue(block, ['岗位负责人', '负责人']),
-    description: labeledValue(block, ['岗位职责', '岗位描述', '要求']) || block,
+    description: cleanPositionDescription(labeledValue(block, ['岗位职责', '岗位描述', '要求']) || block),
     skills: [],
   })).filter(row => row.title || row.description);
 }
@@ -85,10 +99,11 @@ export function normalizeImportedPositions(input) {
     const rawSkills = row.skills ?? row.keywords ?? row.skillKeywords ?? [];
     return {
       title: text(row.title ?? row.positionName ?? row.name),
+      company: text(row.company ?? row.companyName ?? row.client),
       city: text(row.city ?? row.location ?? row.base),
       salary: text(row.salary ?? row.compensation ?? row.budget),
       owner: text(row.owner ?? row.recruiter),
-      description: text(row.description ?? row.detail ?? row.requirements ?? row.jd),
+      description: cleanPositionDescription(row.description ?? row.detail ?? row.requirements ?? row.jd),
       skills: (Array.isArray(rawSkills) ? rawSkills : String(rawSkills).split(/[，,;；、]/)).map(text).filter(Boolean),
     };
   }).filter(row => row.title);
@@ -111,7 +126,7 @@ export function buildPositionBulkImportMessages({ companyName = '', rawText = ''
   return [
     {
       role: 'system',
-      content: '你是招聘岗位结构化助手。只根据用户提供的岗位文本提取信息，不要编造。严格输出 JSON 对象：{"positions":[{"title":"","city":"","salary":"","owner":"","description":"","skills":[]}]}。每个独立岗位一条记录；无法识别岗位名称的内容不要输出。',
+      content: '你是招聘岗位结构化助手。只根据用户提供的岗位文本提取信息，不要编造。严格输出 JSON 对象：{"positions":[{"title":"","company":"","city":"","salary":"","owner":"","description":"","skills":[]}]}。提取岗位标题中的薪资（例如“平台运营经理23-30k·13薪”应拆为 title=平台运营经理、salary=23-30k·13薪）；提取招聘经理后面的公司名称。description 只保留岗位职责和任职资格，删除“聊一聊”、联系人在线状态、已认证等招聘平台界面噪声。每个独立岗位一条记录；无法识别岗位名称的内容不要输出。',
     },
     {
       role: 'user',
@@ -128,5 +143,5 @@ export function normalizePositionBulkAiResult(result) {
 
 if (typeof window !== 'undefined') window.WorkBuddyPositionBulkImport = {
   parsePositionCsv, splitPositionText, normalizeImportedPositions, markDuplicatePositions,
-  buildPositionBulkImportMessages, normalizePositionBulkAiResult,
+  buildPositionBulkImportMessages, normalizePositionBulkAiResult, cleanPositionDescription,
 };

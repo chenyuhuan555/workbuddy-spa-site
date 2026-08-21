@@ -15,9 +15,25 @@ export function fallbackParseJobText(rawText) {
     const companyMatch = raw.match(/(?:公司|企业|客户)[:：\s]*([^\n，,；;。]{2,40})/);
     const posMatch = raw.match(/(?:岗位|职位|职务|招聘)[:：\s]*([^\n，,；;。]{2,40})/);
     company = companyMatch ? companyMatch[1].trim() : '';
-    positionName = posMatch ? posMatch[1].trim() : firstLine.slice(0, 32);
+    positionName = /\d+(?:\.\d+)?\s*[-~至]\s*\d+(?:\.\d+)?\s*[kK万千]/.test(firstLine)
+      ? firstLine.slice(0, 64)
+      : (posMatch ? posMatch[1].trim() : firstLine.slice(0, 32));
   }
-  return { company, positionName, location, detail: raw };
+  if (!company) {
+    const recruiterCompany = raw.match(/招聘经理\s*[·•|：:]\s*([^\n]+)/);
+    if (recruiterCompany) company = recruiterCompany[1].replace(/\s*\[[^\]]*\]\([^)]*\)/g, '').trim();
+  }
+  const salaryMatch = raw.match(/(\d+(?:\.\d+)?\s*[-~至]\s*\d+(?:\.\d+)?\s*[kK万千](?:\s*[·.]\s*\d+薪)?)/);
+  const cleanDescription = typeof window !== 'undefined'
+    ? window.WorkBuddyPositionBulkImport?.cleanPositionDescription
+    : null;
+  return {
+    company,
+    positionName: positionName.replace(/(\d+(?:\.\d+)?\s*[-~至]\s*\d+(?:\.\d+)?\s*[kK万千].*)$/i, '').trim(),
+    salary: salaryMatch ? salaryMatch[1].replace(/\s+/g, '') : '',
+    location,
+    detail: typeof cleanDescription === 'function' ? cleanDescription(raw) : raw,
+  };
 }
 
 export function createLegacyJobParseActions({

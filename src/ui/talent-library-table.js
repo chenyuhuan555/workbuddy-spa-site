@@ -50,6 +50,15 @@
   const parseTime = value => Number.isFinite(Date.parse(value || '')) ? Date.parse(value) : Number.NEGATIVE_INFINITY;
   const indexById = rows => new Map((Array.isArray(rows) ? rows : []).map(row => [row?.id, row]));
 
+  function latestResumeUploadAt(candidate = {}) {
+    const uploads = (Array.isArray(candidate.resumeVersions) ? candidate.resumeVersions : [])
+      .filter(version => !version?.deletedAt)
+      .map(version => version?.uploadedAt || version?.createdAt || '')
+      .filter(value => parseTime(value) > Number.NEGATIVE_INFINITY)
+      .sort((a, b) => parseTime(b) - parseTime(a));
+    return uploads[0] || candidate.updatedAt || candidate.createdAt || '';
+  }
+
   function extraValue(candidate, key) {
     const extras = candidate?.extraFields && typeof candidate.extraFields === 'object' ? candidate.extraFields : {};
     for (const alias of EXTRA_ALIASES[key] || []) {
@@ -244,6 +253,7 @@
       touchedAt: display(touchedAt),
       recommendedAt: display(recommendedAt),
       intakeAt: display(candidate.createdAt),
+      latestResumeUploadAt: latestResumeUploadAt(candidate),
       updatedAt: display(candidate.updatedAt),
       flows,
       primaryFlow: flows[0] || null,
@@ -262,6 +272,7 @@
     COLUMN_STORAGE_KEY,
     extraValue,
     candidateSearchText,
+    latestResumeUploadAt,
     applicationBusinessAt,
     applicationTouchedAt,
     applicationRecommendedAt,

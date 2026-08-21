@@ -46,6 +46,8 @@
 
   function sortByRecentUpdate(source) {
     const timestamp = item => {
+      const uploaded = Date.parse(item?.latestResumeUploadAt || item?.candidate?.latestResumeUploadAt || '');
+      if (Number.isFinite(uploaded)) return uploaded;
       const updated = Date.parse(item?.updatedAt || '');
       if (Number.isFinite(updated)) return updated;
       const created = Date.parse(item?.createdAt || '');

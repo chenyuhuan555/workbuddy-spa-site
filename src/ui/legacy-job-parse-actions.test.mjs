@@ -41,3 +41,10 @@ test('OCR 成功但 AI 失败时保留原文并进入可识别的 fallback 状�
   assert.equal(applied.detail, recognizedText);
   assert.deepEqual(notices, ['文字已识别，AI 自动填写失败']);
 });
+
+test('fallback parser extracts liepin-style salary and recruiter company', () => {
+  const result = fallbackParseJobText('平台运营经理23-30k·13薪\n深圳-光明区\n招聘经理 · 深圳市羲和生命科技有限责任公司');
+  assert.equal(result.positionName, '平台运营经理');
+  assert.equal(result.salary, '23-30k·13薪');
+  assert.equal(result.company, '深圳市羲和生命科技有限责任公司');
+});

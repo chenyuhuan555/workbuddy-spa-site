@@ -7,12 +7,13 @@ import {
   markDuplicatePositions,
   buildPositionBulkImportMessages,
   normalizePositionBulkAiResult,
+  cleanPositionDescription,
 } from './position-bulk-import.js';
 
 test('parsePositionCsv maps headers and preserves multiline descriptions', () => {
   const rows = parsePositionCsv('岗位名称,工作城市,薪资范围,岗位职责\n量子算法工程师,北京,40-60K,"负责算法研发\n熟悉量子线路"');
   assert.deepEqual(rows, [{
-    title: '量子算法工程师', city: '北京', salary: '40-60K',
+    title: '量子算法工程师', company: '', city: '北京', salary: '40-60K',
     description: '负责算法研发\n熟悉量子线路', owner: '', skills: [],
   }]);
 });
@@ -25,13 +26,20 @@ test('splitPositionText separates labeled multi-position text', () => {
   assert.match(rows[1].description, /Python/);
 });
 
+test('岗位描述清理招聘平台界面噪声但保留职责内容', () => {
+  const cleaned = cleanPositionDescription('聊一聊\n王女士 2小时前在线 已认证\n招聘经理 · 深圳市羲和生命科技有限责任公司\n职位介绍\n负责平台筹建和生产运营');
+  assert.doesNotMatch(cleaned, /聊一聊|2小时前在线|已认证|招聘经理/);
+  assert.match(cleaned, /深圳市羲和生命科技有限责任公司/);
+  assert.match(cleaned, /负责平台筹建/);
+});
+
 test('normalizeImportedPositions accepts AI array aliases and drops empty rows', () => {
   const rows = normalizeImportedPositions([
     { positionName: '量子算法工程师', location: '北京', detail: '研发量子算法', keywords: ['量子计算', 'Python'] },
     { title: '  ', description: '无效' },
   ]);
   assert.deepEqual(rows, [{
-    title: '量子算法工程师', city: '北京', salary: '', owner: '',
+    title: '量子算法工程师', company: '', city: '北京', salary: '', owner: '',
     description: '研发量子算法', skills: ['量子计算', 'Python'],
   }]);
 });
@@ -47,6 +55,9 @@ test('buildPositionBulkImportMessages asks AI for company-scoped position record
   const messages = buildPositionBulkImportMessages({ companyName: '量子科技公司', rawText: '岗位：量子算法工程师' });
   assert.match(messages[1].content, /量子科技公司/);
   assert.match(messages[0].content, /positions/);
+  assert.match(messages[0].content, /company/);
+  assert.match(messages[0].content, /salary/);
+  assert.match(messages[0].content, /聊一聊/);
 });
 
 test('normalizePositionBulkAiResult accepts an object wrapper', () => {

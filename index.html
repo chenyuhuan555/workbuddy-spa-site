@@ -6015,7 +6015,7 @@
                   </div>
                 </div>
                 <label class="block text-sm"><span class="text-slate-500">岗位名称 *</span><input v-model="positionLibraryEditor.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
-                <div class="block text-sm"><div class="flex items-center justify-between gap-2"><span class="text-slate-500">所属公司 *</span><button v-if="!positionLibraryEditor.id" type="button" @click="openPositionInlineCompanyCreate" class="text-xs font-semibold text-emerald-700 hover:underline">＋ 新建公司</button></div><select v-model="positionLibraryEditor.companyId" aria-label="所属公司" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">请选择公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select><div v-if="positionInlineCompanyCreate.open" class="mt-2 grid gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 sm:grid-cols-[1.4fr_1fr_1fr_auto]"><input v-model="positionInlineCompanyCreate.name" aria-label="新公司名称" placeholder="公司名称 *" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><input v-model="positionInlineCompanyCreate.industry" aria-label="新公司行业" placeholder="行业" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><input v-model="positionInlineCompanyCreate.city" aria-label="新公司城市" placeholder="城市" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><div class="flex gap-2"><button type="button" @click="createPositionInlineCompany" class="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">创建并选择</button><button type="button" @click="positionInlineCompanyCreate.open = false" class="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">取消</button></div></div></div>
+                <div class="block text-sm"><div class="flex items-center justify-between gap-2"><span class="text-slate-500">所属公司 *</span><button v-if="!positionLibraryEditor.id" type="button" @click="openPositionInlineCompanyCreate" class="text-xs font-semibold text-emerald-700 hover:underline">＋ 新建公司</button></div><select v-model="positionLibraryEditor.companyId" aria-label="所属公司" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">请选择公司</option><option v-for="company in workbenchV2.companies" :key="company.id" :value="company.id">{{ company.name }}</option></select><div v-if="positionInlineCompanyCreate.open" class="mt-2 grid gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 sm:grid-cols-[1.4fr_1fr_1fr_auto]"><p v-if="positionInlineCompanyCreate.pendingFromAi" class="sm:col-span-4 text-xs font-semibold text-amber-700">AI 识别到新公司，请确认后新增</p><input v-model="positionInlineCompanyCreate.name" aria-label="新公司名称" placeholder="公司名称 *" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><input v-model="positionInlineCompanyCreate.industry" aria-label="新公司行业" placeholder="行业" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><input v-model="positionInlineCompanyCreate.city" aria-label="新公司城市" placeholder="城市" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><div class="flex gap-2"><button type="button" @click="createPositionInlineCompany" class="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">确认新增并选择</button><button type="button" @click="positionInlineCompanyCreate.open = false; positionInlineCompanyCreate.pendingFromAi = false" class="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">取消</button></div></div></div>
                 <div class="grid grid-cols-2 gap-3">
                   <label class="block text-sm"><span class="text-slate-500">Base</span><input v-model="positionLibraryEditor.city" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
                   <label class="block text-sm"><span class="text-slate-500">薪资</span><input v-model="positionLibraryEditor.salary" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="如 30-50k"></label>
@@ -13617,7 +13617,7 @@ const vueAppConfig = {
     const positionTextParseRaw = ref('');
     const positionTextParseStatus = ref('');
     const positionTextParseError = ref('');
-    const positionInlineCompanyCreate = reactive({ open: false, name: '', industry: '', city: '' });
+    const positionInlineCompanyCreate = reactive({ open: false, pendingFromAi: false, name: '', industry: '', city: '' });
     const positionLibraryBulkImport = reactive({ open: false, companyId: '', fileName: '', rawText: '', rows: [], parsing: false, importing: false, error: '' });
     const positionOwnerEditor = reactive({ open: false, id: '', owner: '' });
     const positionLibraryTagOptions = computed(() => [...new Set((workbenchV2.positions || []).flatMap(position => position.tags || []))]);
@@ -13656,7 +13656,7 @@ const vueAppConfig = {
         description: position.description || position.jd || '', error: '',
       });
       resetPositionSmartInput();
-      positionInlineCompanyCreate.open = false;
+      Object.assign(positionInlineCompanyCreate, { open: false, pendingFromAi: false, name: '', industry: '', city: '' });
     }
     function savePositionLibraryEdit() {
       if (!canWrite) return;
@@ -13711,7 +13711,7 @@ const vueAppConfig = {
         companyId: positionLibraryFilters.companyId !== 'all' ? positionLibraryFilters.companyId : (workbenchV2.companies[0]?.id || ''),
       });
       resetPositionSmartInput();
-      positionInlineCompanyCreate.open = false;
+      Object.assign(positionInlineCompanyCreate, { open: false, pendingFromAi: false, name: '', industry: '', city: '' });
     }
     function savePositionLibraryCreate() {
       if (!canWrite) return;
@@ -13740,7 +13740,7 @@ const vueAppConfig = {
     function cancelPositionLibraryEdit() { positionLibraryEditor.active = false; resetPositionSmartInput(); }
     function openPositionInlineCompanyCreate() {
       if (!canWrite || positionLibraryEditor.id) return;
-      Object.assign(positionInlineCompanyCreate, { open: true, name: '', industry: '', city: '' });
+      Object.assign(positionInlineCompanyCreate, { open: true, pendingFromAi: false, name: '', industry: '', city: '' });
     }
     async function createPositionInlineCompany() {
       if (!canWrite) return;
@@ -13749,7 +13749,7 @@ const vueAppConfig = {
       const company = WorkbenchV2.createCompany({ name, industry: String(positionInlineCompanyCreate.industry || '').trim(), city: String(positionInlineCompanyCreate.city || '').trim(), owner: permissions.value.currentUserName, ownerUserId: permissions.value.currentUserId, status: 'potential' });
       workbenchV2.companies.push(company);
       positionLibraryEditor.companyId = company.id;
-      positionInlineCompanyCreate.open = false;
+      Object.assign(positionInlineCompanyCreate, { open: false, pendingFromAi: false, name: '', industry: '', city: '' });
       const saved = await saveWorkbenchV2();
       if (cloudReady) schedulePush();
       showToast(saved ? '公司已创建并选中' : '公司已创建并暂存到浏览器');
@@ -16540,11 +16540,12 @@ const vueAppConfig = {
 {
   "company": "公司名称",
   "positionName": "岗位名称",
+  "salary": "薪资范围（例如 23-30k·13薪）",
   "location": "工作地点（没有则为空字符串）",
-  "detail": "完整的岗位需求描述（保留所有原文）"
+  "detail": "清理平台界面噪声后的岗位需求描述"
 }
 
-如果某个字段找不到，用空字符串。
+岗位标题和公司行可能包含薪资、链接或招聘经理信息；请拆出薪资和公司名称。detail 只保留职位介绍、岗位职责和任职资格，删除“聊一聊”、联系人在线状态、已认证等平台界面文本。如果某个字段找不到，用空字符串。
 
 OCR 文本：
 ${ocrText}`
@@ -16558,13 +16559,22 @@ ${ocrText}`
     function applyPositionStructured(structured) {
       if (!structured) return false;
       if (structured.positionName) positionLibraryEditor.title = structured.positionName;
+      if (structured.salary || structured.compensation || structured.budget) positionLibraryEditor.salary = structured.salary || structured.compensation || structured.budget;
       if (structured.location) positionLibraryEditor.city = structured.location;
-      if (structured.detail) positionLibraryEditor.description = structured.detail;
+      if (structured.detail) positionLibraryEditor.description = window.WorkBuddyPositionBulkImport?.cleanPositionDescription
+        ? window.WorkBuddyPositionBulkImport.cleanPositionDescription(structured.detail)
+        : structured.detail;
       if (structured.company) {
         const company = workbenchV2.companies.find(item => String(item.name || '').trim() === String(structured.company).trim());
-        if (company) positionLibraryEditor.companyId = company.id;
+        if (company) {
+          positionLibraryEditor.companyId = company.id;
+          positionInlineCompanyCreate.open = false;
+          positionInlineCompanyCreate.pendingFromAi = false;
+        } else {
+          Object.assign(positionInlineCompanyCreate, { open: true, pendingFromAi: true, name: String(structured.company).trim(), industry: '', city: structured.location || '' });
+        }
       }
-      return Boolean(structured.positionName || structured.location || structured.detail || structured.company);
+      return Boolean(structured.positionName || structured.location || structured.salary || structured.detail || structured.company);
     }
     function resetPositionSmartInput() {
       positionOcrImage.value = ''; positionOcrDragging.value = false; positionOcrStatus.value = ''; positionOcrError.value = '';

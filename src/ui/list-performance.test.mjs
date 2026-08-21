@@ -25,6 +25,14 @@ test('sortByRecentUpdate 按更新时间降序且不修改原数组', () => {
   assert.deepEqual(sortByRecentUpdate(null), []);
 });
 
+test('sortByRecentUpdate 优先将新上传简历置顶', () => {
+  const source = [
+    { id: 'old-candidate', updatedAt: '2026-08-20T12:00:00.000Z', latestResumeUploadAt: '2026-08-01T00:00:00.000Z' },
+    { id: 'new-resume', updatedAt: '2026-08-01T00:00:00.000Z', latestResumeUploadAt: '2026-08-20T13:00:00.000Z' },
+  ];
+  assert.deepEqual(sortByRecentUpdate(source).map(item => item.id), ['new-resume', 'old-candidate']);
+});
+
 test('paginate 将页码收敛并返回可展示区间', () => {
   const items = Array.from({ length: 51 }, (_, index) => ({ id: `c${index + 1}` }));
 
