@@ -4212,7 +4212,7 @@
           </div>
           <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
           <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : isGuestMode ? '已保存到本浏览器' : '已保存' }}</span>
-          <div v-if="workbenchNav !== 'aiApps'" class="relative">
+          <div v-if="workbenchNav !== 'aiApps'" ref="globalCreateMenuRef" class="relative">
             <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="wb-v2-create-button px-4 py-2 rounded-xl text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="background:#226647!important;color:#fff!important;border:1px solid #1b563b!important;box-shadow:0 8px 18px rgba(39,118,83,.18)!important;min-width:98px">＋ 新建</button>
             <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
               <button v-if="canWrite" @click="openCompanyCreate" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50" type="button">新建公司</button>
@@ -12660,6 +12660,13 @@ const vueAppConfig = {
           { id: 'activity', label: '跟进记录' },
         ]);
     const globalCreateMenu = ref(false);
+    const globalCreateMenuRef = ref(null);
+    function closeGlobalCreateMenuOnOutsideClick(event) {
+      if (!globalCreateMenu.value || globalCreateMenuRef.value?.contains(event.target)) return;
+      globalCreateMenu.value = false;
+    }
+    onMounted(() => document.addEventListener('click', closeGlobalCreateMenuOnOutsideClick));
+    onBeforeUnmount(() => document.removeEventListener('click', closeGlobalCreateMenuOnOutsideClick));
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
     const companyPage = ref(1);
     const companyCreate = reactive({ open: false, name: '', industry: '', city: '', owner: '', status: 'potential' });
@@ -27312,7 +27319,7 @@ ${clipped}`
     return {
       columns, form, errors, formCollapsed, wbRightRailCollapsed, modal, toast, inlineForm,
       workbenchV2, visibleApplications, migrationDialog, previewWorkbenchMigration, confirmWorkbenchMigration, restoreWorkbenchMigrationSnapshot,
-      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, candidateDrawerOpen, candidateDrawerElement, candidateDrawerCloseButton, trapCandidateDrawerFocus, globalCreateMenu, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi, permissions,
+      workbenchMode, workbenchNav, workbenchNavItems, workbenchSidebarCollapsed, workbenchRoute, candidateDetailMode, candidateDetailTabs, candidateDrawerOpen, candidateDrawerElement, candidateDrawerCloseButton, trapCandidateDrawerFocus, globalCreateMenu, globalCreateMenuRef, accountMenuOpen, accountDisplayName, accountInitial, accountRoleLabel, logoutFromAccountMenu, canWrite, canManageMembers, canConfigureAi, permissions,
       knowledgeSubmodule, quantumRadarTab, quantumRadarMetrics, quantumRadarPriorityJobs, quantumRadarCompanies, quantumRadarJobs, quantumRadarTalents, quantumRadarTasks, quantumRadarCloudStatus, quantumRadarCloudError, loadQuantumRadarFromCloud, quantumRadarLinkDialog, quantumRadarLinkSuggestions, quantumRadarLinkPositions, quantumRadarLinkCandidates, openQuantumRadarLink, closeQuantumRadarLink, saveQuantumRadarLink,
       isGuestMode, openGuestLogin, resetGuestDemo,
       memberManagement, loadMembers, createMember, setMemberStatus, deleteMember, resetMemberPassword,

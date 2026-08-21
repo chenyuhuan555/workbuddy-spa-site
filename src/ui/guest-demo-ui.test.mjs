@@ -79,3 +79,11 @@ test('guest home funnel reads fictional local channels and events without cloud 
   assert.match(html, /if \(isGuestMode\) return Array\.isArray\(workbenchV2\.talentSourceChannels\)/);
   assert.match(html, /if \(isGuestMode\) \{\s*const all = Array\.isArray\(workbenchV2\.talentFunnelEvents\)[\s\S]*?return companyId \? all\.filter\(event => event\.companyId === companyId\) : all;/);
 });
+
+test('global create menu closes when clicking outside its trigger and menu', () => {
+  assert.match(html, /ref="globalCreateMenuRef"/);
+  assert.match(html, /function closeGlobalCreateMenuOnOutsideClick\(event\) \{[\s\S]*?globalCreateMenuRef\.value\?\.contains\(event\.target\)[\s\S]*?globalCreateMenu\.value = false;/);
+  assert.match(html, /onMounted\(\(\) => document\.addEventListener\('click', closeGlobalCreateMenuOnOutsideClick\)\)/);
+  assert.match(html, /onBeforeUnmount\(\(\) => document\.removeEventListener\('click', closeGlobalCreateMenuOnOutsideClick\)\)/);
+  assert.match(html, /globalCreateMenu, globalCreateMenuRef/);
+});
