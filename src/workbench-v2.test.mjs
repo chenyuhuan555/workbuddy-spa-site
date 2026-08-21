@@ -355,7 +355,7 @@ test('candidateLastUpdated 优先 updatedAt 并回退 createdAt', () => {
 });
 
 test('人才密集表提供可配置的更新时间列并安全格式化候选人时间', () => {
-  assert.match(INDEX_HTML, /<th v-if="talentLibraryColumnSet\.has\('updatedAt'\)">更新时间<\/th>/);
+  assert.match(INDEX_HTML, /<th v-if="talentLibraryColumnSet\.has\('updatedAt'\)">更新时间[\s\S]*?<\/th>/);
   assert.match(INDEX_HTML, /<td v-if="talentLibraryColumnSet\.has\('updatedAt'\)">\{\{ candidate\.updatedAt && candidate\.updatedAt !== '-' \? formatBeijingDateTime\(candidate\.updatedAt\) : '-' \}\}<\/td>/);
   assert.doesNotMatch(INDEX_HTML, /<th[^>]*>简历完整度<\/th>/, '批准后的可配置列不再包含简历完整度');
 });

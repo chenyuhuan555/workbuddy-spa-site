@@ -3765,6 +3765,22 @@
       background: #fafbfc;
     }
 
+    .wb-v2-workspace .wb-table-column-resize-handle {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      z-index: 8;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+    }
+
+    body.wb-table-resizing,
+    body.wb-table-resizing * {
+      cursor: col-resize !important;
+      user-select: none !important;
+    }
+
     .wb-v2-workspace .wb-talent-table tbody tr:hover .wb-talent-table-action-cell {
       background: #f8fafc;
     }
@@ -5098,27 +5114,49 @@
             </section>
           <div class="wb-talent-table-shell">
             <table class="wb-talent-table">
+              <colgroup>
+                <col v-if="canWrite" style="width:42px">
+                <col :style="{ width: tableColumnWidth('talent', 'name', 150) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('companyTitle')" :style="{ width: tableColumnWidth('talent', 'companyTitle', 210) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('age')" :style="{ width: tableColumnWidth('talent', 'age', 72) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('education')" :style="{ width: tableColumnWidth('talent', 'education', 110) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('resumeSummary')" :style="{ width: tableColumnWidth('talent', 'resumeSummary', 260) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('currentBase')" :style="{ width: tableColumnWidth('talent', 'currentBase', 120) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('expectedBase')" :style="{ width: tableColumnWidth('talent', 'expectedBase', 120) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('currentSalary')" :style="{ width: tableColumnWidth('talent', 'currentSalary', 130) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('expectedSalary')" :style="{ width: tableColumnWidth('talent', 'expectedSalary', 130) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('motivation')" :style="{ width: tableColumnWidth('talent', 'motivation', 220) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('availability')" :style="{ width: tableColumnWidth('talent', 'availability', 120) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('recommendationComment')" :style="{ width: tableColumnWidth('talent', 'recommendationComment', 240) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('flows')" :style="{ width: tableColumnWidth('talent', 'flows', 220) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('owner')" :style="{ width: tableColumnWidth('talent', 'owner', 120) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('touchedAt')" :style="{ width: tableColumnWidth('talent', 'touchedAt', 150) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('intakeAt')" :style="{ width: tableColumnWidth('talent', 'intakeAt', 120) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('updatedAt')" :style="{ width: tableColumnWidth('talent', 'updatedAt', 150) + 'px' }">
+                <col v-if="talentLibraryColumnSet.has('remark')" :style="{ width: tableColumnWidth('talent', 'remark', 220) + 'px' }">
+                <col style="width:54px">
+              </colgroup>
               <thead>
                 <tr>
                   <th v-if="canWrite" class="w-10"><input type="checkbox" aria-label="全选当前页候选人" :checked="allVisibleCandidatesSelected" @change="toggleAllVisibleCandidates($event.target.checked)"></th>
-                  <th class="wb-talent-table-name-cell">姓名</th>
-                  <th v-if="talentLibraryColumnSet.has('companyTitle')">当前公司 / 当前岗位</th>
-                  <th v-if="talentLibraryColumnSet.has('age')" class="w-16">年龄</th>
-                  <th v-if="talentLibraryColumnSet.has('education')">学历</th>
-                  <th v-if="talentLibraryColumnSet.has('resumeSummary')">履历摘要</th>
-                  <th v-if="talentLibraryColumnSet.has('currentBase')">当前 Base</th>
-                  <th v-if="talentLibraryColumnSet.has('expectedBase')">期望 Base</th>
-                  <th v-if="talentLibraryColumnSet.has('currentSalary')">当前薪酬</th>
-                  <th v-if="talentLibraryColumnSet.has('expectedSalary')">期望薪酬</th>
-                  <th v-if="talentLibraryColumnSet.has('motivation')">求职动机</th>
-                  <th v-if="talentLibraryColumnSet.has('availability')">到岗周期</th>
-                  <th v-if="talentLibraryColumnSet.has('recommendationComment')">推荐评语</th>
-                  <th v-if="talentLibraryColumnSet.has('flows')">目前流程</th>
-                  <th v-if="talentLibraryColumnSet.has('owner')">归属顾问</th>
-                  <th v-if="talentLibraryColumnSet.has('touchedAt')">最近触达</th>
-                  <th v-if="talentLibraryColumnSet.has('intakeAt')">入库日期</th>
-                  <th v-if="talentLibraryColumnSet.has('updatedAt')">更新时间</th>
-                  <th v-if="talentLibraryColumnSet.has('remark')">备注</th>
+                  <th class="wb-talent-table-name-cell">姓名<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'name')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('companyTitle')">当前公司 / 当前岗位<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'companyTitle')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('age')" class="w-16">年龄<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'age')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('education')">学历<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'education')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('resumeSummary')">履历摘要<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'resumeSummary')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('currentBase')">当前 Base<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'currentBase')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('expectedBase')">期望 Base<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'expectedBase')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('currentSalary')">当前薪酬<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'currentSalary')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('expectedSalary')">期望薪酬<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'expectedSalary')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('motivation')">求职动机<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'motivation')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('availability')">到岗周期<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'availability')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('recommendationComment')">推荐评语<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'recommendationComment')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('flows')">目前流程<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'flows')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('owner')">归属顾问<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'owner')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('touchedAt')">最近触达<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'touchedAt')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('intakeAt')">入库日期<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'intakeAt')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('updatedAt')">更新时间<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'updatedAt')" aria-hidden="true"></span></th>
+                  <th v-if="talentLibraryColumnSet.has('remark')">备注<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'talent', 'remark')" aria-hidden="true"></span></th>
                   <th class="wb-talent-table-action-cell" aria-label="操作"></th>
                 </tr>
               </thead>
@@ -5743,17 +5781,29 @@
 
             <div class="wb-talent-table-shell">
               <table class="wb-talent-table">
+                <colgroup>
+                  <col :style="{ width: tableColumnWidth('position', 'title', 220) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'company', 176) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'base', 80) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'salary', 112) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'owner', 96) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'status', 96) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'recommended', 64) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'interviewing', 64) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('position', 'updatedAt', 112) + 'px' }">
+                  <col style="width:54px">
+                </colgroup>
                 <thead>
                   <tr>
-                    <th class="wb-talent-table-name-cell">岗位</th>
-                    <th class="w-44">公司</th>
-                    <th class="w-20">Base</th>
-                    <th class="w-28">薪资</th>
-                    <th class="w-24">负责人</th>
-                    <th class="w-24">状态</th>
-                    <th class="w-16 text-center">已推荐</th>
-                    <th class="w-16 text-center">面试中</th>
-                    <th class="w-28">最近更新</th>
+                    <th class="wb-talent-table-name-cell">岗位<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'title')" aria-hidden="true"></span></th>
+                    <th class="w-44">公司<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'company')" aria-hidden="true"></span></th>
+                    <th class="w-20">Base<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'base')" aria-hidden="true"></span></th>
+                    <th class="w-28">薪资<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'salary')" aria-hidden="true"></span></th>
+                    <th class="w-24">负责人<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'owner')" aria-hidden="true"></span></th>
+                    <th class="w-24">状态<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'status')" aria-hidden="true"></span></th>
+                    <th class="w-16 text-center">已推荐<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'recommended')" aria-hidden="true"></span></th>
+                    <th class="w-16 text-center">面试中<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'interviewing')" aria-hidden="true"></span></th>
+                    <th class="w-28">最近更新<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'position', 'updatedAt')" aria-hidden="true"></span></th>
                     <th class="wb-talent-table-action-cell" aria-label="操作"></th>
                   </tr>
                 </thead>
@@ -12717,6 +12767,34 @@ const vueAppConfig = {
       return channel?.name || id;
     });
     const talentLibraryColumnsOpen=ref(false);
+    const tableColumnWidths = reactive({ talent: {}, position: {} });
+    const tableResizeState = reactive({ table: '', key: '', startX: 0, startWidth: 0 });
+    function tableColumnWidth(table, key, fallback) {
+      return Number(tableColumnWidths[table]?.[key]) || fallback;
+    }
+    function startTableColumnResize(event, table, key) {
+      const header = event.currentTarget?.parentElement;
+      const startWidth = header?.getBoundingClientRect().width || tableColumnWidth(table, key, 120);
+      tableResizeState.table = table;
+      tableResizeState.key = key;
+      tableResizeState.startX = event.clientX;
+      tableResizeState.startWidth = startWidth;
+      document.body.classList.add('wb-table-resizing');
+      document.addEventListener('pointermove', resizeTableColumn);
+      document.addEventListener('pointerup', stopTableColumnResize, { once: true });
+    }
+    function resizeTableColumn(event) {
+      if (!tableResizeState.table || !tableResizeState.key) return;
+      const minWidth = 56;
+      const nextWidth = Math.max(minWidth, Math.round(tableResizeState.startWidth + event.clientX - tableResizeState.startX));
+      tableColumnWidths[tableResizeState.table][tableResizeState.key] = nextWidth;
+    }
+    function stopTableColumnResize() {
+      document.removeEventListener('pointermove', resizeTableColumn);
+      document.body.classList.remove('wb-table-resizing');
+      tableResizeState.table = '';
+      tableResizeState.key = '';
+    }
     const talentLibraryActionsOpen = ref(false);
     const talentLibraryMoreFiltersOpen = ref(false);
     const candidateRowMenuId=ref('');
@@ -19771,6 +19849,7 @@ ${ocrText}`
       stopWorkbenchEntityPolling();
       stopCandidatePolling();
       stopSaveStateSubscription();
+      stopTableColumnResize();
       saveCoordinator.dispose();
     });
 
@@ -27340,7 +27419,7 @@ ${clipped}`
       aiAppForm, aiAppIconOptions, aiApplicationsSorted, aiApplicationStats, aiApplicationStatusOptions, aiApplicationIcon, openAiApplication, resetAiAppForm, openAiAppCreate, openAiAppEdit, addAiAppChangelogEntry, removeAiAppChangelogEntry, saveAiAppForm, deleteAiAppForm,
       showLegacyMigrationTools,
       companyFilter, companyPage, companyCreate, companyPositionCreate, companyBulkPositionImport, companyProfileEdit, positionDescriptionEdit, positionSkillsExtracting, positionSkillsBatch, selectedCompany, selectedPosition, selectedApplication, companyPositions, companyApplications, positionApplications, filteredPositionApplications, pagedWorkbenchCompanies, openPositionCountByCompanyId, activeApplicationCountByCompanyId, interviewApplicationCountByCompanyId, talentFunnelDashboard, homeFunnelDashboard, homeFunnelCompanyId, homeFunnelTimeRange, homeFunnelPositionId, homeFunnelPositionOptions, homeFunnelOwnerId, homeFunnelSelectedChannelId, homeFunnelChannelOptions, selectedHomeFunnelChannelRow, homeFunnelStageSummary, homeFunnelBusinessMetrics, homeFunnelChannelRows, homeFunnelReview, homeTodoSummary, homeTodoFilter, homeTodoTabs, filteredHomeTodos, homeFunnelAiSummary, homeReviewNotes, channelDetailDialog, selectedHomeFunnelChannel, homeChannelDetailCandidates, homeChannelDetailMaxCount, formatTalentFunnelRate, reloadTalentFunnelDashboard, reloadHomeTalentFunnelDashboard, runTalentFunnelAi, runHomeTalentFunnelAi, openHomeFunnelCandidates, openHomeFunnelChannelDetails, openHomeFunnelChannelImport, openChannelDetails, closeChannelDetails, exportChannelDetails, dailyReview, dailyReviewMetrics, dailyMetricsEqual, dailyReviewSummary, dailyReviewMembers, dailyReviewIsReadonly, dailyReviewDateTimeLabel, loadDailyReview, saveDailyReview, onDailyReviewScopeChange, openDailyReviewHistory, openDailyReviewHistoryDetail, backToDailyReviewHistoryList, closeDailyReviewHistory, todayBeijingDate,
-      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel,
+      TalentLibrary, talentLibraryFilters, talentLibraryColumnKeys, talentLibraryColumns, talentLibraryColumnSet, talentLibraryColumnsOpen, talentLibraryActionsOpen, talentLibraryMoreFiltersOpen, talentLibrarySummary, candidateRowMenuId, setTalentLibraryColumn, talentLibrarySourceCompanyLabel, talentLibrarySourceChannelLabel, tableColumnWidths, tableColumnWidth, startTableColumnResize,
       candidateFilters, candidatePage, talentCloudSearch, cleanResumeSearchSnippet, extractCloudSearchHighlights, runTalentCloudSearch, syncUnifiedTalentSearch, runUnifiedTalentSearch, changeTalentCloudSearchPage, talentCategories, talentCategoryPaths, talentCategoryManager, openTalentCategoryManager, addTalentMainCategory, addTalentSubCategory, renameTalentCategory, deleteTalentCategory, moveTalentCategory, updateSelectedCandidateCategories, selectedCandidateIds, allVisibleCandidatesSelected, toggleCandidateSelection, toggleAllVisibleCandidates, clearCandidateSelection, bulkDeleteSelectedCandidates, bulkOwnerEditor, openBulkSetCandidateOwner, closeBulkSetCandidateOwner, confirmBulkSetCandidateOwner, candidateCoreEdit, startCandidateCoreEdit, saveCandidateCoreEdit, cancelCandidateCoreEdit, addCandidateCoreTags, removeCandidateCoreTag, talentJobMatch, talentJobMatchOpenPositions, talentJobMatchResults, canRunTalentJobMatch, openTalentJobMatch, closeTalentJobMatch, runTalentJobMatch, createTalentJobMatchApplication, talentCompanyResearch, talentCompanyResearchCandidates, openTalentCompanyResearch, closeTalentCompanyResearch, runTalentCompanyResearch, createCompanyFromTalentResearch, generateTalentCompanyBdPlan, candidateUpload, candidateInfoExtracting, refillCandidateInfoFromResume, candidateDirectionRecognizing, recognizeCandidateDirections, batchSmartOrganizing, runCandidateSmartOrganize, batchDirectionRecognizing, batchDirectionRecognitionProgress, batchRecognizeCandidateDirections, batchInfoExtracting, batchInfoExtractProgress, batchExtractCandidateInfo, looksLikeFileName, batchNameRefilling, batchNameRefillProgress, batchRefillCandidateNames, selectedCandidate, filteredWorkbenchCandidates, pagedWorkbenchCandidates, selectedCandidateApplications, selectedCandidateInterviewApplications, applicationPipelineTrail, selectedCandidateResumeVersions,
       candidateCategoriesExpanded, selectedCandidateFollowupItems,
       expandedOpportunityId, jobOpportunityEdit, jobOpportunityPreferencesEdit,

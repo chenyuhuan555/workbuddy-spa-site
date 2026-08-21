@@ -399,6 +399,17 @@ test('人才库筛选字段使用统一的纵向标签和控件尺寸', () => {
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field input,[\s\S]*?\.wb-v2-workspace \.wb-talent-filter-field select\s*\{[\s\S]*?min-height:\s*36px/);
 });
 
+test('人才库和岗位库表头提供基础列宽拖拽', () => {
+  assert.match(INDEX_HTML, /const tableColumnWidths = reactive\(\{ talent: \{\}, position: \{\} \}\)/);
+  assert.match(INDEX_HTML, /function startTableColumnResize\(event, table, key\)/);
+  assert.match(INDEX_HTML, /function stopTableColumnResize\(\)/);
+  assert.match(INDEX_HTML, /class="wb-table-column-resize-handle"/);
+  assert.match(INDEX_HTML, /<colgroup>[\s\S]*?tableColumnWidth\('talent'/);
+  assert.match(INDEX_HTML, /<colgroup>[\s\S]*?tableColumnWidth\('position'/);
+  assert.match(INDEX_HTML, /@pointerdown\.stop\.prevent="startTableColumnResize\(\$event, 'talent'/);
+  assert.match(INDEX_HTML, /@pointerdown\.stop\.prevent="startTableColumnResize\(\$event, 'position'/);
+});
+
 test('人才详情默认以原始简历为主视图并复用六个详情页签', () => {
   assert.match(INDEX_HTML, /const workbenchRoute = reactive\(\{ type: 'list', id: '', parentId: '', tab: 'resume' \}\)/);
   assert.match(INDEX_HTML, /function openCandidateDetail\(id,\s*tab = 'resume'\)/);
