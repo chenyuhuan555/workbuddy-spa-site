@@ -238,12 +238,27 @@
   }
 
   function buildRows(input = {}) {
-    const applications = Array.isArray(input.applications) ? input.applications : [];
+    const rawApplications = Array.isArray(input.applications) ? input.applications : [];
+    const candidates = Array.isArray(input.candidates) ? input.candidates : [];
+    const companies = Array.isArray(input.companies) ? input.companies : [];
+    const positions = Array.isArray(input.positions) ? input.positions : [];
+    const activeIds = items => new Set(items.filter(item => item && item.id && !item.deletedAt).map(item => item.id));
+    const candidateIds = activeIds(candidates);
+    const companyIds = activeIds(companies);
+    const positionIds = activeIds(positions);
+    const applications = rawApplications.filter(application => (
+      application
+      && application.id
+      && !application.deletedAt
+      && candidateIds.has(application.candidateId)
+      && companyIds.has(application.companyId)
+      && positionIds.has(application.positionId)
+    ));
     const todos = Array.isArray(input.todos) ? input.todos : [];
     const nowMs = parseMs(input.now) || Date.now();
-    const candidatesById = new Map((Array.isArray(input.candidates) ? input.candidates : []).map(item => [item.id, item]));
-    const companiesById = new Map((Array.isArray(input.companies) ? input.companies : []).map(item => [item.id, item]));
-    const positionsById = new Map((Array.isArray(input.positions) ? input.positions : []).map(item => [item.id, item]));
+    const candidatesById = new Map(candidates.map(item => [item.id, item]));
+    const companiesById = new Map(companies.map(item => [item.id, item]));
+    const positionsById = new Map(positions.map(item => [item.id, item]));
     return applications
       .filter(application => application && application.id && text(application.status) !== 'archived' && text(application.status) !== 'deleted')
       .map(application => buildRow({ application, candidatesById, companiesById, positionsById, todos, nowMs }));

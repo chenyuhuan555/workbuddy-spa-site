@@ -20,7 +20,7 @@
   <script src="./src/constants/pipeline-stages.js?v=20260728-phase0"></script>
   <script src="./src/services/todo-rule-engine.js?v=20260818-todorule1"></script>
   <script src="./src/services/todo-reconciler.js?v=20260818-todoreconciler1"></script>
-  <script src="./src/ui/application-progress-table.js?v=20260818-progress1"></script>
+  <script src="./src/ui/application-progress-table.js?v=20260821-progress2"></script>
   <script src="./src/ui/workbench-permissions.js?v=20260818-permissions1"></script>
   <script src="./src/workbench-v2.js?v=20260807-aiappcenter1"></script>
   <script src="./src/services/sync-merge.js?v=20260807-aiappcenter1"></script>
@@ -5626,10 +5626,41 @@
           <div v-else-if="workbenchRoute.tab === 'applications'" class="bg-white border border-slate-200 rounded-xl p-5"><h2 class="text-lg font-bold">推荐记录</h2><div v-for="application in selectedCandidateApplications" :key="application.id" @click="openApplicationDetail(application.id)" class="mt-3 border-b border-slate-100 p-4 text-base flex justify-between items-center cursor-pointer hover:bg-slate-50 transition"><span><b class="block">{{ companyById.get(application.companyId)?.name || '公司已删除' }} · {{ positionById.get(application.positionId)?.title || '岗位已删除' }}</b><small class="mt-1 block text-slate-500">推荐日期 {{ formatBeijingDateTime(application.recommendedAt || application.createdAt || '') || '—' }} · 负责人 {{ application.owner || '—' }} · 最近更新 {{ formatBeijingDateTime(application.updatedAt || application.stageEnteredAt || '') || '—' }}</small></span><span class="flex items-center gap-3"><b class="text-sm">{{ application.status || candidatePipelineLabel(application.stage) }}</b><span class="text-sm text-emerald-700">{{ candidatePipelineLabel(application.stage) }}</span></span></div><p v-if="!selectedCandidateApplications.length" class="text-base text-slate-400 mt-4">暂无推荐记录</p></div>
           <div v-else-if="workbenchRoute.tab === 'interviews'" class="rounded-xl border border-slate-200 bg-white p-5">
             <h2 class="text-lg font-bold">面试进度</h2>
-            <button v-for="application in selectedCandidateInterviewApplications" :key="application.id" type="button" @click="openApplicationDetail(application.id)" class="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 p-4 text-left transition hover:border-emerald-300 hover:bg-slate-50">
-              <span class="min-w-0"><b class="block truncate">{{ companyById.get(application.companyId)?.name || '公司已删除' }} · {{ positionById.get(application.positionId)?.title || '岗位已删除' }}</b><small class="mt-1 block text-slate-500">{{ applicationPipelineTrail(application) }}</small></span>
-              <span class="shrink-0 text-sm font-semibold text-emerald-700">查看详情 →</span>
-            </button>
+            <div v-if="selectedCandidateInterviewApplications.length" class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+              <table class="w-full min-w-[820px] text-sm text-left">
+                <colgroup>
+                  <col :style="{ width: tableColumnWidth('interview', 'company', 170) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('interview', 'position', 210) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('interview', 'stage', 150) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('interview', 'interviewAt', 150) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('interview', 'owner', 110) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('interview', 'updatedAt', 140) + 'px' }">
+                  <col :style="{ width: tableColumnWidth('interview', 'action', 92) + 'px' }">
+                </colgroup>
+                <thead class="bg-slate-50 text-xs font-semibold text-slate-500">
+                  <tr>
+                    <th class="relative px-3 py-2.5">公司<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'company')" aria-hidden="true"></span></th>
+                    <th class="relative px-3 py-2.5">岗位<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'position')" aria-hidden="true"></span></th>
+                    <th class="relative px-3 py-2.5">当前阶段<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'stage')" aria-hidden="true"></span></th>
+                    <th class="relative px-3 py-2.5">面试时间<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'interviewAt')" aria-hidden="true"></span></th>
+                    <th class="relative px-3 py-2.5">负责人<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'owner')" aria-hidden="true"></span></th>
+                    <th class="relative px-3 py-2.5">最近更新<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'updatedAt')" aria-hidden="true"></span></th>
+                    <th class="relative px-3 py-2.5 text-right"><span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'interview', 'action')" aria-hidden="true"></span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="application in selectedCandidateInterviewApplications" :key="application.id" class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" @click="openApplicationDetail(application.id)">
+                    <td class="px-3 py-2.5 text-slate-700">{{ companyById.get(application.companyId)?.name }}</td>
+                    <td class="px-3 py-2.5 text-slate-700">{{ positionById.get(application.positionId)?.title }}</td>
+                    <td class="px-3 py-2.5 text-indigo-700">{{ candidatePipelineLabel(application.stage) }}</td>
+                    <td class="px-3 py-2.5 whitespace-nowrap text-slate-600">{{ formatBeijingDateTime(application.interviewAt || '') || '待安排' }}</td>
+                    <td class="px-3 py-2.5 text-slate-600">{{ application.owner || '未分配' }}</td>
+                    <td class="px-3 py-2.5 whitespace-nowrap text-xs text-slate-400">{{ formatBeijingDateTime(application.updatedAt || application.stageEnteredAt || '') || '—' }}</td>
+                    <td class="px-3 py-2.5 text-right"><button type="button" @click.stop="openApplicationDetail(application.id)" class="whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">查看</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             <p v-if="!selectedCandidateInterviewApplications.length" class="mt-4 text-sm text-slate-400">暂无面试进度</p>
           </div>
           <div v-else-if="workbenchRoute.tab === 'activity'" class="rounded-xl border border-slate-200 bg-white p-5">
@@ -6058,17 +6089,28 @@
           </div>
           <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto">
             <table class="w-full text-left text-sm min-w-[980px]">
+              <colgroup>
+                <col :style="{ width: tableColumnWidth('progress', 'candidate', 180) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'company', 160) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'position', 190) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'stage', 120) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'interviewAt', 140) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'nextTodo', 180) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'owner', 110) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'todo', 72) + 'px' }">
+                <col :style="{ width: tableColumnWidth('progress', 'updatedAt', 140) + 'px' }">
+              </colgroup>
               <thead class="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-100">
                 <tr>
-                  <th class="px-4 py-2.5">候选人</th>
-                  <th class="px-4 py-2.5">公司</th>
-                  <th class="px-4 py-2.5">岗位</th>
-                  <th class="px-4 py-2.5">当前阶段</th>
-                  <th class="px-4 py-2.5">面试时间</th>
-                  <th class="px-4 py-2.5">下一步</th>
-                  <th class="px-4 py-2.5">负责人</th>
-                  <th class="px-4 py-2.5 text-right">待办</th>
-                  <th class="px-4 py-2.5">最近更新</th>
+                  <th class="relative px-4 py-2.5">候选人<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'candidate')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">公司<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'company')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">岗位<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'position')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">当前阶段<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'stage')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">面试时间<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'interviewAt')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">下一步<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'nextTodo')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">负责人<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'owner')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5 text-right">待办<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'todo')" aria-hidden="true"></span></th>
+                  <th class="relative px-4 py-2.5">最近更新<span class="wb-table-column-resize-handle" @pointerdown.stop.prevent="startTableColumnResize($event, 'progress', 'updatedAt')" aria-hidden="true"></span></th>
                 </tr>
               </thead>
               <tbody>
@@ -12767,7 +12809,7 @@ const vueAppConfig = {
       return channel?.name || id;
     });
     const talentLibraryColumnsOpen=ref(false);
-    const tableColumnWidths = reactive({ talent: {}, position: {} });
+    const tableColumnWidths = reactive({ talent: {}, position: {}, progress: {}, interview: {} });
     const tableResizeState = reactive({ table: '', key: '', startX: 0, startWidth: 0 });
     function tableColumnWidth(table, key, fallback) {
       return Number(tableColumnWidths[table]?.[key]) || fallback;
@@ -14563,7 +14605,7 @@ const vueAppConfig = {
       if (!permissions.value.isAdmin && owner !== '__me__') progressFilters.owner = '__me__';
     });
     const progressRows = computed(() => ProgressTable.buildRows({
-      applications: (workbenchV2.applications || []).filter(application =>
+      applications: (visibleApplications.value || []).filter(application =>
         permissions.value.canViewApplication(application, candidateById.value.get(application.candidateId))
       ),
       candidates: workbenchV2.candidates || [],

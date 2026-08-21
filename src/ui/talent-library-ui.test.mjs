@@ -375,6 +375,12 @@ test('首页渠道漏斗保留大标题字号并放大其余信息文字', () =>
   assert.match(dashboardBlock, /openHomeFunnelChannelImport\(selectedHomeFunnelChannelRow\)/);
 });
 
+test('面试进度两处入口都使用可拖拽列宽的表格', () => {
+  assert.match(INDEX_HTML, /workbenchNav === 'progress'[\s\S]*?startTableColumnResize\(\$event, 'progress'/);
+  assert.match(INDEX_HTML, /workbenchRoute\.tab === 'interviews'[\s\S]*?<table[\s\S]*?startTableColumnResize\(\$event, 'interview'/);
+  assert.match(INDEX_HTML, /selectedCandidateInterviewApplications/);
+});
+
 test('岗位库页面不重复显示内层岗位库标题', () => {
   const positionsBlock = INDEX_HTML.match(/workbenchNav === 'positions'[\s\S]*?<div v-else-if="workbenchNav === 'applications'/)?.[0] || '';
   assert.ok(positionsBlock, 'positions page block should exist');
@@ -400,7 +406,7 @@ test('人才库筛选字段使用统一的纵向标签和控件尺寸', () => {
 });
 
 test('人才库和岗位库表头提供基础列宽拖拽', () => {
-  assert.match(INDEX_HTML, /const tableColumnWidths = reactive\(\{ talent: \{\}, position: \{\} \}\)/);
+  assert.match(INDEX_HTML, /const tableColumnWidths = reactive\(\{ talent: \{\}, position: \{\}, progress: \{\}, interview: \{\} \}\)/);
   assert.match(INDEX_HTML, /function startTableColumnResize\(event, table, key\)/);
   assert.match(INDEX_HTML, /function stopTableColumnResize\(\)/);
   assert.match(INDEX_HTML, /class="wb-table-column-resize-handle"/);

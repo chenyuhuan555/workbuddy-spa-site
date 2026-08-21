@@ -190,6 +190,19 @@ test('无 Application → 空状态正常（行数为 0）', () => {
   assert.equal(summarize(rows, NOW).total, 0);
 });
 
+test('关联公司或岗位已删除时不生成面试/推进展示行', () => {
+  const fixture = baseFixture();
+  fixture.companies[1].deletedAt = '2026-08-18T08:00:00.000Z';
+  fixture.positions.push({ id: 'p3', companyId: 'co1', title: '已删除岗位', deletedAt: '2026-08-18T09:00:00.000Z' });
+  fixture.applications.push(
+    { id: 'app-deleted-company', candidateId: 'c1', positionId: 'p2', companyId: 'co2', stage: 'interviewing' },
+    { id: 'app-deleted-position', candidateId: 'c2', positionId: 'p3', companyId: 'co1', stage: 'interviewing' },
+    { id: 'app-missing-link', candidateId: 'c1', positionId: 'missing', companyId: 'co1', stage: 'interviewing' },
+  );
+  const rows = buildRows({ ...fixture, now: NOW });
+  assert.deepEqual(rows.map(row => row.applicationId), ['app1']);
+});
+
 test('阶段筛选复用共享分组', () => {
   assert.equal(STAGE_FILTER_LABELS.interview, '面试');
   const fixture = baseFixture();
