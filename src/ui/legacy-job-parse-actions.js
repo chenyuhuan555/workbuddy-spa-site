@@ -68,10 +68,20 @@ export function createLegacyJobParseActions({
     try {
       await ensureTesseractDependency();
       const result = await window.Tesseract.recognize(file, 'chi_sim+eng', { logger: () => {} });
-      if (!result.data.text || result.data.text.trim().length < 10) throw new Error('未能识别到有效文字，请尝试更清晰的截图');
+      const recognizedText = String(result.data.text || '').trim();
+      if (recognizedText.length < 10) throw new Error('未能识别到有效文字，请尝试更清晰的截图');
       ocrStatus.value = 'ai';
-      if (!applyStructured(await extractJobInfoWithDeepSeek(result.data.text))) throw new Error('未能提取有效信息');
-      ocrStatus.value = 'done';
+      try {
+        if (!applyStructured(await extractJobInfoWithDeepSeek(recognizedText))) throw new Error('未能提取有效信息');
+        ocrStatus.value = 'done';
+      } catch (error) {
+        // OCR 已经成功时，至少保留原文，避免 AI 失败让整次识别看起来像失败。
+        const fallback = fallbackParseJobText(recognizedText);
+        if (!applyStructured(fallback)) throw error;
+        ocrStatus.value = 'fallback';
+        ocrError.value = '文字已识别，AI 自动填写失败';
+        showToast(ocrError.value, 'error');
+      }
     } catch (error) { ocrStatus.value = 'error'; ocrError.value = error.message || '识别失败'; }
   }
   return { parseJobText, processOcrImage, fallbackParseJobText };
