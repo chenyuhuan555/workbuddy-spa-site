@@ -5826,6 +5826,7 @@
 
         <div v-else-if="workbenchNav === 'positions'" class="relative" @keydown.esc.window="closePositionDrawer(); positionLibraryColumnsOpen = false; positionRowMenuId = ''; positionLibraryMoreFiltersOpen = false">
           <div class="wb-talent-library-page space-y-3">
+            <div class="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6"><div><h1 class="text-2xl font-bold text-slate-900">岗位库</h1><p class="mt-1 text-sm text-slate-500">查看岗位需求、候选人推荐与面试进展</p></div><div v-if="canWrite" class="flex flex-wrap gap-2"><button @click="createPositionLibrary" class="inline-flex items-center rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800" type="button">＋ 新增岗位</button></div></div>
             <header class="flex flex-wrap items-start justify-between gap-3">
               <div class="flex items-baseline gap-3">
                 <span class="text-sm font-medium text-slate-400">{{ positionLibrarySummary.total }} 个岗位 · 开放 {{ positionLibrarySummary.open }} · 暂停 {{ positionLibrarySummary.paused }} · 关闭 {{ positionLibrarySummary.closed }}</span>
@@ -5846,7 +5847,7 @@
                   </div>
                 </div>
                 <button type="button" @click="positionLibraryMoreFiltersOpen = !positionLibraryMoreFiltersOpen" :aria-expanded="positionLibraryMoreFiltersOpen" class="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.2v5.3l-3 1.5v-6.8L4 5Z"></path></svg><span>更多筛选</span></button>
-                <button v-if="canWrite" type="button" @click="openPositionBulkImportLibrary" class="inline-flex min-h-[34px] items-center rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">批量上传</button><button v-if="canWrite" type="button" @click="createPositionLibrary" class="inline-flex min-h-[34px] items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800">＋ 新增岗位</button>
+                <button v-if="canWrite" type="button" @click="openPositionBulkImportLibrary" class="inline-flex min-h-[34px] items-center rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">批量上传</button>
               </div>
             </header>
 
@@ -16433,21 +16434,26 @@ const vueAppConfig = {
       });
     }
 
-    function migrateLegacyCompanyOwners() {
+    function migrateLegacyOwnerNames() {
       if (!canWrite) return 0;
       const legacyNames = new Set(['张嘉一', '嘉一']);
       const targetName = '陈雨欢';
       const targetUserId = String(window.WorkBuddyAccess?.profile?.id || '').trim();
       let changed = 0;
-      for (const company of workbenchV2.companies || []) {
-        const owners = WorkBuddyWorkbenchOwners.splitOwners(company.owner);
-        if (!owners.some(owner => legacyNames.has(owner))) continue;
-        const nextOwners = [...new Set(owners.map(owner => legacyNames.has(owner) ? targetName : owner))];
-        company.owner = nextOwners.join('、');
-        if (targetUserId) company.ownerUserId = targetUserId;
-        company.updatedAt = new Date().toISOString();
-        changed += 1;
-      }
+      const migrateCollection = collection => {
+        for (const entity of collection || []) {
+          const owners = WorkBuddyWorkbenchOwners.splitOwners(entity.owner);
+          if (!owners.some(owner => legacyNames.has(owner))) continue;
+          entity.owner = [...new Set(owners.map(owner => legacyNames.has(owner) ? targetName : owner))].join('、');
+          if (targetUserId) entity.ownerUserId = targetUserId;
+          entity.updatedAt = new Date().toISOString();
+          changed += 1;
+        }
+      };
+      migrateCollection(workbenchV2.companies);
+      migrateCollection(workbenchV2.positions);
+      migrateCollection(workbenchV2.candidates);
+      migrateCollection(workbenchV2.applications);
       return changed;
     }
 
@@ -19976,11 +19982,11 @@ ${ocrText}`
       // 公司卡片默认全部收起，用户可通过列头部「展开」按钮手动展开
       startBackgroundStartupTasks(); // 非首屏模块并行后台恢复，避免互相排队
       await initCloud(); // 2b.2 启用后候选人来自 candidates；其他业务仍来自 workspace_state
-      const migratedCompanyOwnerCount = migrateLegacyCompanyOwners();
-      if (migratedCompanyOwnerCount) {
+      const migratedOwnerCount = migrateLegacyOwnerNames();
+      if (migratedOwnerCount) {
         const saved = await saveWorkbenchV2();
         if (saved && cloudReady) schedulePush();
-        showToast(saved ? `已将 ${migratedCompanyOwnerCount} 家公司的负责人更新为陈雨欢` : '公司负责人已更新，暂存到浏览器', 'success');
+        showToast(saved ? `已将 ${migratedOwnerCount} 条业务归属更新为陈雨欢` : '业务负责人已更新，暂存到浏览器', 'success');
       }
       void reconcileBusinessTodos(); // 云端数据同步完成后对账自动待办
       startWorkbenchEntityPolling();
