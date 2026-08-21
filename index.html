@@ -6122,10 +6122,7 @@
               <h1 class="text-2xl font-bold">面试 / 推进工作区</h1>
               <p class="text-sm text-slate-500 mt-1">{{ progressSummary.total }} 条推进记录</p>
             </div>
-            <div class="flex rounded-lg bg-slate-200 p-1" role="group" aria-label="工作区视图">
-              <button @click="selectWorkbenchNav('progress')" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', workbenchNav === 'progress' ? 'bg-white shadow-sm' : 'text-slate-500']" type="button">面试 / 推进主表</button>
-              <button @click="selectWorkbenchNav('applications')" :class="['px-3 py-1.5 rounded-md text-xs font-semibold', workbenchNav === 'applications' ? 'bg-white shadow-sm' : 'text-slate-500']" type="button">推进中心（列表 / 看板）</button>
-            </div>
+            <span class="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500">面试进度</span>
           </div>
           <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-2">
             <input aria-label="搜索推进记录" v-model="progressFilters.query" placeholder="搜索候选人 / 公司 / 岗位" class="min-w-52 flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-400">
@@ -14858,6 +14855,8 @@ const vueAppConfig = {
     function selectWorkbenchNav(key) {
       if (key === 'settings' && !canConfigureAi) return;
       if (key === 'aiApps' && isGuestMode) return;
+      // 推进中心已收口到面试进度；兼容旧入口，避免历史链接进入已下线视图。
+      if (key === 'applications') key = 'progress';
       workbenchNav.value = key;
       Object.assign(workbenchRoute, { type: 'list', id: '', parentId: '', tab: 'overview' });
       globalCreateMenu.value = false;
