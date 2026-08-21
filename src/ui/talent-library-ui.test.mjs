@@ -399,7 +399,8 @@ test('人才上传归类展开控件使用 SVG 下箭头', () => {
 test('人才库筛选字段使用统一的纵向标签和控件尺寸', () => {
   const filterBar = INDEX_HTML.match(/<div class="wb-talent-filter-bar[\s\S]*?<\/div>\s*<\/div>\s*<section v-if="talentCloudSearch/)?.[0] || '';
   assert.ok(filterBar, 'talent filter bar should exist');
-  assert.match(filterBar, /class="wb-talent-filter-field text-xs font-medium text-slate-500">触达时间/);
+  assert.match(filterBar, /v-model="unifiedDateFilters\.candidates\.dimension"/);
+  assert.match(filterBar, /v-model="unifiedDateFilters\.candidates\.preset"/);
   assert.match(filterBar, /class="wb-talent-filter-field text-xs font-medium text-slate-500">学历/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field\s*\{[\s\S]*?flex-direction:\s*column[\s\S]*?min-height:\s*64px/);
   assert.match(INDEX_HTML, /\.wb-v2-workspace \.wb-talent-filter-field input,[\s\S]*?\.wb-v2-workspace \.wb-talent-filter-field select\s*\{[\s\S]*?min-height:\s*36px/);

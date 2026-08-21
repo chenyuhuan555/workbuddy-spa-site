@@ -969,7 +969,7 @@ test('顶部新建按钮具备不依赖 Tailwind 的高对比度样式', () => {
 
 test('人才列表在筛选后、分页前按最近更新时间降序排列', () => {
   assert.match(INDEX_HTML, /const \{ PAGE_SIZE, paginate, indexById, groupBy, sortByRecentUpdate \} = window\.WorkBuddyListPerformance/);
-  assert.match(INDEX_HTML, /const filteredWorkbenchCandidates = computed\(\(\) => sortByRecentUpdate\(TalentLibrary\.filterRows\(/);
+  assert.match(INDEX_HTML, /const filteredWorkbenchCandidates = computed\(\(\) => sortByRecentUpdate\(UnifiedDateFilter\.filterRows\(/);
   assert.match(INDEX_HTML, /paginate\(filteredWorkbenchCandidates\.value, candidatePage\.value, PAGE_SIZE\)/);
 });
 
