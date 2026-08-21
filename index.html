@@ -74,6 +74,7 @@
   <script src="./src/quantum-radar/talents.js?v=20260810-quantumtalents1"></script>
   <script src="./src/quantum-radar/tasks.js?v=20260810-quantumtasks1"></script>
   <script src="./src/services/repo/quantum-radar-repo.js?v=20260810-quantumrepo1"></script>
+  <script src="./src/services/deferred-startup.js?v=20260821-deferredstartup1"></script>
   <script src="./src/ui/candidate-core-editor.js?v=20260730-core2"></script>
   <script src="./src/ui/external-opportunities.js?v=20260818-extopps1"></script>
   <script src="./src/ui/job-opportunity-preferences.js?v=20260818-joboppprefs1"></script>
@@ -12672,16 +12673,27 @@ const vueAppConfig = {
       const tasks = [
         ['team todos', () => loadTeamTodos()],
         ['daily review', () => loadDailyReview()],
-        ['knowledge base', () => localLoadKb()],
-        ['knowledge api key', () => localLoadKbApiKey()],
-        ['resume cache', () => hydrateResumesFromCache()],
-        ['quantum radar', () => loadQuantumRadarFromCloud()],
       ];
       void Promise.allSettled(tasks.map(([, task]) => Promise.resolve().then(task))).then(results => {
         results.forEach((result, index) => {
           if (result.status === 'rejected') {
             console.warn(`[startup] ${tasks[index][0]} 后台加载失败:`, result.reason?.message || result.reason);
           }
+        });
+      });
+    }
+    function scheduleDeferredStartupTasks() {
+      window.WorkBuddyDeferredStartup?.schedule(() => {
+        const tasks = [
+          ['knowledge base', () => localLoadKb()],
+          ['knowledge api key', () => localLoadKbApiKey()],
+          ['resume cache', () => hydrateResumesFromCache()],
+          ['quantum radar', () => loadQuantumRadarFromCloud()],
+        ];
+        return Promise.allSettled(tasks.map(([, task]) => Promise.resolve().then(task))).then(results => {
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') console.warn(`[deferred-startup] ${tasks[index][0]} 加载失败:`, result.reason?.message || result.reason);
+          });
         });
       });
     }
@@ -20123,6 +20135,7 @@ ${ocrText}`
       await reconcileMigratedPositionDescriptions();
       const cloudPipelineMigrated = migrateCandidatePipelineData();
       appHydrating = false;
+      scheduleDeferredStartupTasks();
       await recoverResumeAiProcessing();
       if (localPipelineMigrated || cloudPipelineMigrated) markDirty('legacy');
       updateActiveNavFromScroll();
