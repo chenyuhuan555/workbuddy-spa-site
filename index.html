@@ -3310,6 +3310,56 @@
     .wb-v2-workspace .wb-home-activity-section .wb-home-note textarea { font-size: 15px; }
     .wb-v2-workspace .wb-home-activity-section button.rounded-xl { font-size: 15px; }
     .wb-v2-workspace .wb-home-activity-section .text-xs { font-size: 14px; }
+    /* 首页工作台：纵向三段式、轻量 SaaS 视觉，仅调整展示层级，不改变数据绑定。 */
+    .wb-v2-workspace .wb-v2-topbar { height: 76px !important; border-bottom-color: #f0f1f1; }
+    .wb-v2-workspace .wb-v2-topbar h2 { font-size: 22px; letter-spacing: -.02em; }
+    .wb-v2-workspace .wb-v2-topbar input { height: 40px; border: 1px solid #eaeaea; background: #fafafa; }
+    .wb-v2-workspace .wb-v2-topbar input:focus { background: #fff; }
+    .wb-v2-workspace .wb-home-dashboard { gap: 18px; background: #fff; padding: 24px 28px 42px; }
+    .wb-v2-workspace .wb-home-section { border-color: #eaeaea; border-radius: 12px; padding: 22px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .wb-v2-workspace .wb-home-funnel-section { padding: 24px 26px 18px; }
+    .wb-v2-workspace .wb-home-funnel h2 { font-size: 22px; letter-spacing: -.02em; }
+    .wb-v2-workspace .wb-home-channel-funnel-card { margin-top: 18px; border: 0; }
+    .wb-v2-workspace .wb-home-channel-switcher { padding: 0 0 14px; border-bottom: 1px solid #f0f1f1; }
+    .wb-v2-workspace .wb-home-channel-options { gap: 16px; margin-top: 0; }
+    .wb-v2-workspace .wb-home-channel-option { border-color: transparent; border-radius: 6px !important; padding: 5px 2px; font-size: 13px; }
+    .wb-v2-workspace .wb-home-channel-option.is-active { border-color: transparent; color: #0f8a5f; box-shadow: inset 0 -2px #0f8a5f; }
+    .wb-v2-workspace .wb-home-pipeline-card { border-top: 0; padding: 20px 0 0; }
+    .wb-v2-workspace .wb-home-pipeline-stage { padding: 16px 12px 14px; }
+    .wb-v2-workspace .wb-home-pipeline-stage:not(:last-child) { border-right: 0; }
+    .wb-v2-workspace .wb-home-pipeline-label { color: #6b7280; font-size: 13px; font-weight: 500; }
+    .wb-v2-workspace .wb-home-pipeline-stage strong { margin-top: 10px; color: #111827; font-size: 34px; }
+    .wb-v2-workspace .wb-home-pipeline-share { margin-top: 7px; color: #6b7280; font-size: 12px; font-weight: 500; }
+    .wb-v2-workspace .wb-home-pipeline-arrow { top: 53px; background: transparent; color: #9ca3af; }
+    .wb-v2-workspace .wb-home-conversion-row { margin: 8px 9% 12px; color: #9ca3af; }
+    .wb-v2-workspace .wb-home-conversion-row strong { color: #0f8a5f; font-size: 13px; }
+    .wb-v2-workspace .wb-home-funnel-metrics { border-top-color: #eaeaea; }
+    .wb-v2-workspace .wb-home-funnel-metric { padding: 14px 12px 2px; }
+    .wb-v2-workspace .wb-home-funnel-metric span { color: #6b7280; }
+    .wb-v2-workspace .wb-home-funnel-metric strong { color: #0f8a5f; font-size: 22px; }
+    .wb-v2-workspace .wb-home-execution-grid { gap: 18px; }
+    .wb-v2-workspace .wb-home-activity-section { padding: 22px 24px; }
+    .wb-v2-workspace .wb-home-activity-section h2 { font-size: 21px; letter-spacing: -.02em; }
+    .wb-v2-workspace .wb-home-todo-tabs { margin-top: 12px; padding-bottom: 10px; }
+    .wb-v2-workspace .wb-home-todo-tab { border-color: transparent; padding: 4px 0; }
+    .wb-v2-workspace .wb-home-todo-tab + .wb-home-todo-tab { margin-left: 14px; }
+    .wb-v2-workspace .wb-home-todo-tab.is-active { border-color: transparent; box-shadow: inset 0 -2px #0f8a5f; }
+    .wb-v2-workspace .wb-home-todo-table { min-width: 640px; font-size: 14px; }
+    .wb-v2-workspace .wb-home-todo-table th { padding: 10px 8px; color: #9ca3af; font-size: 12px; }
+    .wb-v2-workspace .wb-home-todo-table td { padding: 14px 8px; color: #6b7280; }
+    .wb-v2-workspace .wb-home-todo-table tbody tr:hover { background: #fafafa; }
+    .wb-v2-workspace .wb-home-todo-status { border-radius: 6px; background: #f3f4f6 !important; color: #6b7280 !important; padding: 4px 8px; font-size: 12px; font-weight: 500; }
+    .wb-v2-workspace .wb-home-review-stats { margin-top: 16px; }
+    .wb-v2-workspace .wb-home-review-stats span { color: #6b7280; }
+    .wb-v2-workspace .wb-home-review-stats strong { color: #0f8a5f; font-size: 24px; }
+    .wb-v2-workspace .wb-home-ai-summary { margin-top: 16px; border-radius: 8px; background: #f3f8f5; padding: 12px 14px; }
+    .wb-v2-workspace .wb-home-review-notes { gap: 14px; margin-top: 14px; }
+    .wb-v2-workspace .wb-home-note { border-color: #eaeaea; border-radius: 8px; padding: 11px 13px; }
+    .wb-v2-workspace .wb-home-note textarea { min-height: 52px; font-size: 14px; }
+    .wb-v2-workspace .wb-home-header-import { min-height: 36px; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 13px; color: #374151; background: #fff; font-size: 13px; font-weight: 600; }
+    .wb-v2-workspace .wb-home-header-import:hover { background: #fafafa; border-color: #d1d5db; }
+    .wb-v2-workspace .wb-home-primary { background: #0f8a5f; }
+    .wb-v2-workspace .wb-home-primary:hover { background: #0b744f; }
     @media (max-width: 760px) {
       .wb-v2-workspace .wb-home-dashboard { padding-top: 20px; }
       .wb-v2-workspace .wb-home-todo-row { grid-template-columns: 1fr; gap: 5px; }
@@ -4228,6 +4278,7 @@
           </div>
           <button v-if="saveState.status === 'error'" type="button" @click="retryLocalSave" role="status" aria-live="polite" class="text-xs font-semibold text-red-600 hover:text-red-700">保存失败，点击重试</button>
           <span v-else-if="saveState.status === 'saving' || saveState.status === 'saved'" role="status" aria-live="polite" class="text-xs text-slate-500">{{ saveState.status === 'saving' ? '正在保存…' : isGuestMode ? '已保存到本浏览器' : '已保存' }}</span>
+          <button v-if="workbenchNav === 'dashboard'" type="button" @click="openTalentIntake" class="wb-home-header-import hidden sm:inline-flex">导入人才</button>
           <div v-if="workbenchNav !== 'aiApps'" ref="globalCreateMenuRef" class="relative">
             <button type="button" @click="globalCreateMenu = !globalCreateMenu" class="wb-v2-create-button px-4 py-2 rounded-xl text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 leading-none transition" style="background:#226647!important;color:#fff!important;border:1px solid #1b563b!important;box-shadow:0 8px 18px rgba(39,118,83,.18)!important;min-width:98px">＋ 新建</button>
             <div v-if="globalCreateMenu" class="absolute right-0 top-11 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-20">
@@ -4279,7 +4330,7 @@
                 <label class="sr-only" for="home-funnel-position">岗位筛选</label><select id="home-funnel-position" v-model="homeFunnelPositionId" class="wb-home-control"><option value="all">全部岗位</option><option v-for="position in homeFunnelPositionOptions" :key="position.id" :value="position.id">{{ position.title || '未命名岗位' }}</option></select>
                 <select aria-label="归属顾问" v-model="homeFunnelOwnerId" class="wb-home-control"><option value="all">全部顾问</option><option v-for="owner in workbenchOwners" :key="owner" :value="owner">{{ owner }}</option></select>
                 <button v-if="homeFunnelCompanyId" type="button" @click="reloadHomeTalentFunnelDashboard" class="wb-home-secondary" aria-label="刷新渠道漏斗" title="刷新"><svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 0 0-14.9-3.9L3 9m0 0V4m0 5h5M4 13a8 8 0 0 0 14.9 3.9L21 15m0 0v5m0-5h-5"/></svg></button>
-                <button type="button" @click="openTalentIntake" class="wb-home-primary">＋ 导入人才</button>
+                <button type="button" @click="openTalentIntake" class="sr-only">导入人才</button>
               </div>
             </header>
             <p v-if="homeFunnelDashboard.error" role="alert" class="wb-home-alert">{{ homeFunnelDashboard.error }}</p>
