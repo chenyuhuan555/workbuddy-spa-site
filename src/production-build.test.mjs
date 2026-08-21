@@ -6,6 +6,12 @@ import { parse } from 'parse5';
 
 const root = new URL('../', import.meta.url);
 
+test('首屏资源提示只预连接 Supabase 并预加载工作台 CSS', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /<link\s+rel="preconnect"\s+href="https:\/\/pskqpgzwifdozaxprpik\.supabase\.co"\s*\/?>(?:\s*)/i);
+  assert.match(html, /<link\s+rel="preload"\s+href="\.\/assets\/workbuddy\.css"\s+as="style"\s*\/?>(?:\s*)/i);
+});
+
 test('生产构建使用本地静态 Tailwind CSS', () => {
   execSync('npm run build', {
     cwd: root,
