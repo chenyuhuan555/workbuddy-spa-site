@@ -3810,6 +3810,14 @@
       box-shadow: none;
     }
 
+    .wb-v2-workspace .wb-talent-table-action-cell.is-menu-open {
+      z-index: 30;
+    }
+
+    .wb-v2-workspace .wb-position-row-menu {
+      z-index: 50;
+    }
+
     .wb-v2-workspace .wb-talent-table th.wb-talent-table-action-cell {
       z-index: 7;
       background: #fafbfc;
@@ -5910,7 +5918,7 @@
                     <td class="text-center font-semibold" :class="row.recommended ? 'text-emerald-700' : 'text-slate-400'">{{ row.recommended }}</td>
                     <td class="text-center font-semibold" :class="row.interviewing ? 'text-indigo-700' : 'text-slate-400'">{{ row.interviewing }}</td>
                     <td class="text-xs text-slate-400">{{ row.lastUpdated && row.lastUpdated !== '-' ? formatBeijingDateTime(row.lastUpdated) : '-' }}</td>
-                    <td class="wb-talent-table-action-cell">
+                    <td :class="['wb-talent-table-action-cell', { 'is-menu-open': positionRowMenuId === row.id }]">
                       <div class="relative flex justify-center">
                         <button type="button" aria-label="岗位操作" aria-haspopup="menu" :aria-expanded="positionRowMenuId === row.id" @click.stop="positionRowMenuId = positionRowMenuId === row.id ? '' : row.id" class="h-8 w-8 rounded-lg text-lg font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">···</button>
                         <div v-if="positionRowMenuId === row.id" role="menu" class="wb-position-row-menu absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
@@ -12831,6 +12839,14 @@ const vueAppConfig = {
     }
     onMounted(() => document.addEventListener('click', closeGlobalCreateMenuOnOutsideClick));
     onBeforeUnmount(() => document.removeEventListener('click', closeGlobalCreateMenuOnOutsideClick));
+    function closePositionRowMenuOnOutsideClick(event) {
+      if (!positionRowMenuId.value) return;
+      const target = event.target;
+      if (target?.closest?.('.wb-position-row-menu') || target?.closest?.('[aria-label="岗位操作"]')) return;
+      positionRowMenuId.value = '';
+    }
+    onMounted(() => document.addEventListener('click', closePositionRowMenuOnOutsideClick));
+    onBeforeUnmount(() => document.removeEventListener('click', closePositionRowMenuOnOutsideClick));
     const companyFilter = reactive({ query: '', status: 'all', owner: 'all' });
     const companyPage = ref(1);
     const companyCreate = reactive({ open: false, name: '', industry: '', city: '', owner: '', status: 'potential' });
