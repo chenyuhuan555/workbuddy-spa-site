@@ -9836,7 +9836,7 @@
                                 <template v-if="columns[modal.colIdx].name === '公共'">
                                   <span v-if="!resume.uploaderName && !editingUploaderName.has(resume.id)" @click.stop="editingUploaderName.add(resume.id)" class="resume-uploader-add">+ 上传人</span>
                                   <span v-else-if="resume.uploaderName && !editingUploaderName.has(resume.id)" @click.stop="editingUploaderName.add(resume.id)" class="resume-uploader">{{ resume.uploaderName }}</span>
-                                  <input aria-label="简历上传人" v-else list="uploaderNameList" v-model="resume.uploaderName" @blur="editingUploaderName.delete(resume.id); localSave(); if (cloudReady) schedulePush()" @keyup.enter="$event.target.blur()" @click.stop="" class="resume-uploader-input" />
+                                  <input aria-label="简历上传人" v-else list="uploaderNameList" v-model="resume.uploaderName" @blur="editingUploaderName.delete(resume.id); localSave(); if (cloudReady) schedulePush()" @keyup.enter="$event.target.blur()" @click.stop="editingUploaderName.has(resume.id)" class="resume-uploader-input" />
                                 </template>
                                 <button v-if="resume.type !== 'link' && (isPdf(resume.name) || isImage(resume.name))" @click="previewResume(resume)" type="button" class="resume-preview-link">预览</button>
                               </div>
